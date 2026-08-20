@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -14,8 +15,23 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { mockStudentStats, mockBadges, mockBadgeProgress, badgeEmojis } from "@/lib/mock-data";
+import { getCurrentUser, UserProfile } from "@/utils/auth-helpers";
 
 export default function StudentDashboard() {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const user = getCurrentUser();
+      if (user) setCurrentUser(user);
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const studentName = currentUser?.fullName || mockStudentStats.full_name;
+  const firstName = studentName.split(" ")[0];
+
   const currentBadgeProgress = mockBadgeProgress.find((p) => p.status === "in_progress");
   const currentBadge = mockBadges.find((b) => b.badge_id === currentBadgeProgress?.badge_id);
 
@@ -30,7 +46,7 @@ export default function StudentDashboard() {
             <span className="text-slate-900 font-bold">My Learning Hub</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            Good morning, {mockStudentStats.full_name.split(" ")[0]}! 👋
+            Good morning, {firstName}! 👋
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             You&apos;re currently on <span className="text-blue-700 font-bold">{currentBadge?.badge_name}</span> — keep reading to earn your next milestone!

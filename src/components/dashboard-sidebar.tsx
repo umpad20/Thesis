@@ -15,6 +15,7 @@ import {
   LogOut,
   Layers,
 } from "lucide-react";
+import { signOutUser } from "@/utils/auth-helpers";
 
 interface NavItem {
   name: string;
@@ -111,37 +112,34 @@ export function DashboardSidebar() {
           </nav>
         </div>
 
-        {/* Switch to Teacher Portal Quick Link */}
+        {/* School Info Widget */}
         <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-100 text-xs">
           <div className="flex items-center gap-2 mb-1 font-bold text-blue-900">
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
             <span>Pedro Victorina Calo ES</span>
           </div>
-          <p className="text-slate-600 text-[11px] leading-relaxed mb-2">
+          <p className="text-slate-600 text-[11px] leading-relaxed">
             Grade 3 reading comprehension mastery program.
           </p>
-          <Link
-            href="/teacher"
-            className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-          >
-            <span>Switch to Teacher Portal</span>
-            <ChevronRight className="w-3 h-3" />
-          </Link>
         </div>
       </div>
 
       {/* Footer / Account Exit */}
       <div className="p-3 border-t border-slate-100">
-        <Link
-          href="/login"
-          className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+        <button
+          type="button"
+          onClick={async () => {
+            await signOutUser();
+            window.location.replace("/api/auth/signout");
+          }}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors text-left"
         >
           <div className="flex items-center gap-3">
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 opacity-60" />
-        </Link>
+        </button>
       </div>
     </aside>
   );

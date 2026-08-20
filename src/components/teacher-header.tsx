@@ -1,11 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
   Bell,
   ChevronDown,
-  User,
   ShieldCheck,
   CheckCircle2,
   Plus,
@@ -21,9 +21,45 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser, signOutUser, UserProfile } from "@/utils/auth-helpers";
+
+const DEFAULT_TEACHER: UserProfile = {
+  id: "00000000-0000-0000-0000-000000000002",
+  email: "teacher.reyes@pvces.edu.ph",
+  fullName: "Teacher Reyes",
+  role: "teacher",
+  section: "Grade 3 Faculty",
+  avatar: "👩‍🏫",
+};
 
 export function TeacherHeader() {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<UserProfile>(DEFAULT_TEACHER);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const user = getCurrentUser();
+      if (user) setCurrentUser(user);
+    };
+
+    handleStorageChange();
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOutUser();
+    window.location.replace("/api/auth/signout");
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between sticky top-0 z-30">
@@ -82,15 +118,15 @@ export function TeacherHeader() {
           <DropdownMenuTrigger className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-left outline-none">
             <Avatar className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800">
               <AvatarFallback className="bg-slate-900 text-white font-bold text-xs rounded-lg">
-                TR
+                {getInitials(currentUser.fullName)}
               </AvatarFallback>
             </Avatar>
             <div className="hidden md:block">
               <span className="text-xs font-bold text-slate-900 block leading-tight">
-                Teacher Reyes
+                {currentUser.fullName}
               </span>
               <span className="text-[10px] font-semibold text-slate-400 block">
-                Grade 3 Faculty & Lead
+                {currentUser.section || "Grade 3 Faculty"} · Faculty
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
@@ -109,18 +145,10 @@ export function TeacherHeader() {
               </div>
               <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 hover:bg-slate-50"
-            >
-              <div className="flex items-center gap-2">
-                <User className="w-3.5 h-3.5 text-slate-500" />
-                <span>Switch to Student View</span>
-              </div>
-            </DropdownMenuItem>
+
             <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem
-              onClick={() => router.push("/login")}
+              onClick={handleSignOut}
               className="px-2.5 py-2 text-xs text-rose-600 font-semibold cursor-pointer"
             >
               Sign Out
