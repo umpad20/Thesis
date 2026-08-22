@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_lesson10_listening_others" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="500" height="280" rx="16" fill="url(#grad_lesson10_listening_others)" />
+  
+  <!-- Story Visual Elements -->
+  
+      <!-- Collaborative Poster Project -->
+      <rect x="140" y="50" width="220" height="150" rx="10" fill="#FFFFFF" stroke="#3B82F6" stroke-width="4" />
+      <!-- Green Tree on Poster -->
+      <path d="M 220,130 L 220,160" stroke="#78350F" stroke-width="8" />
+      <circle cx="220" cy="105" r="30" fill="#22C55E" />
+      <!-- Ocean Wave at bottom of poster -->
+      <path d="M 144,170 Q 190,155 250,170 T 356,170 L 356,196 L 144,196 Z" fill="#38BDF8" />
+      <!-- Lucas (Boy Left with paintbrush) -->
+      <circle cx="90" cy="120" r="18" fill="#FCD34D" />
+      <rect x="75" y="138" width="30" height="45" rx="6" fill="#10B981" />
+      <line x1="105" y1="145" x2="135" y2="125" stroke="#78350F" stroke-width="4" stroke-linecap="round" />
+      <!-- Maya (Girl Right with color palette) -->
+      <circle cx="410" cy="120" r="18" fill="#FCD34D" />
+      <rect x="395" y="138" width="30" height="45" rx="6" fill="#8B5CF6" />
+      <!-- Respect Sparkle -->
+      <text x="235" y="40" font-size="24">🤝 ✨</text>
+    
+
+  <!-- Title Watermark Badge -->
+  <g transform="translate(16, 16)">
+    <rect width="180" height="26" rx="8" fill="#FFFFFF" opacity="0.9" filter="url(#shadow)" />
+    <text x="10" y="17" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" fill="#64748B">
+      🥈 Silver Medal
+    </text>
+  </g>
+</svg>

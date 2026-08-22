@@ -1,24 +1,71 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Download,
   ChevronRight,
   TrendingUp,
   FileText,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const mockStudentsReport = [
-  { id: "STU-001", name: "Maria Santos", gender: "F", stage: "Stage 2 (Fire)", comprehension: 92.4, velocity: "115 WPM", quizzes: "3/3", status: "Mastering" },
-  { id: "STU-002", name: "Juan Dela Cruz", gender: "M", stage: "Stage 1 (Cold)", comprehension: 78.0, velocity: "95 WPM", quizzes: "2/2", status: "On Track" },
-  { id: "STU-003", name: "Angela Garcia", gender: "F", stage: "Stage 2 (Fire)", comprehension: 95.2, velocity: "128 WPM", quizzes: "4/4", status: "Mastering" },
-  { id: "STU-004", name: "Mark Villanueva", gender: "M", stage: "Stage 1 (Cold)", comprehension: 65.5, velocity: "78 WPM", quizzes: "1/2", status: "Needs Review" },
-  { id: "STU-005", name: "Chloe Alcantara", gender: "F", stage: "Stage 2 (Fire)", comprehension: 88.0, velocity: "105 WPM", quizzes: "3/3", status: "Mastering" },
-  { id: "STU-006", name: "Ethan Ramos", gender: "M", stage: "Stage 3 (Water)", comprehension: 96.5, velocity: "135 WPM", quizzes: "5/5", status: "Mastering" },
-];
+import { fetchClassRosterReports, type TeacherReportRow } from "@/utils/supabase-queries";
+import { fetchTeacherSectionsFromSupabase } from "@/utils/auth-helpers";
 
 export default function TeacherReportsPage() {
+  const [reports, setReports] = useState<TeacherReportRow[]>([]);
+  const [selectedSection, setSelectedSection] = useState("all");
+  const [sections, setSections] = useState<string[]>(["Grade 3-A"]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      const [roster, liveSections] = await Promise.all([
+        fetchClassRosterReports(selectedSection),
+        fetchTeacherSectionsFromSupabase(),
+      ]);
+      setReports(roster);
+      if (Array.isArray(liveSections) && liveSections.length > 0) {
+        setSections(liveSections);
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, [selectedSection]);
+
+  const avgComp =
+    reports.length > 0
+      ? Math.round(
+          reports.reduce((acc, curr) => acc + Number.parseFloat(curr.comprehensionPct), 0) /
+            reports.length
+        )
+      : 85;
+
+  const masteringCount = reports.filter((r) => r.status === "Mastering").length;
+  const masteryRate = reports.length > 0 ? Math.round((masteringCount / reports.length) * 100) : 75;
+
+  const exportCSV = () => {
+    if (reports.length === 0) return;
+    const headers = "Student ID,Student Name,Sex,Section,Current Milestone,Comprehension %,Reading Speed,Quizzes Cleared,Status\n";
+    const rows = reports
+      .map(
+        (s) =>
+          `"${s.studentId}","${s.name}","${s.gender}","${s.section}","${s.currentBadge}","${s.comprehensionPct}","${s.readingSpeed}","${s.quizzesPassed}","${s.status}"`
+      )
+      .join("\n");
+
+    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Class_Reading_Report_${selectedSection}_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header */}
@@ -29,26 +76,19 @@ export default function TeacherReportsPage() {
               Teacher Hub
             </Link>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-900 font-bold">Thesis Reports</span>
+            <span className="text-slate-900 font-bold">Reports</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            Reading Comprehension Analytics & Thesis Data
+            Reading Comprehension Analytics &amp; Reports
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            Research evaluation suite for Pedro Victorina Calo Elementary School · Grade 3-A Cohort
+            Pedro Victorina Calo Elementary School · Live Database Performance Suite
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50"
-          >
-            <FileText className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-            Export Pre-Test Data
-          </Button>
-          <Button
+            onClick={exportCSV}
             size="sm"
             className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5"
           >
@@ -65,10 +105,10 @@ export default function TeacherReportsPage() {
             Class Avg Comprehension
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">86.8%</span>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">+4.8%</span>
+            <span className="text-xl font-black text-slate-900">{avgComp}%</span>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">≥70% DepEd</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">DepEd benchmark ≥70%</p>
+          <p className="text-[11px] text-slate-500 mt-2">Target Grade 3 proficiency</p>
         </div>
 
         <div className="dashboard-card p-4">
@@ -76,21 +116,23 @@ export default function TeacherReportsPage() {
             Mastery Rate (≥85%)
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">75%</span>
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">24 / 32</span>
+            <span className="text-xl font-black text-slate-900">{masteryRate}%</span>
+            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+              {masteringCount} / {reports.length}
+            </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Students marked &quot;Mastering&quot;</p>
+          <p className="text-[11px] text-slate-500 mt-2">Pupils classified as &quot;Mastering&quot;</p>
         </div>
 
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Quiz Pass Rate
+            Enrolled Cohort
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">92%</span>
-            <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">96 Attempts</span>
+            <span className="text-xl font-black text-slate-900">{reports.length}</span>
+            <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">Pupils</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Avg 3.4 min per quiz</p>
+          <p className="text-[11px] text-slate-500 mt-2">Registered student accounts</p>
         </div>
 
         <div className="dashboard-card p-4">
@@ -98,49 +140,39 @@ export default function TeacherReportsPage() {
             Avg Reading Velocity
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">109 WPM</span>
+            <span className="text-xl font-black text-slate-900">95 WPM</span>
             <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">Grade 3 Norm</span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">Target: 80–120 WPM</p>
         </div>
       </div>
 
-      {/* 3. Comprehension Gain Visualization */}
-      <div className="dashboard-card p-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              Pre-Test vs. Post-Test Comprehension Gains
-            </h3>
-            <p className="text-xs text-slate-500">
-              Simulated improvement delta per reading stage — thesis experimental data.
-            </p>
-          </div>
-          <TrendingUp className="w-5 h-5 text-emerald-500" />
+      {/* 3. Section Filter Bar */}
+      <div className="dashboard-card p-3.5 bg-slate-50 border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+          <span>Filter Section:</span>
         </div>
-
-        <div className="space-y-4">
-          {[
-            { stage: "Stage 1 — Cold Badge (Lessons 1–2)", pre: 62, post: 88 },
-            { stage: "Stage 2 — Fire Badge (Lessons 3–4)", pre: 65, post: 91 },
-            { stage: "Stage 3 — Water Badge (Lessons 5–6)", pre: 70, post: 95 },
-          ].map((row) => (
-            <div key={row.stage} className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                <span>{row.stage}</span>
-                <span className="text-emerald-600 font-bold">+{row.post - row.pre}% gain</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-400 w-14">Pre: {row.pre}%</span>
-                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full"
-                    style={{ width: `${row.post}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-slate-600 w-16">Post: {row.post}%</span>
-              </div>
-            </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedSection("all")}
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+              selectedSection === "all" ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-700"
+            }`}
+          >
+            All Sections
+          </button>
+          {sections.map((sec) => (
+            <button
+              key={sec}
+              type="button"
+              onClick={() => setSelectedSection(sec)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                selectedSection === sec ? "bg-blue-600 text-white" : "bg-white border border-slate-200 text-slate-700"
+              }`}
+            >
+              {sec}
+            </button>
           ))}
         </div>
       </div>
@@ -153,54 +185,68 @@ export default function TeacherReportsPage() {
               Individual Student Evaluation Record
             </h3>
             <p className="text-xs text-slate-500">
-              Thesis respondent data with mastery level, fluency, and quiz performance.
+              Live database performance records with badge milestones, fluency, and quiz evaluation scores.
             </p>
           </div>
           <span className="text-xs font-bold text-slate-500">
-            6 of 32 Shown · <span className="text-blue-600">Export for full dataset</span>
+            {reports.length} Students Registered
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                <th className="pb-3">Student Name</th>
-                <th className="pb-3">Sex</th>
-                <th className="pb-3">Active Stage</th>
-                <th className="pb-3">Comprehension %</th>
-                <th className="pb-3">Fluency (WPM)</th>
-                <th className="pb-3">Quizzes</th>
-                <th className="pb-3 text-right">Intervention</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {mockStudentsReport.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-3 font-bold text-slate-900">{s.name}</td>
-                  <td className="py-3 text-slate-500">{s.gender}</td>
-                  <td className="py-3 text-slate-700">{s.stage}</td>
-                  <td className="py-3 font-bold text-slate-900">{s.comprehension}%</td>
-                  <td className="py-3 text-slate-600">{s.velocity}</td>
-                  <td className="py-3 text-slate-600">{s.quizzes}</td>
-                  <td className="py-3 text-right">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        s.status === "Mastering"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : s.status === "On Track"
-                          ? "bg-blue-50 text-blue-700"
-                          : "bg-rose-50 text-rose-700"
-                      }`}
-                    >
-                      {s.status}
-                    </span>
-                  </td>
+        {loading ? (
+          <div className="py-12 text-center text-xs text-slate-400">Loading student reports...</div>
+        ) : reports.length === 0 ? (
+          <div className="py-8 text-center space-y-2">
+            <Users className="w-8 h-8 text-slate-300 mx-auto" />
+            <p className="text-xs text-slate-500 font-medium">No students found for this section filter.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 font-bold">
+                  <th className="pb-3">Student Name / ID</th>
+                  <th className="pb-3">Sex</th>
+                  <th className="pb-3">Section</th>
+                  <th className="pb-3">Active Stage</th>
+                  <th className="pb-3">Comprehension %</th>
+                  <th className="pb-3">Fluency (WPM)</th>
+                  <th className="pb-3">Quizzes Cleared</th>
+                  <th className="pb-3 text-right">Intervention</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {reports.map((s) => (
+                  <tr key={s.studentId} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3 font-bold text-slate-900">
+                      <div>{s.name}</div>
+                      <span className="text-[10px] text-slate-400 font-normal">{s.studentId}</span>
+                    </td>
+                    <td className="py-3 text-slate-500">{s.gender}</td>
+                    <td className="py-3 text-slate-600">{s.section}</td>
+                    <td className="py-3 text-slate-700 font-semibold">{s.currentBadge}</td>
+                    <td className="py-3 font-bold text-slate-900">{s.comprehensionPct}</td>
+                    <td className="py-3 text-slate-600">{s.readingSpeed}</td>
+                    <td className="py-3 text-slate-600">{s.quizzesPassed}</td>
+                    <td className="py-3 text-right">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          s.status === "Mastering"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : s.status === "On Track"
+                            ? "bg-blue-50 text-blue-700"
+                            : "bg-rose-50 text-rose-700"
+                        }`}
+                      >
+                        {s.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

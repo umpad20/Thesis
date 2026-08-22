@@ -24,26 +24,63 @@ export interface TeacherProfile {
   department: string;
 }
 
+export type BadgeType = "star" | "ribbon" | "medal";
+export type MedalType = "bronze" | "silver" | "gold" | null;
+
 export interface Badge {
   badge_id: number;
   badge_name: string;
+  badge_type: BadgeType;
+  medal_type: MedalType;
   description: string;
   badge_order: number;
   required_passing_score: number;
   xp_reward: number;
+  badge_icon_url?: string | null;
+  target_section?: string;
+  teacher_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Lesson {
   lesson_id: number;
   badge_id: number;
-  teacher_id: number;
+  teacher_id: number | string;
   lesson_title: string;
   lesson_description: string;
   lesson_order: number;
-  difficulty_level: string;
+  difficulty_level: "easy" | "medium" | "hard" | string;
   passing_score: number;
+  status: "draft" | "published";
+  target_section: string; // 'all' for developer core lessons, or specific section e.g. 'Grade 3-A'
   created_at: string;
   updated_at: string;
+}
+
+export interface StudentEnrollmentInput {
+  fullName: string;
+  email: string;
+  password?: string;
+  gender: "Male" | "Female" | string;
+  section: string;
+  teacherId?: string;
+}
+
+export interface EnrolledStudent {
+  id: string;
+  name: string;
+  gender: string;
+  section: string;
+  currentBadge: string;
+  comprehension: string;
+  accuracyRaw: number;
+  quizzesPassed: string;
+  status: "Mastering" | "On Track" | "Needs Review" | string;
+  readingSpeed: string;
+  lastActive: string;
+  email?: string;
+  avatar?: string;
 }
 
 export interface LessonPage {
@@ -52,8 +89,8 @@ export interface LessonPage {
   page_number: number;
   page_title: string;
   content: string;
-  image_url: string;
-  audio_url: string;
+  image_url?: string | null;
+  audio_url?: string | null;
 }
 
 export interface VocabularyWord {
@@ -62,6 +99,7 @@ export interface VocabularyWord {
   word: string;
   definition: string;
   example_sentence: string;
+  audio_url?: string | null;
 }
 
 export interface Quiz {
@@ -71,6 +109,7 @@ export interface Quiz {
   quiz_type: string;
   quiz_title: string;
   passing_score: number;
+  created_at?: string;
 }
 
 export interface QuizQuestion {
@@ -91,44 +130,55 @@ export interface QuestionChoice {
 }
 
 export interface StudentBadgeProgress {
-  badge_progress_id: number;
-  student_id: number;
+  badge_progress_id?: number | string;
+  student_id: number | string;
   badge_id: number;
   status: "locked" | "in_progress" | "completed";
   completion_percentage: number;
-  final_quiz_score: number | null;
-  earned_date: string | null;
+  final_quiz_score?: number | null;
+  earned_date?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface StudentLessonProgress {
-  progress_id: number;
-  student_id: number;
+  progress_id?: number | string;
+  student_id: number | string;
   lesson_id: number;
   progress_percentage: number;
   status: "not_started" | "in_progress" | "completed";
-  highest_quiz_score: number;
-  last_accessed: string;
+  highest_quiz_score?: number;
+  last_accessed?: string;
 }
 
 export interface QuizAttempt {
-  attempt_id: number;
+  attempt_id?: number | string;
   quiz_id: number;
-  student_id: number;
-  attempt_number: number;
+  student_id: number | string;
+  attempt_number?: number;
   score: number;
   percentage: number;
   status: string;
-  feedback: string;
-  started_at: string;
-  completed_at: string;
+  feedback?: string;
+  started_at?: string;
+  completed_at?: string;
 }
 
 export interface QuizAnswer {
   answer_id: number;
   attempt_id: number;
   question_id: number;
-  selected_choice_id: number;
+  selected_choice_id: number | null;
   is_correct: boolean;
+}
+
+export interface ActivityLog {
+  log_id: number;
+  user_id: number;
+  activity_type: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
 }
 
 // Avatar type for the avatar picker
@@ -138,3 +188,4 @@ export interface AvatarOption {
   label: string;
   bgColor: string;
 }
+

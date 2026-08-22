@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,25 +17,47 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { signOutUser } from "@/utils/auth-helpers";
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: React.ElementType;
-  badge?: string;
-}
-
-const teacherNavItems: NavItem[] = [
-  { name: "Teacher Hub", href: "/teacher", icon: LayoutDashboard },
-  { name: "Student Records", href: "/teacher/students", icon: Users, badge: "32 Pupils" },
-  { name: "Curriculum Manager", href: "/teacher/lessons", icon: BookOpen, badge: "8 Stories" },
-  { name: "Quiz & Questions", href: "/teacher/quizzes", icon: FileCheck2 },
-  { name: "Badge Mastery Rules", href: "/teacher/badges", icon: Map },
-  { name: "Thesis Reports", href: "/teacher/reports", icon: BarChart3, badge: "Export" },
-];
+import { fetchClassRosterReports, fetchAllLessons } from "@/utils/supabase-queries";
 
 export function TeacherSidebar() {
   const pathname = usePathname();
+  const [pupilsCount, setPupilsCount] = useState<number | null>(null);
+  const [storiesCount, setStoriesCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    async function loadCounts() {
+      try {
+        const [roster, lessons] = await Promise.all([
+          fetchClassRosterReports("all"),
+          fetchAllLessons(),
+        ]);
+        setPupilsCount(roster.length);
+        setStoriesCount(lessons.length);
+      } catch (err) {
+        console.error("Sidebar loadCounts error:", err);
+      }
+    }
+    loadCounts();
+  }, [pathname]);
+
+  const teacherNavItems = [
+    { name: "Teacher Hub", href: "/teacher", icon: LayoutDashboard },
+    {
+      name: "Student Records",
+      href: "/teacher/students",
+      icon: Users,
+      badge: pupilsCount !== null ? `${pupilsCount} Pupils` : undefined,
+    },
+    {
+      name: "Curriculum Manager",
+      href: "/teacher/lessons",
+      icon: BookOpen,
+      badge: storiesCount !== null ? `${storiesCount} Stories` : undefined,
+    },
+    { name: "Quiz & Questions", href: "/teacher/quizzes", icon: FileCheck2 },
+    { name: "Badge Mastery Rules", href: "/teacher/badges", icon: Map },
+    { name: "Reports", href: "/teacher/reports", icon: BarChart3, badge: "CSV" },
+  ];
 
   return (
     <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col flex-shrink-0 min-h-screen">
@@ -100,7 +123,7 @@ export function TeacherSidebar() {
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                         isActive
                           ? "bg-slate-800 text-blue-300"
-                          : "bg-slate-100 text-slate-500"
+                          : "bg-slate-100 text-slate-600"
                       }`}
                     >
                       {item.badge}
@@ -119,7 +142,7 @@ export function TeacherSidebar() {
             <span>Content Authoring</span>
           </div>
           <p className="text-slate-500 text-[11px] leading-relaxed mb-3">
-            Add new reading passages or customize quiz question banks for Grade 3.
+            Add new reading passages or customize quiz question banks for your assigned sections.
           </p>
           <Link
             href="/teacher/lessons"

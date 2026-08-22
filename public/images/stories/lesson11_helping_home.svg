@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_lesson11_helping_home" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="500" height="280" rx="16" fill="url(#grad_lesson11_helping_home)" />
+  
+  <!-- Story Visual Elements -->
+  
+      <!-- Cozy Living Room Setting -->
+      <rect x="60" y="160" width="380" height="15" rx="3" fill="#94A3B8" />
+      <!-- Clean Folded Clothes Stack -->
+      <rect x="90" y="130" width="50" height="10" rx="3" fill="#F43F5E" />
+      <rect x="88" y="140" width="54" height="10" rx="3" fill="#3B82F6" />
+      <rect x="92" y="150" width="46" height="10" rx="3" fill="#F59E0B" />
+      <!-- Ella wiping table with cloth -->
+      <circle cx="190" cy="110" r="18" fill="#FCD34D" />
+      <rect x="175" y="128" width="30" height="42" rx="6" fill="#EC4899" />
+      <circle cx="215" cy="155" r="8" fill="#38BDF8" /> <!-- Cloth -->
+      <!-- Father cleaning kitchen in background -->
+      <circle cx="360" cy="95" r="18" fill="#FCD34D" />
+      <rect x="345" y="113" width="30" height="48" rx="6" fill="#10B981" />
+      <!-- Little Brother with toy box -->
+      <circle cx="280" cy="140" r="14" fill="#FCD34D" />
+      <rect x="270" y="154" width="20" height="28" rx="4" fill="#F59E0B" />
+      <rect x="295" y="150" width="30" height="22" rx="4" fill="#6366F1" />
+      <!-- Love & Warmth -->
+      <text x="240" y="80" font-size="24">🏡 ❤️</text>
+    
+
+  <!-- Title Watermark Badge -->
+  <g transform="translate(16, 16)">
+    <rect width="180" height="26" rx="8" fill="#FFFFFF" opacity="0.9" filter="url(#shadow)" />
+    <text x="10" y="17" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" fill="#64748B">
+      🥈 Silver Medal
+    </text>
+  </g>
+</svg>

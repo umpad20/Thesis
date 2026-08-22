@@ -1,18 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
   Volume2,
   ChevronRight,
+  Bookmark,
 } from "lucide-react";
-import { mockVocabularyWords } from "@/lib/mock-data";
+import { fetchAllVocabularyWords } from "@/utils/supabase-queries";
+import type { VocabularyWord } from "@/lib/types";
 
 export default function VocabularyPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [words, setWords] = useState<VocabularyWord[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredWords = mockVocabularyWords.filter(
+  useEffect(() => {
+    async function loadVocab() {
+      setLoading(true);
+      const data = await fetchAllVocabularyWords();
+      setWords(data);
+      setLoading(false);
+    }
+    loadVocab();
+  }, []);
+
+  const filteredWords = words.filter(
     (w) =>
       w.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
       w.definition.toLowerCase().includes(searchTerm.toLowerCase())
@@ -34,14 +48,14 @@ export default function VocabularyPage() {
             Grade 3 Vocabulary Glossary
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            Master reading comprehension through contextual vocabulary terms and definitions.
+            Master reading comprehension through contextual vocabulary terms and definitions from your lessons.
           </p>
         </div>
 
         {/* Total words counter */}
         <div className="bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs font-semibold">
           <span className="text-slate-400">Total Unlocked: </span>
-          <span className="text-blue-600 font-bold">12 Words</span>
+          <span className="text-blue-600 font-bold">{words.length} Words</span>
         </div>
       </div>
 
@@ -63,49 +77,58 @@ export default function VocabularyPage() {
             Category:
           </span>
           <select className="bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 outline-none">
-            <option>All Modules</option>
-            <option>Fire Badge (Lesson 3)</option>
-            <option>Cold Badge (Lesson 1-2)</option>
+            <option>All Modules ({words.length})</option>
           </select>
         </div>
       </div>
 
       {/* 3. Vocabulary Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredWords.map((item) => (
-          <div
-            key={item.word_id}
-            className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-slate-900">
-                  {item.word}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Listen to word pronunciation"
-                  className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                >
-                  <Volume2 className="w-3.5 h-3.5" />
-                </button>
+      {loading ? (
+        <div className="py-12 text-center text-xs text-slate-400">Loading glossary...</div>
+      ) : filteredWords.length === 0 ? (
+        <div className="dashboard-card p-8 text-center space-y-2">
+          <Bookmark className="w-8 h-8 text-slate-300 mx-auto" />
+          <p className="text-xs text-slate-500 font-medium">No vocabulary terms match your search.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredWords.map((item) => (
+            <div
+              key={item.word_id}
+              className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-slate-900">
+                    {item.word}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Listen to word pronunciation"
+                    className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed mb-3">
+                  {item.definition}
+                </p>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed mb-3">
-                {item.definition}
-              </p>
-            </div>
 
-            <div className="pt-3 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-3.5 rounded-b-xl">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Contextual Example
-              </span>
-              <p className="text-xs text-slate-700 italic">
-                &quot;{item.example_sentence}&quot;
-              </p>
+              {item.example_sentence && (
+                <div className="pt-3 border-t border-slate-100 bg-slate-50/50 -mx-5 -mb-5 p-3.5 rounded-b-xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Contextual Example
+                  </span>
+                  <p className="text-xs text-slate-700 italic">
+                    &quot;{item.example_sentence}&quot;
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import type { EnrolledStudent, StudentEnrollmentInput } from "@/lib/types";
 
 export interface UserProfile {
   id: string;
@@ -6,10 +7,14 @@ export interface UserProfile {
   fullName: string;
   role: "student" | "teacher";
   section?: string;
+  teacherId?: string;
   avatar?: string;
+  availableSections?: string[];
 }
 
 const CURRENT_SESSION_KEY = "readsmart_current_user";
+const TEACHER_SECTIONS_KEY = "readsmart_teacher_sections";
+const ENROLLED_STUDENTS_KEY = "readsmart_enrolled_students";
 
 export function getCurrentUser(): UserProfile | null {
   if (typeof window === "undefined") return null;
@@ -40,9 +45,186 @@ export async function signOutUser() {
 }
 
 /**
+ * Fetch sections from Supabase directly via API route.
+ */
+export async function fetchTeacherSectionsFromSupabase(): Promise<string[]> {
+  try {
+    const res = await fetch("/api/teacher/sections");
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.sections) && data.sections.length > 0) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(TEACHER_SECTIONS_KEY, JSON.stringify(data.sections));
+        }
+        return data.sections;
+      }
+    }
+  } catch {
+    // fallback to local
+  }
+  return getTeacherSections();
+}
+
+/**
+ * Get active sections managed by the teacher (cached or default).
+ */
+export function getTeacherSections(defaultSection = "Grade 3-A"): string[] {
+  if (typeof window === "undefined") return [defaultSection, "Grade 3-B"];
+  try {
+    const raw = localStorage.getItem(TEACHER_SECTIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  const defaults = ["Grade 3-A", "Grade 3-B"];
+  if (!defaults.includes(defaultSection)) defaults.unshift(defaultSection);
+  return defaults;
+}
+
+/**
+ * Add a new section directly into Supabase and local cache.
+ */
+export async function addTeacherSection(newSection: string, teacherId?: string): Promise<string[]> {
+  const clean = newSection.trim();
+  if (!clean) return getTeacherSections();
+
+  try {
+    const res = await fetch("/api/teacher/sections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionName: clean, teacherId }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.sections)) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(TEACHER_SECTIONS_KEY, JSON.stringify(data.sections));
+        }
+        return data.sections;
+      }
+    }
+  } catch {
+    // fallback
+  }
+
+  const current = getTeacherSections();
+  if (!current.includes(clean)) {
+    const updated = [...current, clean];
+    if (typeof window !== "undefined") {
+      localStorage.setItem(TEACHER_SECTIONS_KEY, JSON.stringify(updated));
+    }
+    return updated;
+  }
+  return current;
+}
+
+/**
+ * Retrieve students directly from Supabase.
+ */
+export async function fetchStudentsFromSupabase(section?: string): Promise<EnrolledStudent[]> {
+  try {
+    const url = section && section !== "all" 
+      ? `/api/teacher/students?section=${encodeURIComponent(section)}`
+      : "/api/teacher/students";
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.students)) {
+        return data.students;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return getEnrolledStudents();
+}
+
+/**
+ * Retrieve cached enrolled students.
+ */
+export function getEnrolledStudents(): EnrolledStudent[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ENROLLED_STUDENTS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+/**
+ * Enroll a new student account directly into Supabase (Auth + Profiles + Badge Progress).
+ */
+export async function enrollStudentAccount(
+  input: StudentEnrollmentInput
+): Promise<{ success: boolean; student?: EnrolledStudent; message?: string }> {
+  const cleanName = input.fullName.trim();
+  const cleanEmail = input.email.trim().toLowerCase();
+  const cleanSection = input.section?.trim() || "Grade 3-A";
+  const password = input.password || "Student2026!";
+
+  if (!cleanName || !cleanEmail) {
+    return { success: false, message: "Please provide both student full name and email." };
+  }
+
+  try {
+    // Call server endpoint that uses Supabase Admin API to create pre-confirmed user & profile
+    const res = await fetch("/api/teacher/students", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: cleanName,
+        email: cleanEmail,
+        password: password,
+        gender: input.gender || "Female",
+        section: cleanSection,
+        teacherId: input.teacherId,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      return { success: false, message: data.error || "Failed to create student in Supabase." };
+    }
+
+    const newStudent: EnrolledStudent = data.student || {
+      id: `STU-${Math.floor(100 + Math.random() * 900)}`,
+      name: cleanName,
+      email: cleanEmail,
+      gender: input.gender || "Female",
+      section: cleanSection,
+      currentBadge: "Reading Star (Star Badge 1)",
+      comprehension: "0.0%",
+      accuracyRaw: 0,
+      quizzesPassed: "0 / 0",
+      status: "On Track",
+      readingSpeed: "—",
+      lastActive: "Just Enrolled",
+      avatar: input.gender === "Female" ? "👧" : "👦",
+    };
+
+    // Save in local cache for instant UI response
+    if (typeof window !== "undefined") {
+      const existing = getEnrolledStudents();
+      const updated = [newStudent, ...existing.filter((s) => s.email !== cleanEmail)];
+      localStorage.setItem(ENROLLED_STUDENTS_KEY, JSON.stringify(updated));
+    }
+
+    return { success: true, student: newStudent };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Error enrolling student into Supabase.";
+    return { success: false, message: errorMsg };
+  }
+}
+
+/**
  * Strict Real Supabase Sign-In:
- * Validates credentials strictly against Supabase Auth.
- * Rejects invalid emails or wrong passwords with an explicit error.
  */
 export async function authenticateSignIn(
   email: string,
@@ -84,6 +266,7 @@ export async function authenticateSignIn(
       fullName: profile?.full_name || authData.user.user_metadata?.full_name || cleanEmail.split("@")[0],
       role: (profile?.role || authData.user.user_metadata?.role || "student") as "student" | "teacher",
       section: profile?.section || authData.user.user_metadata?.section || (profile?.role === "teacher" ? "Grade 3 Faculty" : "Grade 3-A"),
+      teacherId: profile?.teacher_id || authData.user.user_metadata?.teacher_id,
       avatar: profile?.avatar || authData.user.user_metadata?.avatar || (profile?.role === "teacher" ? "👩‍🏫" : "🦊"),
     };
 
@@ -99,7 +282,6 @@ export async function authenticateSignIn(
 
 /**
  * Strict Real Supabase Sign-Up:
- * Registers the real account in Supabase auth.users & public.profiles.
  */
 export async function authenticateSignUp(params: {
   fullName: string;

@@ -98,7 +98,7 @@ export function TeacherHeader() {
           className="hidden md:flex h-9 px-3 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 items-center gap-1.5"
         >
           <Download className="w-3.5 h-3.5 text-slate-400" />
-          <span>Thesis Export</span>
+          <span>Reports</span>
         </Button>
 
         {/* Notification Bell */}
