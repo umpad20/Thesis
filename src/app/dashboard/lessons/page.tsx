@@ -8,17 +8,12 @@ import {
   VolumeX,
   ArrowRight,
   ArrowLeft,
-  Sparkles,
   CheckCircle2,
-  Bookmark,
   ChevronRight,
   BookOpen,
   Map,
-  HelpCircle,
-  Maximize2,
-  Minimize2,
-  Play,
-  RotateCcw,
+  Sparkles,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BadgeGraphic } from "@/components/badge-graphic";
@@ -28,7 +23,8 @@ import {
   fetchLessonDetails,
   fetchBadgesFromSupabase,
 } from "@/utils/supabase-queries";
-import { getCurrentUser, UserProfile } from "@/utils/auth-helpers";
+import { getCurrentUser } from "@/utils/auth-helpers";
+import { soundEffects } from "@/utils/sound-effects";
 import type { Lesson, LessonPage, VocabularyWord, Badge } from "@/lib/types";
 
 function LessonReaderContent() {
@@ -37,7 +33,6 @@ function LessonReaderContent() {
     ? Number(searchParams.get("lessonId"))
     : null;
 
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
   const [publishedLessons, setPublishedLessons] = useState<Lesson[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [selectedLessonId, setSelectedLessonId] = useState<number>(requestedLessonId || 1);
@@ -46,13 +41,11 @@ function LessonReaderContent() {
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
   const [isPlayingFullAudio, setIsPlayingFullAudio] = useState<boolean>(false);
-  const [fontSize, setFontSize] = useState<"normal" | "large" | "xlarge">("large");
-  const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [pageFlipDirection, setPageFlipDirection] = useState<"forward" | "backward" | null>(null);
 
   useEffect(() => {
     const user = getCurrentUser();
-    if (user) setCurrentUser(user);
 
     async function loadLessons() {
       setLoading(true);
@@ -108,32 +101,28 @@ function LessonReaderContent() {
   const totalPages = displayPages.length;
   const isLastPage = currentPageIndex === totalPages - 1;
 
-  // Split content into clean, distinct sentence lines
-  const sentences = useMemo(() => {
+  // Split content into clean paragraphs and sentences
+  const paragraphs = useMemo(() => {
     if (!currentPage.content) return [];
-    
-    // Split by newlines first to preserve dialogue structure, then split long paragraphs by sentence ending (. ! ?)
+    return currentPage.content.split(/\n\n+/).filter((p) => p.trim().length > 0);
+  }, [currentPage.content]);
+
+  // Extract all sentences for linear text-to-speech tracking
+  const allSentences = useMemo(() => {
+    if (!currentPage.content) return [];
     const lines: string[] = [];
-    const paragraphs = currentPage.content.split(/\n+/);
-    
-    for (const p of paragraphs) {
+    const rawParagraphs = currentPage.content.split(/\n+/);
+    for (const p of rawParagraphs) {
       const trimmed = p.trim();
       if (!trimmed) continue;
-      
-      // If it's a quote or short sentence, keep as is
-      if (trimmed.startsWith('"') || trimmed.length < 80) {
-        lines.push(trimmed);
-      } else {
-        // Split on sentence boundaries followed by space
-        const splitSentences = trimmed.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g);
-        if (splitSentences) {
-          for (const s of splitSentences) {
-            const sTrim = s.trim();
-            if (sTrim) lines.push(sTrim);
-          }
-        } else {
-          lines.push(trimmed);
+      const splitSentences = trimmed.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g);
+      if (splitSentences) {
+        for (const s of splitSentences) {
+          const sTrim = s.trim();
+          if (sTrim) lines.push(sTrim);
         }
+      } else {
+        lines.push(trimmed);
       }
     }
     return lines;
@@ -148,7 +137,7 @@ function LessonReaderContent() {
       utterance.rate = 0.85;
       utterance.pitch = 1.05;
       utterance.onend = () => {
-        // keep highlight
+        // preserve sentence focus
       };
       window.speechSynthesis.speak(utterance);
     }
@@ -169,13 +158,13 @@ function LessonReaderContent() {
 
         let sIdx = 0;
         const playNext = () => {
-          if (sIdx >= sentences.length) {
+          if (sIdx >= allSentences.length) {
             setIsPlayingFullAudio(false);
             setActiveSentenceIndex(null);
             return;
           }
           setActiveSentenceIndex(sIdx);
-          const utterance = new SpeechSynthesisUtterance(sentences[sIdx]);
+          const utterance = new SpeechSynthesisUtterance(allSentences[sIdx]);
           utterance.rate = 0.85;
           utterance.pitch = 1.05;
           utterance.onend = () => {
@@ -189,10 +178,23 @@ function LessonReaderContent() {
     }
   };
 
-  const fontClasses = {
-    normal: "text-base sm:text-lg leading-relaxed",
-    large: "text-lg sm:text-xl leading-loose",
-    xlarge: "text-xl sm:text-2xl leading-loose",
+  // Navigate Page with 3D Page Turn Animation and Sound
+  const handlePageChange = (newIndex: number, direction: "forward" | "backward") => {
+    if (newIndex < 0 || newIndex >= totalPages) return;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlayingFullAudio(false);
+    setActiveSentenceIndex(null);
+
+    soundEffects.playPageTurn();
+    setPageFlipDirection(direction);
+    setTimeout(() => {
+      setCurrentPageIndex(newIndex);
+    }, 280);
+    setTimeout(() => {
+      setPageFlipDirection(null);
+    }, 600);
   };
 
   if (loading) {
@@ -205,30 +207,23 @@ function LessonReaderContent() {
   }
 
   return (
-    <div className={`space-y-6 ${isZenMode ? "max-w-4xl mx-auto" : ""}`}>
-      {/* 1. Header & Navigation Trail directly connected to Badge Pathway */}
+    <div className="space-y-5 max-w-5xl mx-auto">
+      {/* ── 1. Top Navigation Bar (Non-clickable trail + Back to Storybook button) ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/dashboard" className="hover:text-slate-600">
-              Dashboard
-            </Link>
+            <span className="text-blue-600 font-bold flex items-center gap-1">
+              <Map className="w-3.5 h-3.5" />
+              <span>Living Storybook</span>
+            </span>
             <ChevronRight className="w-3 h-3" />
-            <Link
-              href="/dashboard/badges"
-              className="hover:text-slate-600 flex items-center gap-1 text-blue-600 font-bold"
-            >
-              <Map className="w-3 h-3" />
-              <span>Badge Pathway</span>
-            </Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-800 font-bold">{assignedBadge?.badge_name || "Stage"}</span>
+            <span className="text-slate-700 font-bold">{assignedBadge?.badge_name || "Stage"}</span>
             <ChevronRight className="w-3 h-3" />
             <span className="text-slate-500 font-medium">{activeLesson.lesson_title}</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
               {activeLesson.lesson_title}
             </h1>
             <span
@@ -246,319 +241,220 @@ function LessonReaderContent() {
           <p className="text-xs text-slate-500 mt-0.5">{activeLesson.lesson_description}</p>
         </div>
 
-        {/* Action Buttons */}
+        {/* Exit Button */}
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsZenMode((prev) => !prev)}
-            className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs"
-            title={isZenMode ? "Exit Focus View" : "Enter Focus Reading Mode"}
-          >
-            {isZenMode ? (
-              <>
-                <Minimize2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                <span>Exit Focus</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                <span>Focus Mode</span>
-              </>
-            )}
-          </Button>
-
           <Link href="/dashboard/badges">
             <Button
               variant="outline"
               size="sm"
               className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs"
             >
-              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-              Back to Pathway
+              <Map className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+              <span>Back to Storybook</span>
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* 2. Reader Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-white border border-slate-200 rounded-2xl shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            <BookOpen className="w-4 h-4 text-blue-600" />
-            <span>
-              Page {currentPageIndex + 1} of {totalPages}
-            </span>
-          </div>
+      {/* ── 2. Authentic 2-Page Open Storybook / Notebook Spread ────────── */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-2.5 sm:p-5 rounded-3xl shadow-2xl border-4 border-amber-300/40 relative overflow-hidden book-perspective">
+        {/* Subtle Outer Cover Texture & Edge Accents */}
+        <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-amber-300/60 rounded-tl-sm pointer-events-none" />
+        <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-amber-300/60 rounded-tr-sm pointer-events-none" />
+        <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-amber-300/60 rounded-bl-sm pointer-events-none" />
+        <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-300/60 rounded-br-sm pointer-events-none" />
 
-          <div className="w-px h-4 bg-slate-200" />
+        {/* 2-Page Paper Spread Container */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-[#fffefb] border border-amber-200/90 shadow-inner relative">
+          {/* Central Book Spine Crease Shadow (Desktop) */}
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-gradient-to-r from-amber-900/10 via-amber-950/20 to-amber-900/10 pointer-events-none z-20 hidden lg:block shadow-inner" />
 
-          {/* Text Size Switcher */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
-            <button
-              type="button"
-              onClick={() => setFontSize("normal")}
-              className={`px-2 py-1 rounded-lg ${
-                fontSize === "normal"
-                  ? "bg-white text-slate-900 shadow-2xs"
-                  : "hover:text-slate-900"
-              }`}
-            >
-              A
-            </button>
-            <button
-              type="button"
-              onClick={() => setFontSize("large")}
-              className={`px-2 py-1 rounded-lg ${
-                fontSize === "large"
-                  ? "bg-white text-slate-900 shadow-2xs"
-                  : "hover:text-slate-900"
-              }`}
-            >
-              A+
-            </button>
-            <button
-              type="button"
-              onClick={() => setFontSize("xlarge")}
-              className={`px-2 py-1 rounded-lg ${
-                fontSize === "xlarge"
-                  ? "bg-white text-slate-900 shadow-2xs"
-                  : "hover:text-slate-900"
-              }`}
-            >
-              A++
-            </button>
-          </div>
-        </div>
-
-        {/* Audio Narration Toggle */}
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={toggleFullAudio}
-            className={`h-8 px-3 rounded-xl text-xs font-bold border-slate-200 ${
-              isPlayingFullAudio
-                ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                : "text-slate-700 bg-white"
+          {/* ══════════════════════════════════════════════════════════════════
+              LEFT PAGE: Story Illustration & Chapter Art Plate
+              ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className={`p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all ${
+              pageFlipDirection === "backward" ? "leaf-flip-backward" : ""
             }`}
           >
-            {isPlayingFullAudio ? (
-              <>
-                <VolumeX className="w-3.5 h-3.5 mr-1.5 animate-pulse" />
-                <span>Stop Narration</span>
-              </>
-            ) : (
-              <>
-                <Volume2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                <span>Read Aloud (Voice)</span>
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+            {/* Left Page Header: Stage Seal & Story Title */}
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-amber-200/60 mb-4">
+                {assignedBadge ? (
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50/80 px-2.5 py-1 rounded-xl border border-amber-200/80">
+                    <BadgeGraphic
+                      type={assignedBadge.badge_type}
+                      medalType={assignedBadge.badge_type === "medal" ? assignedBadge.medal_type : undefined}
+                      size="xs"
+                      status="completed"
+                    />
+                    <span className="text-[11px]">{assignedBadge.badge_name}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-bold text-amber-800">Chapter Story</span>
+                )}
 
-      {/* 3. Main Reading Card (Clean Sentence-by-Sentence View) */}
-      <div className={`grid grid-cols-1 ${isZenMode ? "gap-6" : "lg:grid-cols-3 gap-6"}`}>
-        {/* Story Book Reader */}
-        <div className={`dashboard-card p-6 md:p-8 space-y-6 ${isZenMode ? "w-full" : "lg:col-span-2"}`}>
-          {/* Card Header with Stage Badge */}
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center border border-blue-200">
-                {currentPageIndex + 1}
-              </span>
-              <div>
-                <h2 className="text-base font-bold text-slate-900 leading-tight">
-                  {currentPage.page_title}
-                </h2>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {sentences.length} Sentence Lines · Tap any line or highlighted word
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Story Passage
                 </span>
               </div>
-            </div>
-            {assignedBadge && (
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-                <BadgeGraphic
-                  type={assignedBadge.badge_type}
-                  medalType={assignedBadge.medal_type}
-                  size="xs"
-                  status="completed"
-                />
-                <span>{assignedBadge.badge_name}</span>
-              </div>
-            )}
-          </div>
 
-          {/* Story Illustration Image Banner */}
-          {currentPage.image_url && (
-            <div className="relative w-full h-56 sm:h-80 rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 shadow-2xs group">
-              <img
-                src={currentPage.image_url}
-                alt={currentPage.page_title}
-                className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-300"
-              />
-            </div>
-          )}
-
-          {/* Sentence-by-Sentence Clean Reading Passage */}
-          <div className="space-y-3.5 pt-2">
-            {sentences.map((sentence, index) => {
-              const isActive = activeSentenceIndex === index;
-              const isDialogue = sentence.startsWith('"');
-
-              return (
-                <div
-                  key={index}
-                  onClick={() => setActiveSentenceIndex(index)}
-                  className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex items-start justify-between gap-3 group cursor-pointer ${
-                    isActive
-                      ? "bg-blue-50/80 border-blue-400 ring-2 ring-blue-400/20 shadow-xs"
-                      : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/70 hover:border-slate-300"
-                  } ${isDialogue ? "border-l-4 border-l-blue-500 pl-5" : ""}`}
-                >
-                  <div className="flex-1">
-                    <p className={`${fontClasses[fontSize]} text-slate-900 font-medium tracking-normal`}>
-                      <VocabularyHighlightedText
-                        text={sentence}
-                        vocabularyList={vocabulary}
-                      />
-                    </p>
+              {/* Framed Story Illustration Photo */}
+              {currentPage.image_url ? (
+                <div className="relative w-full h-56 sm:h-72 md:h-80 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-md group">
+                  <img
+                    src={currentPage.image_url}
+                    alt={currentPage.page_title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute bottom-3 left-3 text-white">
+                    <span className="text-xs font-bold drop-shadow-sm">
+                      {currentPage.page_title}
+                    </span>
                   </div>
-
-                  {/* Read Line Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      speakSentence(sentence, index);
-                    }}
-                    title="Read this sentence aloud"
-                    className={`p-2 rounded-xl border transition-all flex-shrink-0 mt-0.5 ${
-                      isActive
-                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                        : "bg-white text-slate-400 border-slate-200 opacity-60 group-hover:opacity-100 group-hover:text-blue-600 hover:border-blue-300"
-                    }`}
-                  >
-                    <Volume2 className="w-4 h-4" />
-                  </button>
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                <div className="w-full h-56 sm:h-72 rounded-2xl bg-amber-50/60 border-2 border-dashed border-amber-200 flex flex-col items-center justify-center text-slate-400 gap-2">
+                  <BookOpen className="w-10 h-10 text-amber-300" />
+                  <span className="text-xs font-medium">Reading Illustration</span>
+                </div>
+              )}
+            </div>
 
-          {/* Pagination & Next Action */}
-          <div className="flex items-center justify-between pt-6 border-t border-slate-100">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCurrentPageIndex((prev) => Math.max(0, prev - 1));
-                setActiveSentenceIndex(null);
-              }}
-              disabled={currentPageIndex === 0}
-              className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-              Previous Page
-            </Button>
-
-            {isLastPage ? (
-              <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}`}>
-                <Button className="h-10 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm shadow-emerald-200 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Proceed to Comprehension Quiz</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </Link>
-            ) : (
+            {/* Left Page Footer: Voice Audio Narration Controller */}
+            <div className="mt-4 pt-4 border-t border-amber-200/60 flex items-center justify-between">
               <Button
-                onClick={() => {
-                  setCurrentPageIndex((prev) => Math.min(totalPages - 1, prev + 1));
-                  setActiveSentenceIndex(null);
-                }}
-                className="h-10 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5"
+                variant="outline"
+                size="sm"
+                onClick={toggleFullAudio}
+                className={`h-9 px-3.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                  isPlayingFullAudio
+                    ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 animate-pulse"
+                    : "bg-white text-slate-700 border-amber-200/90 hover:bg-amber-50"
+                }`}
               >
-                <span>Next Page</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                {isPlayingFullAudio ? (
+                  <>
+                    <VolumeX className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+                    <span>Stop Reading</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                    <span>Read Aloud (Voice)</span>
+                  </>
+                )}
               </Button>
-            )}
-          </div>
-        </div>
 
-        {/* Right 1 Col: Key Vocabulary Quick Summary (Collapsible in Zen Mode) */}
-        {!isZenMode && (
-          <div className="space-y-4">
-            <div className="dashboard-card p-5">
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <Bookmark className="w-4 h-4 text-blue-600" />
-                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    Story Key Words
-                  </h3>
+              <span className="text-[11px] font-bold text-slate-400">
+                Page {currentPageIndex + 1}
+              </span>
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              RIGHT PAGE: Story Prose & Progress Action
+              ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className={`p-6 sm:p-8 flex flex-col justify-between bg-[#fffefb] relative transition-all ${
+              pageFlipDirection === "forward" ? "leaf-flip-forward" : ""
+            }`}
+          >
+            {/* Right Page Header: Title & Instructions */}
+            <div>
+              <div className="pb-3 border-b border-amber-200/60 mb-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    {currentPage.page_title}
+                  </h2>
+                  <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    Page {currentPageIndex + 1} of {totalPages}
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                  {vocabulary.length} Words
+                <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
+                  Tap highlighted words for definitions · Tap paragraphs to listen
                 </span>
               </div>
 
-              <div className="space-y-2.5">
-                {vocabulary.map((item) => (
-                  <div
-                    key={item.word_id}
-                    className="p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/30 transition-all"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 text-xs capitalize flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-amber-500" />
-                        {item.word}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                            const u = new SpeechSynthesisUtterance(item.word);
-                            u.rate = 0.85;
-                            window.speechSynthesis.speak(u);
-                          }
-                        }}
-                        title="Pronounce word"
-                        className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
+              {/* Continuous Flowing Story Paragraphs */}
+              <div className="space-y-4 pt-1 pb-4">
+                {paragraphs.map((paraText, pIdx) => {
+                  const isDialogue = paraText.trim().startsWith('"');
+                  const isSpeakingThis = activeSentenceIndex === pIdx;
+
+                  return (
+                    <div
+                      key={pIdx}
+                      onClick={() => speakSentence(paraText, pIdx)}
+                      className={`relative transition-all duration-300 rounded-xl cursor-pointer p-2 -mx-2 hover:bg-blue-50/40 ${
+                        isSpeakingThis
+                          ? "bg-blue-50/90 ring-2 ring-blue-400/30 shadow-xs"
+                          : ""
+                      } ${
+                        isDialogue
+                          ? "pl-3.5 border-l-3 border-l-blue-500 bg-blue-50/20 py-1.5 rounded-r-xl"
+                          : ""
+                      }`}
+                      title="Tap paragraph to read aloud"
+                    >
+                      <p className="text-sm sm:text-base leading-relaxed sm:leading-loose text-slate-800 font-normal tracking-normal text-justify sm:text-left">
+                        <VocabularyHighlightedText
+                          text={paraText}
+                          vocabularyList={vocabulary}
+                        />
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                      {item.definition}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            {/* Interactive Reading Hint Box */}
-            <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 space-y-1.5">
-              <div className="flex items-center gap-1.5 font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                <span>Reading Guidance</span>
-              </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                Hover over any <span className="px-1 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">highlighted word</span> in the story to view its definition, or tap the speaker icon on any sentence to hear it read aloud!
-              </p>
+            {/* Right Page Footer: Page Turn / Quiz Handoff Action Buttons */}
+            <div className="mt-4 pt-4 border-t border-amber-200/60 flex items-center justify-between gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPageIndex - 1, "backward")}
+                disabled={currentPageIndex === 0}
+                className="h-10 px-4 rounded-xl text-xs font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                <span>Prev Page</span>
+              </Button>
+
+              {!isLastPage ? (
+                <Button
+                  onClick={() => handlePageChange(currentPageIndex + 1, "forward")}
+                  className="h-10 px-5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+                >
+                  <span>Turn Page</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                </Button>
+              ) : (
+                <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}`}>
+                  <Button className="h-10 px-5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Take Comprehension Quiz</span>
+                    <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-export default function LessonsPage() {
+export default function LessonPage() {
   return (
     <Suspense
       fallback={
         <div className="py-24 text-center space-y-3">
           <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-slate-500 font-semibold">Loading Reading Module...</p>
+          <p className="text-xs text-slate-500 font-semibold">Opening Story Module...</p>
         </div>
       }
     >

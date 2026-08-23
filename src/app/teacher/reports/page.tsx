@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   Download,
   ChevronRight,
-  TrendingUp,
-  FileText,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

@@ -11,7 +11,6 @@ import {
   Sparkles,
   GraduationCap,
   ChevronRight,
-  ChevronLeft,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -39,14 +38,12 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ isCollapsed: controlledCollapsed, onToggle }: DashboardSidebarProps) {
   const pathname = usePathname();
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("readsmart_student_sidebar_collapsed");
-    if (saved !== null) {
-      setInternalCollapsed(saved === "true");
+  const [internalCollapsed, setInternalCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("readsmart_student_sidebar_collapsed") === "true";
     }
-  }, []);
+    return false;
+  });
 
   const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
 

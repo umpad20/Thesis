@@ -6,7 +6,6 @@ import {
   Users,
   BookOpen,
   FileCheck2,
-  Download,
   Plus,
   ArrowRight,
   ChevronRight,

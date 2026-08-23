@@ -218,7 +218,7 @@ export default function TeacherQuizzesPage() {
         }
       } else {
         // Insert new question in Supabase
-        const { data: newQ, error: qErr } = await supabase
+        const { data: newQ } = await supabase
           .from("quiz_questions")
           .insert({
             quiz_id: quiz.quiz_id,

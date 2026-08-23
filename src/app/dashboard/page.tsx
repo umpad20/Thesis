@@ -27,7 +27,7 @@ import { getCurrentUser, UserProfile } from "@/utils/auth-helpers";
 import type { Badge, StudentBadgeProgress, Lesson } from "@/lib/types";
 
 export default function StudentDashboard() {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
+  const [currentUser] = useState<UserProfile | null>(() => getCurrentUser());
   const [badges, setBadges] = useState<Badge[]>([]);
   const [badgeProgress, setBadgeProgress] = useState<StudentBadgeProgress[]>([]);
   const [stats, setStats] = useState<LiveStudentStats>({
@@ -44,7 +44,6 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const user = getCurrentUser();
-    if (user) setCurrentUser(user);
 
     async function loadLiveData() {
       const studentId = user?.id || "";
@@ -246,7 +245,6 @@ export default function StudentDashboard() {
             const progress = badgeProgress.find((p) => p.badge_id === badge.badge_id);
             const isCompleted = progress?.status === "completed";
             const isActive = progress?.status === "in_progress";
-            const isLocked = progress?.status === "locked" || (!progress && badge.badge_id !== 1);
 
             return (
               <Link

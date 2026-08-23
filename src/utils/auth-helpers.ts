@@ -369,6 +369,27 @@ export async function authenticateSignUp(params: {
   }
 }
 
+export async function updateUserAvatar(newAvatar: string): Promise<UserProfile | null> {
+  const current = getCurrentUser();
+  if (!current) return null;
+
+  const updated: UserProfile = { ...current, avatar: newAvatar };
+  setCurrentUserSession(updated);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("storage"));
+  }
+
+  try {
+    const supabase = createClient();
+    await supabase.from("profiles").update({ avatar: newAvatar }).eq("id", current.id);
+  } catch {
+    // ignore
+  }
+
+  return updated;
+}
+
 // Backward-compatibility aliases
 export const nonStrictSignIn = authenticateSignIn;
 export const nonStrictSignUp = authenticateSignUp;

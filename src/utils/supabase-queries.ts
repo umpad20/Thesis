@@ -1,5 +1,4 @@
 import { createClient } from "@/utils/supabase/client";
-import { createAdminClient } from "@/utils/supabase/admin";
 import type {
   Badge,
   StudentBadgeProgress,
@@ -9,7 +8,6 @@ import type {
   Quiz,
   QuizQuestion,
   QuestionChoice,
-  EnrolledStudent,
 } from "@/lib/types";
 
 // ============================================================================
@@ -384,14 +382,60 @@ export async function fetchQuizForLesson(lessonId: number): Promise<QuizWithQues
   }
 }
 
+export async function fetchStageFinalQuiz(badgeId: number): Promise<QuizWithQuestions | null> {
+  try {
+    const supabase = createClient();
+
+    // 1. Fetch Stage Final Quiz row
+    const { data: quiz, error: quizErr } = await supabase
+      .from("quizzes")
+      .select("*")
+      .eq("badge_id", badgeId)
+      .eq("quiz_type", "badge_final")
+      .maybeSingle();
+
+    if (quizErr || !quiz) return null;
+
+    // 2. Fetch questions
+    const { data: questions, error: qErr } = await supabase
+      .from("quiz_questions")
+      .select("*")
+      .eq("quiz_id", quiz.quiz_id)
+      .order("question_id", { ascending: true });
+
+    if (qErr || !questions) return { ...quiz, questions: [] };
+
+    // 3. Fetch choices
+    const questionIds = questions.map((q) => q.question_id);
+    const { data: choices } = await supabase
+      .from("question_choices")
+      .select("*")
+      .in("question_id", questionIds);
+
+    const questionsWithChoices = questions.map((q) => ({
+      ...q,
+      choices: (choices || []).filter((c) => c.question_id === q.question_id),
+    }));
+
+    return {
+      ...quiz,
+      questions: questionsWithChoices,
+    };
+  } catch (err) {
+    console.error("fetchStageFinalQuiz error:", err);
+    return null;
+  }
+}
+
 /**
  * Submit real student quiz attempt directly into Supabase
  */
 export async function submitQuizAttempt(params: {
   studentId: string;
   quizId: number;
-  lessonId: number;
-  badgeId?: number;
+  lessonId?: number | null;
+  badgeId?: number | null;
+  isStageFinal?: boolean;
   score: number;
   totalPoints: number;
   percentage: number;
@@ -433,57 +477,24 @@ export async function submitQuizAttempt(params: {
       await supabase.from("quiz_answers").insert(answerRows);
     }
 
-    // 3. If passed, update student_lesson_progress
-    await supabase.from("student_lesson_progress").upsert(
-      {
-        student_id: params.studentId,
-        lesson_id: params.lessonId,
-        progress_percentage: 100,
-        status: "completed",
-        highest_quiz_score: params.percentage,
-        last_accessed: new Date().toISOString(),
-      },
-      { onConflict: "student_id, lesson_id" }
-    );
+    // 3. Stage Final Quiz Submission Logic
+    if (params.isStageFinal && params.badgeId) {
+      if (params.passed) {
+        // Stage Mastered! Award Badge Seal and unlock next Stage
+        await supabase.from("student_badge_progress").upsert(
+          {
+            student_id: params.studentId,
+            badge_id: params.badgeId,
+            status: "completed",
+            completion_percentage: 100,
+            final_quiz_score: params.percentage,
+            earned_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id, badge_id" }
+        );
 
-    // 4. Update student_badge_progress based on 3 lessons per badge
-    if (params.badgeId) {
-      // Find all lessons for this badge
-      const { data: badgeLessons } = await supabase
-        .from("lessons")
-        .select("lesson_id")
-        .eq("badge_id", params.badgeId);
-
-      const totalLessonsInBadge = badgeLessons?.length || 3;
-      const badgeLessonIds = (badgeLessons || []).map((l) => l.lesson_id);
-
-      // Find how many lessons in this badge are completed by this student
-      const { data: completedLessons } = await supabase
-        .from("student_lesson_progress")
-        .select("lesson_id")
-        .eq("student_id", params.studentId)
-        .eq("status", "completed")
-        .in("lesson_id", badgeLessonIds);
-
-      const completedCount = completedLessons?.length || 0;
-      const newPercentage = Math.min(100, Math.round((completedCount / totalLessonsInBadge) * 100));
-      const isCompleted = newPercentage >= 100;
-
-      await supabase.from("student_badge_progress").upsert(
-        {
-          student_id: params.studentId,
-          badge_id: params.badgeId,
-          status: isCompleted ? "completed" : "in_progress",
-          completion_percentage: newPercentage,
-          final_quiz_score: params.percentage,
-          earned_date: isCompleted ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "student_id, badge_id" }
-      );
-
-      // If badge completed, unlock the next badge as in_progress
-      if (isCompleted) {
+        // Unlock next stage as in_progress
         const nextBadgeId = Number(params.badgeId) + 1;
         const { data: nextBadge } = await supabase
           .from("badges")
@@ -512,6 +523,94 @@ export async function submitQuizAttempt(params: {
             );
           }
         }
+      } else {
+        // Failed Stage Final Quiz -> Retained in current stage
+        await supabase.from("student_badge_progress").upsert(
+          {
+            student_id: params.studentId,
+            badge_id: params.badgeId,
+            status: "in_progress",
+            completion_percentage: 90,
+            final_quiz_score: params.percentage,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id, badge_id" }
+        );
+      }
+      return { success: true, attemptId: attempt.attempt_id };
+    }
+
+    // 4. Regular Lesson Quiz Submission Logic
+    if (params.lessonId) {
+      if (params.passed) {
+        // Passed lesson -> Mark lesson completed
+        await supabase.from("student_lesson_progress").upsert(
+          {
+            student_id: params.studentId,
+            lesson_id: params.lessonId,
+            progress_percentage: 100,
+            status: "completed",
+            highest_quiz_score: params.percentage,
+            last_accessed: new Date().toISOString(),
+          },
+          { onConflict: "student_id, lesson_id" }
+        );
+      } else {
+        // Failed lesson -> Retained in lesson (status in_progress)
+        await supabase.from("student_lesson_progress").upsert(
+          {
+            student_id: params.studentId,
+            lesson_id: params.lessonId,
+            progress_percentage: Math.min(params.percentage, 50),
+            status: "in_progress",
+            highest_quiz_score: params.percentage,
+            last_accessed: new Date().toISOString(),
+          },
+          { onConflict: "student_id, lesson_id" }
+        );
+      }
+
+      // Update badge progress completion percentage (stories progress toward stage final)
+      let targetBadgeId = params.badgeId;
+      if (!targetBadgeId) {
+        const { data: lessonRow } = await supabase
+          .from("lessons")
+          .select("badge_id")
+          .eq("lesson_id", params.lessonId)
+          .maybeSingle();
+        targetBadgeId = lessonRow?.badge_id ?? undefined;
+      }
+
+      if (targetBadgeId) {
+        const { data: badgeLessons } = await supabase
+          .from("lessons")
+          .select("lesson_id")
+          .eq("badge_id", targetBadgeId);
+
+        const totalLessonsInBadge = badgeLessons?.length || 3;
+        const badgeLessonIds = (badgeLessons || []).map((l) => l.lesson_id);
+
+        const { data: completedLessons } = await supabase
+          .from("student_lesson_progress")
+          .select("lesson_id")
+          .eq("student_id", params.studentId)
+          .eq("status", "completed")
+          .in("lesson_id", badgeLessonIds);
+
+        const completedCount = completedLessons?.length || 0;
+        // Percentage reaches up to 90% from lessons; 100% is awarded only on Stage Final Quiz pass
+        const newPercentage = Math.min(90, Math.round((completedCount / totalLessonsInBadge) * 90));
+
+        await supabase.from("student_badge_progress").upsert(
+          {
+            student_id: params.studentId,
+            badge_id: targetBadgeId,
+            status: "in_progress",
+            completion_percentage: newPercentage,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id, badge_id" }
+        );
       }
     }
 
@@ -535,7 +634,7 @@ export async function fetchStudentLessonProgress(
     const map: Record<number, { status: "completed" | "in_progress" | "locked"; highest_score: number }> = {};
     for (const item of data || []) {
       map[item.lesson_id] = {
-        status: item.status as any,
+        status: (item.status || "locked") as "completed" | "in_progress" | "locked",
         highest_score: item.highest_quiz_score || 0,
       };
     }

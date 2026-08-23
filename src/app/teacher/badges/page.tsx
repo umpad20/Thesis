@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   Trash2,
   X,
-  Layers,
   BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,23 +48,21 @@ export default function TeacherBadgesPage() {
   const [createXpReward, setCreateXpReward] = useState(250);
   const [createDescription, setCreateDescription] = useState("");
 
-  const loadData = async () => {
-    setLoading(true);
-    const [badgeList, counts, sections] = await Promise.all([
-      fetchBadgesFromSupabase(),
-      fetchBadgeLessonCounts(),
-      fetchTeacherSectionsFromSupabase(),
-    ]);
-    setBadges(badgeList);
-    setLessonCounts(counts);
-    if (sections.length > 0) {
-      setTeacherSections(sections);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
-    loadData();
+    async function fetchData() {
+      const [badgeList, counts, sections] = await Promise.all([
+        fetchBadgesFromSupabase(),
+        fetchBadgeLessonCounts(),
+        fetchTeacherSectionsFromSupabase(),
+      ]);
+      setBadges(badgeList);
+      setLessonCounts(counts);
+      if (sections.length > 0) {
+        setTeacherSections(sections);
+      }
+      setLoading(false);
+    }
+    fetchData();
   }, []);
 
   const starBadges = badges.filter((b) => b.badge_type === "star");
