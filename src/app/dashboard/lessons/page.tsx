@@ -14,6 +14,7 @@ import {
   Map,
   Sparkles,
   Award,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BadgeGraphic } from "@/components/badge-graphic";
@@ -22,10 +23,11 @@ import {
   fetchLessonsForStudent,
   fetchLessonDetails,
   fetchBadgesFromSupabase,
+  fetchStudentBadgeProgress,
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { soundEffects } from "@/utils/sound-effects";
-import type { Lesson, LessonPage, VocabularyWord, Badge } from "@/lib/types";
+import type { Lesson, LessonPage, VocabularyWord, Badge, StudentBadgeProgress } from "@/lib/types";
 
 function LessonReaderContent() {
   const searchParams = useSearchParams();
@@ -35,13 +37,15 @@ function LessonReaderContent() {
 
   const [publishedLessons, setPublishedLessons] = useState<Lesson[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [badgeProgress, setBadgeProgress] = useState<StudentBadgeProgress[]>([]);
   const [selectedLessonId, setSelectedLessonId] = useState<number>(requestedLessonId || 1);
   const [pages, setPages] = useState<LessonPage[]>([]);
   const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
   const [isPlayingFullAudio, setIsPlayingFullAudio] = useState<boolean>(false);
-  const [loading, setLoading] = useState(true);
   const [pageFlipDirection, setPageFlipDirection] = useState<"forward" | "backward" | null>(null);
 
   useEffect(() => {
@@ -50,13 +54,15 @@ function LessonReaderContent() {
     async function loadLessons() {
       setLoading(true);
       const studentSection = user?.section || "Grade 3-A";
-      const [liveBadges, lessons] = await Promise.all([
+      const [liveBadges, lessons, liveProgress] = await Promise.all([
         fetchBadgesFromSupabase(studentSection),
         fetchLessonsForStudent(studentSection),
+        user?.id ? fetchStudentBadgeProgress(user.id) : Promise.resolve([]),
       ]);
 
       setBadges(liveBadges);
       setPublishedLessons(lessons);
+      setBadgeProgress(liveProgress);
 
       const targetId = requestedLessonId || (lessons.length > 0 ? lessons[0].lesson_id : 1);
       setSelectedLessonId(targetId);
@@ -202,6 +208,47 @@ function LessonReaderContent() {
       <div className="py-24 text-center space-y-3">
         <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-slate-500 font-semibold">Opening Story Passage...</p>
+      </div>
+    );
+  }
+
+  const currentBadgeId = activeLesson.badge_id || (activeLesson.lesson_id ? Math.ceil(activeLesson.lesson_id / 3) : 1);
+  const prevBadgeId = currentBadgeId > 1 ? currentBadgeId - 1 : null;
+  const isStageLocked =
+    prevBadgeId !== null &&
+    !badgeProgress.some((bp) => bp.badge_id === prevBadgeId && bp.status === "completed");
+
+  if (isStageLocked && activeLesson.lesson_id > 3) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 text-center dashboard-card p-8 space-y-5 anim-pop-bounce">
+        <div className="w-16 h-16 rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto shadow-md">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
+            🔒 Stage Milestone Locked
+          </span>
+          <h2 className="text-xl font-black text-slate-900 mt-2">
+            Pass Stage {prevBadgeId} Final Assessment First
+          </h2>
+          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+            You must complete all 3 chapter stories and pass the Stage {prevBadgeId} Final Mastery Assessment to unlock Stage {currentBadgeId} ({assignedBadge?.badge_name || "Stage"}).
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Link href={`/dashboard/quiz?badgeId=${prevBadgeId}&type=final`}>
+            <Button className="h-11 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black text-xs shadow-md">
+              <Sparkles className="w-4 h-4 mr-1.5" />
+              <span>Take Stage {prevBadgeId} Final Quiz ⭐</span>
+            </Button>
+          </Link>
+          <Link href="/dashboard/badges">
+            <Button variant="outline" className="h-11 px-5 rounded-xl text-xs font-bold">
+              <Map className="w-4 h-4 mr-1.5" />
+              <span>Storybook Map</span>
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }

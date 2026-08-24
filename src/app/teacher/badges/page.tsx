@@ -7,21 +7,33 @@ import {
   Edit,
   Plus,
   Sparkles,
-  Award,
-  Star,
-  Ribbon,
-  Medal,
-  CheckCircle2,
+  Lock,
   Trash2,
   X,
   BookOpen,
+  FileCheck2,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BadgeGraphic, getBadgeCategoryLabel } from "@/components/badge-graphic";
-import { fetchBadgesFromSupabase, fetchBadgeLessonCounts } from "@/utils/supabase-queries";
+import {
+  fetchBadgesFromSupabase,
+  fetchBadgeLessonCounts,
+  fetchStageFinalQuiz,
+  type QuizWithQuestions,
+} from "@/utils/supabase-queries";
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
 import { createClient } from "@/utils/supabase/client";
-import type { Badge, BadgeType, MedalType } from "@/lib/types";
+import type { Badge, BadgeType, MedalType, QuestionChoice } from "@/lib/types";
+
+interface FinalQuizQuestionForm {
+  question_text: string;
+  explanation: string;
+  hint: string;
+  points: number;
+  choices: Array<{ choice_letter: string; choice_text: string; is_correct: boolean }>;
+}
 
 export default function TeacherBadgesPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -31,29 +43,51 @@ export default function TeacherBadgesPage() {
   const [activeTab, setActiveTab] = useState<"all" | "star" | "ribbon" | "medal">("all");
   const [loading, setLoading] = useState(true);
 
-  // Edit Modal State
-  const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
-  const [passingScore, setPassingScore] = useState<number>(70);
-  const [xpReward, setXpReward] = useState<number>(100);
-  const [description, setDescription] = useState<string>("");
+  // Read-Only Preview Modal for Core Badges
+  const [previewBadge, setPreviewBadge] = useState<Badge | null>(null);
+  const [previewFinalQuiz, setPreviewFinalQuiz] = useState<QuizWithQuestions | null>(null);
+
+  // Create / Edit Custom Badge Studio Modal
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [studioStep, setStudioStep] = useState<1 | 2>(1);
+  const [editingBadgeId, setEditingBadgeId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Create Modal State
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createType, setCreateType] = useState<BadgeType>("star");
-  const [createMedalType, setCreateMedalType] = useState<MedalType>("bronze");
-  const [createSection, setCreateSection] = useState("all");
-  const [createPassingScore, setCreatePassingScore] = useState(75);
-  const [createXpReward, setCreateXpReward] = useState(250);
-  const [createDescription, setCreateDescription] = useState("");
+  // Badge Form Fields (Step 1)
+  const [formName, setFormName] = useState("");
+  const [formType, setFormType] = useState<BadgeType>("star");
+  const [formMedalType, setFormMedalType] = useState<MedalType>("bronze");
+  const [formSection, setFormSection] = useState("all");
+  const [formPassingScore, setFormPassingScore] = useState(75);
+  const [formXpReward, setFormXpReward] = useState(250);
+  const [formDescription, setFormDescription] = useState("");
+
+  // Stage Final Quiz Form Fields (Step 2)
+  const [formQuestions, setFormQuestions] = useState<FinalQuizQuestionForm[]>([
+    {
+      question_text: "What key lesson or value was shared across the 3 chapter stories of this stage?",
+      explanation: "Students demonstrated character growth, cooperation, and reading comprehension.",
+      hint: "Recall the main decisions made by the story characters.",
+      points: 25,
+      choices: [
+        { choice_letter: "A", choice_text: "Kindness, cooperation, and perseverance", is_correct: true },
+        { choice_letter: "B", choice_text: "Giving up when tasks are hard", is_correct: false },
+        { choice_letter: "C", choice_text: "Working alone without asking for help", is_correct: false },
+        { choice_letter: "D", choice_text: "Ignoring classmates", is_correct: false },
+      ],
+    },
+  ]);
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
+      const user = getCurrentUser();
+      const teacherId = user?.id;
+
       const [badgeList, counts, sections] = await Promise.all([
         fetchBadgesFromSupabase(),
         fetchBadgeLessonCounts(),
-        fetchTeacherSectionsFromSupabase(),
+        fetchTeacherSectionsFromSupabase(teacherId),
       ]);
       setBadges(badgeList);
       setLessonCounts(counts);
@@ -65,122 +99,219 @@ export default function TeacherBadgesPage() {
     fetchData();
   }, []);
 
-  const starBadges = badges.filter((b) => b.badge_type === "star");
-  const ribbonBadges = badges.filter((b) => b.badge_type === "ribbon");
-  const medalBadges = badges.filter((b) => b.badge_type === "medal");
-
   const filteredBadges = badges.filter((b) => {
-    // Section filter
     const matchesSection =
       selectedSectionFilter === "all" ||
       b.target_section === "all" ||
       b.target_section === selectedSectionFilter;
-
-    // Type filter
     const matchesType = activeTab === "all" || b.badge_type === activeTab;
-
     return matchesSection && matchesType;
   });
 
-  const openEditModal = (badge: Badge) => {
-    setEditingBadge(badge);
-    setPassingScore(badge.required_passing_score);
-    setXpReward(badge.xp_reward);
-    setDescription(badge.description);
+  // Open Read-Only Preview for Core / Custom Badges
+  const handleOpenPreview = async (badge: Badge) => {
+    setPreviewBadge(badge);
+    const quiz = await fetchStageFinalQuiz(badge.badge_id);
+    setPreviewFinalQuiz(quiz);
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingBadge) return;
+  // Open Create Studio
+  const handleOpenCreate = () => {
+    setEditingBadgeId(null);
+    setStudioStep(1);
+    setFormName("");
+    setFormType("star");
+    setFormMedalType("bronze");
+    setFormSection("all");
+    setFormPassingScore(75);
+    setFormXpReward(250);
+    setFormDescription("");
 
-    setSaving(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("badges")
-        .update({
-          required_passing_score: Number(passingScore),
-          xp_reward: Number(xpReward),
-          description: description,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("badge_id", editingBadge.badge_id);
+    setFormQuestions([
+      {
+        question_text: "What key lesson was shared across the 3 chapter stories of this stage?",
+        explanation: "Students demonstrated character growth and comprehension.",
+        hint: "Recall the main decisions made by the characters.",
+        points: 25,
+        choices: [
+          { choice_letter: "A", choice_text: "Kindness, cooperation, and perseverance", is_correct: true },
+          { choice_letter: "B", choice_text: "Giving up when tasks are hard", is_correct: false },
+          { choice_letter: "C", choice_text: "Working alone without asking for help", is_correct: false },
+          { choice_letter: "D", choice_text: "Ignoring classmates", is_correct: false },
+        ],
+      },
+    ]);
 
-      if (!error) {
-        setBadges((prev) =>
-          prev.map((b) =>
-            b.badge_id === editingBadge.badge_id
-              ? {
-                  ...b,
-                  required_passing_score: Number(passingScore),
-                  xp_reward: Number(xpReward),
-                  description: description,
-                  updated_at: new Date().toISOString(),
-                }
-              : b
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Error saving badge:", err);
+    setIsStudioOpen(true);
+  };
+
+  // Open Edit for Custom Badges
+  const handleOpenEdit = async (badge: Badge) => {
+    if (badge.badge_id <= 5) {
+      alert("Protected Core Stage Badges (Stages 1-5) cannot be modified.");
+      return;
     }
-    setSaving(false);
-    setEditingBadge(null);
+
+    setEditingBadgeId(badge.badge_id);
+    setStudioStep(1);
+    setFormName(badge.badge_name);
+    setFormType(badge.badge_type);
+    setFormMedalType(badge.medal_type || "bronze");
+    setFormSection(badge.target_section || "all");
+    setFormPassingScore(badge.required_passing_score);
+    setFormXpReward(badge.xp_reward);
+    setFormDescription(badge.description);
+
+    const quiz = await fetchStageFinalQuiz(badge.badge_id);
+    if (quiz && quiz.questions && quiz.questions.length > 0) {
+      setFormQuestions(
+        quiz.questions.map((q) => ({
+          question_text: q.question_text,
+          explanation: q.explanation || "",
+          hint: q.hint || "",
+          points: q.points,
+          choices: q.choices.map((c: QuestionChoice, cIdx: number) => ({
+            choice_letter: c.choice_letter || String.fromCharCode(65 + cIdx),
+            choice_text: c.choice_text,
+            is_correct: c.is_correct,
+          })),
+        }))
+      );
+    }
+
+    setIsStudioOpen(true);
   };
 
-  const handleCreateBadge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createName.trim()) return;
+  // Save Custom Badge + Stage Final Quiz
+  const handleSaveBadgeStudio = async () => {
+    if (!formName.trim()) {
+      alert("Please enter a badge name.");
+      setStudioStep(1);
+      return;
+    }
 
     setSaving(true);
     try {
       const supabase = createClient();
       const user = getCurrentUser();
-      const maxOrder = Math.max(...badges.map((b) => b.badge_order || 0), 0);
 
-      const newBadge = {
-        badge_name: createName.trim(),
-        badge_type: createType,
-        medal_type: createType === "medal" ? createMedalType : null,
-        description: createDescription.trim() || `Mastery badge for ${createName}`,
-        badge_order: maxOrder + 1,
-        required_passing_score: Number(createPassingScore),
-        xp_reward: Number(createXpReward),
-        target_section: createSection,
-        teacher_id: user?.id || null,
-      };
+      if (editingBadgeId) {
+        // Update Custom Badge
+        await supabase
+          .from("badges")
+          .update({
+            badge_name: formName.trim(),
+            badge_type: formType,
+            medal_type: formType === "medal" ? formMedalType : null,
+            target_section: formSection,
+            required_passing_score: formPassingScore,
+            xp_reward: formXpReward,
+            description: formDescription.trim(),
+          })
+          .eq("badge_id", editingBadgeId);
+      } else {
+        // Create New Badge
+        const nextOrder = badges.length + 1;
+        const { data: newBadge, error: badgeErr } = await supabase
+          .from("badges")
+          .insert({
+            badge_name: formName.trim(),
+            badge_type: formType,
+            medal_type: formType === "medal" ? formMedalType : null,
+            target_section: formSection,
+            required_passing_score: formPassingScore,
+            xp_reward: formXpReward,
+            description: formDescription.trim() || `Mastery accolade for Stage ${nextOrder}.`,
+            badge_order: nextOrder,
+          })
+          .select()
+          .single();
 
-      const { data, error } = await supabase.from("badges").insert(newBadge).select().single();
+        if (badgeErr || !newBadge) {
+          alert("Failed to create badge: " + (badgeErr?.message || ""));
+          setSaving(false);
+          return;
+        }
 
-      if (!error && data) {
-        setBadges((prev) => [...prev, data as Badge]);
-        setIsCreateOpen(false);
-        setCreateName("");
-        setCreateDescription("");
+        // Create Stage Final Quiz
+        if (formQuestions.length > 0) {
+          const { data: createdQuiz } = await supabase
+            .from("quizzes")
+            .insert({
+              badge_id: newBadge.badge_id,
+              quiz_title: `${newBadge.badge_name} - Stage Final Mastery Quiz`,
+              quiz_type: "badge_final",
+              passing_score: formPassingScore,
+              total_questions: formQuestions.length,
+              time_limit_minutes: 15,
+            })
+            .select()
+            .single();
+
+          if (createdQuiz) {
+            for (let qIdx = 0; qIdx < formQuestions.length; qIdx++) {
+              const q = formQuestions[qIdx];
+              const { data: createdQ } = await supabase
+                .from("quiz_questions")
+                .insert({
+                  quiz_id: createdQuiz.quiz_id,
+                  question_number: qIdx + 1,
+                  question_text: q.question_text || `Stage Question ${qIdx + 1}`,
+                  question_type: "multiple_choice",
+                  points: q.points || 25,
+                  explanation: q.explanation || "Stage comprehension mastered!",
+                  hint: q.hint || "",
+                })
+                .select()
+                .single();
+
+              if (createdQ && Array.isArray(q.choices)) {
+                const choiceRows = q.choices.map((c) => ({
+                  question_id: createdQ.question_id,
+                  choice_letter: c.choice_letter,
+                  choice_text: c.choice_text,
+                  is_correct: !!c.is_correct,
+                }));
+                await supabase.from("question_choices").insert(choiceRows);
+              }
+            }
+          }
+        }
       }
-    } catch (err) {
-      console.error("Error creating badge:", err);
+
+      // Refresh Badges list
+      const refreshedBadges = await fetchBadgesFromSupabase();
+      const refreshedCounts = await fetchBadgeLessonCounts();
+      setBadges(refreshedBadges);
+      setLessonCounts(refreshedCounts);
+      setIsStudioOpen(false);
+    } catch {
+      alert("An unexpected error occurred while saving the stage badge.");
     }
     setSaving(false);
   };
 
+  // Delete Custom Badge
   const handleDeleteBadge = async (badgeId: number) => {
-    if (confirm("Are you sure you want to delete this custom badge?")) {
+    if (badgeId <= 5) {
+      alert("Protected Core Stage Badges (Stages 1-5) cannot be deleted.");
+      return;
+    }
+
+    if (confirm("Are you sure you want to delete this custom stage badge and its final quiz?")) {
       try {
         const supabase = createClient();
-        const { error } = await supabase.from("badges").delete().eq("badge_id", badgeId);
-        if (!error) {
-          setBadges((prev) => prev.filter((b) => b.badge_id !== badgeId));
-        }
-      } catch (err) {
-        console.error("Error deleting badge:", err);
+        await supabase.from("badges").delete().eq("badge_id", badgeId);
+        setBadges((prev) => prev.filter((b) => b.badge_id !== badgeId));
+      } catch {
+        alert("Failed to delete badge.");
       }
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header */}
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* ── 1. Header & Create Stage Badge Action ─────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
@@ -188,80 +319,53 @@ export default function TeacherBadgesPage() {
               Teacher Hub
             </Link>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-900 font-bold">Badge Mastery Rules</span>
+            <span className="text-slate-800 font-bold">Badge Mastery Rules</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            Mastery Badge Thresholds &amp; Hierarchy
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+            Stage Badges &amp; Final Mastery Quizzes
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            5 Default Mastery Accolades · Max 3 lessons per badge · Section-scoped custom badges
+            Protected core stage badges (Stages 1–5) + custom teacher badges (max 3 stories per badge + 1 Stage Final Quiz).
           </p>
         </div>
 
         <Button
-          onClick={() => setIsCreateOpen(true)}
+          onClick={handleOpenCreate}
           size="sm"
-          className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5"
+          className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-200 flex items-center gap-1.5 self-start sm:self-auto"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Badge Accolade</span>
+          <Plus className="w-4 h-4" />
+          <span>Create New Stage Badge</span>
         </Button>
       </div>
 
-      {/* 2. Educational Rule Banner & Category Tabs */}
-      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl border border-slate-200 text-xs font-bold w-fit">
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === "all" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            All Badges ({badges.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("star")}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === "star" ? "bg-amber-500 text-white shadow-xs" : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            <Star className="w-3.5 h-3.5 fill-current" />
-            <span>Stars ({starBadges.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("ribbon")}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === "ribbon" ? "bg-blue-600 text-white shadow-xs" : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            <Ribbon className="w-3.5 h-3.5" />
-            <span>Ribbons ({ribbonBadges.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("medal")}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-all ${
-              activeTab === "medal" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            <Medal className="w-3.5 h-3.5" />
-            <span>Medals ({medalBadges.length})</span>
-          </button>
+      {/* ── 2. Filter Controls ────────────────────────────────────────── */}
+      <div className="dashboard-card p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex items-center p-1 bg-slate-100/90 rounded-xl w-full md:w-auto overflow-x-auto">
+          {(["all", "star", "ribbon", "medal"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all capitalize ${
+                activeTab === tab
+                  ? "bg-white text-blue-600 shadow-2xs font-black"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              {tab === "all" ? `All Stages (${badges.length})` : tab}
+            </button>
+          ))}
         </div>
 
-        {/* Section Filter Dropdown */}
-        <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
-          <span className="font-bold text-slate-500">Section Scope:</span>
+        <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
+          <span className="text-[11px] font-bold text-slate-400">Section:</span>
           <select
             value={selectedSectionFilter}
             onChange={(e) => setSelectedSectionFilter(e.target.value)}
-            className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer"
+            className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
           >
-            <option value="all">All Enrolled Badges</option>
+            <option value="all">All Sections</option>
             {teacherSections.map((sec) => (
               <option key={sec} value={sec}>
                 {sec}
@@ -271,161 +375,123 @@ export default function TeacherBadgesPage() {
         </div>
       </div>
 
-      {/* 3. 5 Default Mastery Stages Banner */}
-      <div className="dashboard-card p-4 bg-gradient-to-r from-blue-50/50 via-slate-50 to-amber-50/40 border-slate-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <span className="font-bold text-slate-800">
-              5 Default Mastery Progression: 1st Star → 2nd Ribbon → 3rd Bronze → 4th Silver → 5th Gold
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-slate-500 bg-white px-2.5 py-1 rounded-md border border-slate-200/80">
-            Rule: Maximum 3 Lessons per Badge
-          </span>
-        </div>
-      </div>
-
-      {/* 4. Badge Configuration List */}
+      {/* ── 3. Badges Grid ────────────────────────────────────────────── */}
       {loading ? (
-        <div className="py-12 text-center text-xs text-slate-400">Loading badges from Supabase...</div>
+        <div className="py-24 text-center space-y-3">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-500 font-semibold">Loading Stage Badges...</p>
+        </div>
       ) : (
-        <div className="space-y-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredBadges.map((badge) => {
-            const categoryLabel = getBadgeCategoryLabel(badge.badge_type, badge.medal_type);
-            const currentLessons = lessonCounts[badge.badge_id] || 0;
-            const isFull = currentLessons >= 3;
-
-            const badgeBorderColor =
-              badge.badge_type === "star"
-                ? "border-l-amber-400"
-                : badge.badge_type === "ribbon"
-                ? "border-l-blue-500"
-                : badge.medal_type === "bronze"
-                ? "border-l-amber-600"
-                : badge.medal_type === "silver"
-                ? "border-l-slate-400"
-                : "border-l-yellow-400";
+            const isCore = badge.badge_id <= 5;
+            const currentStoriesCount = lessonCounts[badge.badge_id] || 0;
+            const isFull = currentStoriesCount >= 3;
 
             return (
               <div
                 key={badge.badge_id}
-                className={`dashboard-card p-5 border-l-4 ${badgeBorderColor} transition-all hover:shadow-xs`}
+                className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4 border-2 border-slate-100 relative"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Left: Graphic & Info */}
-                  <div className="flex items-center gap-4">
-                    <BadgeGraphic
-                      type={badge.badge_type}
-                      medalType={badge.medal_type}
-                      size="sm"
-                      status="completed"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-slate-900">
-                          {badge.badge_order}. {badge.badge_name}
-                        </h3>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            badge.badge_type === "star"
-                              ? "bg-amber-100 text-amber-800 border border-amber-200"
-                              : badge.badge_type === "ribbon"
-                              ? "bg-blue-100 text-blue-800 border border-blue-200"
-                              : badge.medal_type === "bronze"
-                              ? "bg-orange-100 text-orange-900 border border-orange-200"
-                              : badge.medal_type === "silver"
-                              ? "bg-slate-100 text-slate-800 border border-slate-300"
-                              : "bg-yellow-100 text-yellow-900 border border-yellow-300"
-                          }`}
-                        >
-                          {categoryLabel}
+                <div>
+                  {/* Top Header: Badge Graphic & Core Protection Flag */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      <BadgeGraphic
+                        type={badge.badge_type}
+                        medalType={badge.badge_type === "medal" ? badge.medal_type : undefined}
+                        size="md"
+                        status="completed"
+                      />
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 block">
+                          Stage {badge.badge_order} · {getBadgeCategoryLabel(badge.badge_type, badge.medal_type)}
                         </span>
-
-                        {badge.target_section && badge.target_section !== "all" && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                            Section: {badge.target_section}
-                          </span>
-                        )}
+                        <h3 className="text-base font-black text-slate-900 leading-tight">
+                          {badge.badge_name}
+                        </h3>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{badge.description}</p>
                     </div>
+
+                    {isCore ? (
+                      <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+                        <Lock className="w-2.5 h-2.5 text-amber-700" />
+                        <span>Core (Protected)</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black uppercase px-2 py-0.5 rounded-md">
+                        <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                        <span>Custom Badge</span>
+                      </span>
+                    )}
                   </div>
 
-                  {/* Right: Capacity & Parameters */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                    {/* Lesson Capacity Indicator */}
-                    <div
-                      className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
-                        isFull
-                          ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                          : "bg-slate-50 border-slate-200 text-slate-700"
-                      }`}
-                    >
-                      <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-bold">
-                        {currentLessons} / 3 Lessons {isFull && "(Full)"}
+                  <p className="text-xs text-slate-500 leading-relaxed font-medium mb-3">
+                    {badge.description}
+                  </p>
+
+                  {/* Capacity & Mastery Rule Badges */}
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
+                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Story Capacity
+                      </span>
+                      <span className={`text-xs font-black ${isFull ? "text-amber-700" : "text-slate-800"}`}>
+                        {currentStoriesCount} / 3 Stories {isFull ? "(Full)" : ""}
                       </span>
                     </div>
 
-                    <div className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl">
-                      <span className="text-slate-400 block font-semibold text-[9px] uppercase tracking-wider mb-0.5">
-                        Passing Score
+                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Final Quiz Pass
                       </span>
-                      <span className="text-slate-900 font-bold text-xs">
-                        ≥{badge.required_passing_score}%
-                      </span>
-                    </div>
-
-                    <div className="px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
-                      <span className="text-amber-600 block font-semibold text-[9px] uppercase tracking-wider mb-0.5">
-                        XP Reward
-                      </span>
-                      <span className="text-amber-800 font-bold text-xs">
-                        +{badge.xp_reward} XP
+                      <span className="text-xs font-black text-blue-600">
+                        ≥{badge.required_passing_score}% (+{badge.xp_reward} XP)
                       </span>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditModal(badge)}
-                      className="h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5"
-                    >
-                      <Edit className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Edit</span>
-                    </Button>
-
-                    {badge.badge_id > 5 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteBadge(badge.badge_id)}
-                        className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
                   </div>
                 </div>
 
-                {/* Status Note */}
-                <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-semibold">
-                  <span className="flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5 text-slate-400" />
-                    <span>
-                      Scope: <code className="text-[10px] text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{badge.target_section || "all"}</code>
-                      {" · "}Type: <code className="text-[10px] text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{badge.badge_type}</code>
-                      {badge.medal_type && (
-                        <> · Tier: <code className="text-[10px] text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{badge.medal_type}</code></>
-                      )}
-                    </span>
-                  </span>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Active in Progression
-                  </span>
+                {/* Actions Footer */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenPreview(badge)}
+                    className="h-8 px-2.5 rounded-xl border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 flex items-center gap-1"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                    <span>View Rules &amp; Final Quiz</span>
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {isCore ? (
+                      <span className="text-[10px] font-bold text-slate-400 italic px-2">
+                        Developer Locked
+                      </span>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEdit(badge)}
+                          className="h-8 w-8 p-0 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+                          title="Edit Custom Badge"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteBadge(badge.badge_id)}
+                          className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                          title="Delete Custom Badge"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -433,268 +499,361 @@ export default function TeacherBadgesPage() {
         </div>
       )}
 
-      {/* 5. Create New Badge Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-lg w-full shadow-2xl space-y-4 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">
-                Create New Badge Accolade
-              </h3>
+      {/* ── 4. CREATE / EDIT STAGE BADGE & FINAL QUIZ STUDIO MODAL ─────── */}
+      {isStudioOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border-2 border-slate-100 anim-pop-bounce my-auto flex flex-col max-h-[92vh]">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                  {editingBadgeId ? "Modify Custom Badge" : "Stage Badge Studio"}
+                </span>
+                <h2 className="text-xl font-black text-slate-900 mt-1">
+                  {editingBadgeId ? "Edit Custom Stage Badge & Final Quiz" : "Create New Stage Badge & Final Quiz"}
+                </h2>
+              </div>
+
               <button
                 type="button"
-                onClick={() => setIsCreateOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-700"
+                onClick={() => setIsStudioOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateBadge} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Badge Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="e.g. Fluency Champion Ribbon"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-                />
-              </div>
+            {/* Stepper Tabs */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-center gap-2 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setStudioStep(1)}
+                className={`px-3.5 py-1.5 rounded-xl transition-all ${
+                  studioStep === 1
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                1. Badge Details &amp; Reward
+              </button>
+              <button
+                type="button"
+                onClick={() => setStudioStep(2)}
+                className={`px-3.5 py-1.5 rounded-xl transition-all ${
+                  studioStep === 2
+                    ? "bg-blue-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                2. Stage Final Mastery Quiz ({formQuestions.length} Questions)
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Badge Category *
-                  </label>
-                  <select
-                    value={createType}
-                    onChange={(e) => setCreateType(e.target.value as BadgeType)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none"
-                  >
-                    <option value="star">Star Badge</option>
-                    <option value="ribbon">Ribbon Badge</option>
-                    <option value="medal">Medal Badge</option>
-                  </select>
-                </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-5">
+              {studioStep === 1 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700">Badge Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Nature Explorer Badge"
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none"
+                      />
+                    </div>
 
-                {createType === "medal" ? (
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Medal Tier *
-                    </label>
-                    <select
-                      value={createMedalType || "bronze"}
-                      onChange={(e) => setCreateMedalType(e.target.value as MedalType)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none"
-                    >
-                      <option value="bronze">Bronze Medal</option>
-                      <option value="silver">Silver Medal</option>
-                      <option value="gold">Gold Medal</option>
-                    </select>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Badge Graphic Type</label>
+                      <select
+                        value={formType}
+                        onChange={(e) => setFormType(e.target.value as BadgeType)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
+                      >
+                        <option value="star">Star Badge ⭐</option>
+                        <option value="ribbon">Ribbon Badge 🎗️</option>
+                        <option value="medal">Medal Badge 🥇</option>
+                      </select>
+                    </div>
+
+                    {formType === "medal" && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700">Medal Tier</label>
+                        <select
+                          value={formMedalType || "bronze"}
+                          onChange={(e) => setFormMedalType(e.target.value as MedalType)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none"
+                        >
+                          <option value="bronze">Bronze Medal 🥉</option>
+                          <option value="silver">Silver Medal 🥈</option>
+                          <option value="gold">Gold Medal 🥇</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Stage Final Pass Score (%)</label>
+                      <input
+                        type="number"
+                        min={60}
+                        max={100}
+                        value={formPassingScore}
+                        onChange={(e) => setFormPassingScore(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Mastery XP Reward</label>
+                      <input
+                        type="number"
+                        min={50}
+                        max={500}
+                        value={formXpReward}
+                        onChange={(e) => setFormXpReward(Number(e.target.value))}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700">Description</label>
+                      <textarea
+                        rows={2}
+                        placeholder="Criteria and milestone description for students earning this badge..."
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-800 outline-none"
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Target Section Scope *
-                    </label>
-                    <select
-                      value={createSection}
-                      onChange={(e) => setCreateSection(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none"
-                    >
-                      <option value="all">Universal (All Students)</option>
-                      {teacherSections.map((sec) => (
-                        <option key={sec} value={sec}>
-                          {sec} (Only Enrolled Pupils)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {createType === "medal" && (
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Target Section Scope *
-                  </label>
-                  <select
-                    value={createSection}
-                    onChange={(e) => setCreateSection(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 outline-none"
-                  >
-                    <option value="all">Universal (All Students)</option>
-                    {teacherSections.map((sec) => (
-                      <option key={sec} value={sec}>
-                        {sec} (Only Enrolled Pupils)
-                      </option>
-                    ))}
-                  </select>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Required Passing Score (%)
-                  </label>
-                  <input
-                    type="number"
-                    min={50}
-                    max={100}
-                    required
-                    value={createPassingScore}
-                    onChange={(e) => setCreatePassingScore(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 outline-none"
-                  />
+              {studioStep === 2 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-900">
+                        Cumulative Stage Final Questions ({formQuestions.length})
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Required for students to pass (≥{formPassingScore}%) to earn this badge seal and unlock the next stage!
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setFormQuestions([
+                          ...formQuestions,
+                          {
+                            question_text: "",
+                            explanation: "",
+                            hint: "",
+                            points: 25,
+                            choices: [
+                              { choice_letter: "A", choice_text: "", is_correct: true },
+                              { choice_letter: "B", choice_text: "", is_correct: false },
+                              { choice_letter: "C", choice_text: "", is_correct: false },
+                              { choice_letter: "D", choice_text: "", is_correct: false },
+                            ],
+                          },
+                        ]);
+                      }}
+                      className="h-8 px-3 rounded-xl bg-blue-600 text-white text-xs font-bold"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      <span>Add Final Question</span>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {formQuestions.map((q, qIdx) => (
+                      <div key={qIdx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800">
+                            Final Assessment Question {qIdx + 1}
+                          </span>
+                          {formQuestions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setFormQuestions(formQuestions.filter((_, i) => i !== qIdx))}
+                              className="text-[11px] font-bold text-rose-600 hover:text-rose-700"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-1">Question Prompt *</label>
+                          <input
+                            type="text"
+                            placeholder="Cumulative question prompt evaluating comprehension across the 3 stories..."
+                            value={q.question_text}
+                            onChange={(e) => {
+                              const updated = [...formQuestions];
+                              updated[qIdx].question_text = e.target.value;
+                              setFormQuestions(updated);
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 outline-none"
+                          />
+                        </div>
+
+                        {/* Choices */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {q.choices.map((c, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                                c.is_correct ? "bg-emerald-50/80 border-emerald-300" : "bg-white border-slate-200"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`badge_question_${qIdx}_correct`}
+                                checked={c.is_correct}
+                                onChange={() => {
+                                  const updated = [...formQuestions];
+                                  updated[qIdx].choices.forEach((choice, idx) => {
+                                    choice.is_correct = idx === cIdx;
+                                  });
+                                  setFormQuestions(updated);
+                                }}
+                              />
+                              <span className="text-xs font-black text-slate-700">{c.choice_letter}.</span>
+                              <input
+                                type="text"
+                                placeholder={`Choice ${c.choice_letter}`}
+                                value={c.choice_text}
+                                onChange={(e) => {
+                                  const updated = [...formQuestions];
+                                  updated[qIdx].choices[cIdx].choice_text = e.target.value;
+                                  setFormQuestions(updated);
+                                }}
+                                className="w-full bg-transparent text-xs font-medium text-slate-800 outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+            </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    XP Reward Points
-                  </label>
-                  <input
-                    type="number"
-                    min={10}
-                    max={2000}
-                    step={25}
-                    required
-                    value={createXpReward}
-                    onChange={(e) => setCreateXpReward(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Badge Description &amp; Criteria
-                </label>
-                <textarea
-                  rows={2}
-                  value={createDescription}
-                  onChange={(e) => setCreateDescription(e.target.value)}
-                  placeholder="Describe how students earn this badge..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-900 outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+            {/* Studio Bottom Controls */}
+            <div className="p-5 border-t border-slate-100 flex items-center justify-between bg-slate-50 rounded-b-3xl">
+              {studioStep === 2 ? (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsCreateOpen(false)}
-                  className="text-xs"
+                  onClick={() => setStudioStep(1)}
+                  className="rounded-xl border-slate-200 text-xs font-bold text-slate-700"
                 >
-                  Cancel
+                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                  <span>Back</span>
                 </Button>
+              ) : (
+                <div />
+              )}
+
+              {studioStep === 1 ? (
                 <Button
-                  type="submit"
-                  disabled={saving}
+                  type="button"
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
+                  onClick={() => setStudioStep(2)}
+                  className="rounded-xl bg-blue-600 text-white text-xs font-bold"
                 >
-                  {saving ? "Creating Badge..." : "Save New Badge"}
+                  <span>Next: Stage Final Quiz</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
-              </div>
-            </form>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveBadgeStudio}
+                  disabled={saving}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-6 shadow-md shadow-emerald-200"
+                >
+                  {saving ? "Saving Badge & Final Quiz..." : "Save Stage Badge ✨"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* 6. Edit Badge Rules Modal */}
-      {editingBadge && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <BadgeGraphic
-                type={editingBadge.badge_type}
-                medalType={editingBadge.medal_type}
-                size="sm"
-                status="completed"
-              />
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Edit Rules: {editingBadge.badge_name}
-                </h3>
-                <span className="text-[11px] font-semibold text-slate-500">
-                  {getBadgeCategoryLabel(editingBadge.badge_type, editingBadge.medal_type)} (Stage {editingBadge.badge_order})
-                </span>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Required Passing Score (%)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={50}
-                    max={100}
-                    required
-                    value={passingScore}
-                    onChange={(e) => setPassingScore(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-                  />
-                  <span className="text-xs font-bold text-slate-400">%</span>
+      {/* ── 5. READ-ONLY PREVIEW MODAL FOR CORE / CUSTOM BADGES ───────── */}
+      {previewBadge && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border-2 border-slate-100 p-6 space-y-4 anim-pop-bounce relative">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <BadgeGraphic
+                  type={previewBadge.badge_type}
+                  medalType={previewBadge.badge_type === "medal" ? previewBadge.medal_type : undefined}
+                  size="md"
+                  status="completed"
+                />
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                    {previewBadge.badge_id <= 5 ? "🔒 Protected Core Stage" : "✨ Teacher Custom Badge"}
+                  </span>
+                  <h2 className="text-xl font-black text-slate-900 mt-1">{previewBadge.badge_name}</h2>
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  XP Reward Points
-                </label>
-                <input
-                  type="number"
-                  min={10}
-                  max={2000}
-                  step={25}
-                  required
-                  value={xpReward}
-                  onChange={(e) => setXpReward(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewBadge(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Badge Description &amp; Criteria
-                </label>
-                <textarea
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-                />
-              </div>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">{previewBadge.description}</p>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditingBadge(null)}
-                  className="text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
-                >
-                  {saving ? "Saving to Supabase..." : "Save Mastery Rule"}
-                </Button>
+            <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-xs">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Passing Threshold</span>
+                <span className="font-black text-slate-900">≥{previewBadge.required_passing_score}% Score</span>
               </div>
-            </form>
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mastery Reward</span>
+                <span className="font-black text-blue-600">+{previewBadge.xp_reward} XP</span>
+              </div>
+            </div>
+
+            {/* Stage Final Quiz Summary */}
+            <div className="space-y-2 pt-2">
+              <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                <FileCheck2 className="w-4 h-4 text-blue-600" />
+                <span>Stage Final Mastery Quiz ({previewFinalQuiz?.questions?.length || 0} Questions)</span>
+              </h4>
+
+              {previewFinalQuiz && previewFinalQuiz.questions && previewFinalQuiz.questions.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {previewFinalQuiz.questions.map((q, idx) => (
+                    <div key={q.question_id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                      <span className="font-bold text-slate-800">Q{idx + 1}: {q.question_text}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">No final questions loaded for this badge.</p>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <Button onClick={() => setPreviewBadge(null)} className="h-9 px-5 rounded-xl bg-blue-600 text-white font-bold text-xs">
+                Close Preview
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -47,9 +47,12 @@ export async function signOutUser() {
 /**
  * Fetch sections from Supabase directly via API route.
  */
-export async function fetchTeacherSectionsFromSupabase(): Promise<string[]> {
+export async function fetchTeacherSectionsFromSupabase(teacherId?: string): Promise<string[]> {
   try {
-    const res = await fetch("/api/teacher/sections");
+    const url = teacherId
+      ? `/api/teacher/sections?teacherId=${encodeURIComponent(teacherId)}`
+      : "/api/teacher/sections";
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.sections) && data.sections.length > 0) {
@@ -69,7 +72,7 @@ export async function fetchTeacherSectionsFromSupabase(): Promise<string[]> {
  * Get active sections managed by the teacher (cached or default).
  */
 export function getTeacherSections(defaultSection = "Grade 3-A"): string[] {
-  if (typeof window === "undefined") return [defaultSection, "Grade 3-B"];
+  if (typeof window === "undefined") return [defaultSection];
   try {
     const raw = localStorage.getItem(TEACHER_SECTIONS_KEY);
     if (raw) {
@@ -79,9 +82,7 @@ export function getTeacherSections(defaultSection = "Grade 3-A"): string[] {
   } catch {
     // ignore
   }
-  const defaults = ["Grade 3-A", "Grade 3-B"];
-  if (!defaults.includes(defaultSection)) defaults.unshift(defaultSection);
-  return defaults;
+  return [defaultSection];
 }
 
 /**
@@ -123,13 +124,19 @@ export async function addTeacherSection(newSection: string, teacherId?: string):
 }
 
 /**
- * Retrieve students directly from Supabase.
+ * Retrieve students directly from Supabase scoped to teacher.
  */
-export async function fetchStudentsFromSupabase(section?: string): Promise<EnrolledStudent[]> {
+export async function fetchStudentsFromSupabase(
+  section?: string,
+  teacherId?: string
+): Promise<EnrolledStudent[]> {
   try {
-    const url = section && section !== "all" 
-      ? `/api/teacher/students?section=${encodeURIComponent(section)}`
-      : "/api/teacher/students";
+    const params = new URLSearchParams();
+    if (section && section !== "all") params.set("section", section);
+    if (teacherId) params.set("teacherId", teacherId);
+
+    const queryString = params.toString();
+    const url = queryString ? `/api/teacher/students?${queryString}` : "/api/teacher/students";
     const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();

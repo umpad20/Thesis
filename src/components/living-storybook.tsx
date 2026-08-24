@@ -380,41 +380,83 @@ export function LivingStorybook({
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                   {currentBadge.badge_name}
                 </h2>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  {currentBadge.description}
-                </p>
 
                 {/* ── Hero Next Quest Card ───────────────────────────────── */}
-                <div className="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white shadow-lg shadow-blue-500/20 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 -mt-2 -mr-2 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none" />
+                {(() => {
+                  const allStoriesDone =
+                    chapterLessons.length > 0 &&
+                    chapterLessons.every(
+                      (l) => lessonProgress[l.lesson_id]?.status === "completed"
+                    );
+                  const isStageBadgeMastered =
+                    badgeProgress.find((p) => p.badge_id === currentBadge.badge_id)
+                      ?.status === "completed";
 
-                  <div className="flex items-center gap-2 text-blue-200 text-[11px] font-bold uppercase tracking-wider mb-1">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Current Active Story</span>
-                  </div>
+                  return (
+                    <div className="mt-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white shadow-lg shadow-blue-500/20 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 -mt-2 -mr-2 w-24 h-24 rounded-full bg-white/10 blur-xl pointer-events-none" />
 
-                  <h3 className="text-base sm:text-lg font-black tracking-tight text-white mb-1.5">
-                    {currentActiveLesson.lesson_title || "The New Classmate"}
-                  </h3>
-                  <p className="text-xs text-blue-100 leading-relaxed mb-4 line-clamp-2">
-                    {currentActiveLesson.lesson_description ||
-                      "Read through the story passage and take the 5-question comprehension quiz to master this stage."}
-                  </p>
+                      <div className="flex items-center gap-2 text-blue-200 text-[11px] font-bold uppercase tracking-wider mb-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>
+                          {isStageBadgeMastered
+                            ? "Stage Mastered"
+                            : allStoriesDone
+                            ? "Stage Final Assessment Ready"
+                            : "Current Active Quest"}
+                        </span>
+                      </div>
 
-                  <Link
-                    href={`/dashboard/lessons?lessonId=${currentActiveLesson.lesson_id}`}
-                    className="inline-block w-full sm:w-auto"
-                  >
-                    <Button
-                      size="default"
-                      className="w-full sm:w-auto h-10 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs shadow-md shadow-amber-500/30 flex items-center justify-center gap-2 transition-all duration-200"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>Continue Story</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                </div>
+                      <h3 className="text-base sm:text-lg font-black tracking-tight text-white mb-1.5">
+                        {isStageBadgeMastered
+                          ? `${currentBadge.badge_name} · Seal Mastered!`
+                          : allStoriesDone
+                          ? `${currentBadge.badge_name} · Stage Final Quiz`
+                          : currentActiveLesson.lesson_title || "The New Classmate"}
+                      </h3>
+                      <p className="text-xs text-blue-100 leading-relaxed mb-4 line-clamp-2">
+                        {isStageBadgeMastered
+                          ? "You have conquered all stories and earned this Achievement Seal! You can freely re-read any chapter or retake quizzes to improve your rank."
+                          : allStoriesDone
+                          ? "You have completed all 3 stories! Take the Stage Final Evaluation to earn your Achievement Seal and unlock the next stage!"
+                          : currentActiveLesson.lesson_description ||
+                            "Read through the story passage and take the comprehension quiz to advance."}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {allStoriesDone && !isStageBadgeMastered ? (
+                          <Link
+                            href={`/dashboard/quiz?badgeId=${currentBadge.badge_id}&type=final`}
+                            className="inline-block w-full sm:w-auto"
+                          >
+                            <Button
+                              size="default"
+                              className="w-full sm:w-auto h-10 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs shadow-md shadow-amber-500/30 flex items-center justify-center gap-2 transition-all duration-200 animate-bounce"
+                            >
+                              <Award className="w-4 h-4 text-amber-900" />
+                              <span>Take Stage Final Quiz ⭐</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/dashboard/lessons?lessonId=${currentActiveLesson.lesson_id}`}
+                            className="inline-block w-full sm:w-auto"
+                          >
+                            <Button
+                              size="default"
+                              className="w-full sm:w-auto h-10 px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs shadow-md shadow-amber-500/30 flex items-center justify-center gap-2 transition-all duration-200"
+                            >
+                              <BookOpen className="w-4 h-4" />
+                              <span>{isStageBadgeMastered ? "Re-read Chapters" : "Continue Story"}</span>
+                              <ArrowRight className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* ── Chapter Stepping Stones (3 Stories) ────────────────── */}
                 <div className="mt-5 space-y-2">
@@ -481,19 +523,35 @@ export function LivingStorybook({
                           </div>
 
                           {isDone ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full">
-                              <CheckCircle2 className="w-3 h-3" /> Mastered
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <Link href={`/dashboard/lessons?lessonId=${lesson.lesson_id}`}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-[10px] font-bold rounded-lg border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
+                                >
+                                  Re-read
+                                </Button>
+                              </Link>
+                              <Link href={`/dashboard/quiz?lessonId=${lesson.lesson_id}`}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-[10px] font-bold rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50"
+                                >
+                                  Retake
+                                </Button>
+                              </Link>
+                            </div>
                           ) : isUnlocked ? (
                             <Link
                               href={`/dashboard/lessons?lessonId=${lesson.lesson_id}`}
                             >
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="h-7 px-3 text-[11px] font-bold rounded-lg border-blue-200 text-blue-700 hover:bg-blue-50"
+                                className="h-7 px-3.5 text-[11px] font-black rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
                               >
-                                Read
+                                Read Story
                               </Button>
                             </Link>
                           ) : (
@@ -567,12 +625,11 @@ export function LivingStorybook({
                                   : "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-amber-950"
                               }`}
                             >
-                              <span>{isStageBadgeMastered ? "Re-take Final" : "Take Final Quiz"}</span>
-                              <ArrowRight className="w-3 h-3 ml-1" />
+                              <span>{isStageBadgeMastered ? "Retake Final" : "Take Final Quiz"}</span>
                             </Button>
                           </Link>
                         ) : (
-                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 flex items-center gap-1">
                             <Lock className="w-3 h-3" />
                             <span>Locked</span>
                           </span>

@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       teacher_id,
       pages,
       vocabulary,
+      quiz_questions,
     } = body;
 
     if (!lesson_title) {
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "This badge has already reached the maximum limit of 3 lessons. Please select another badge or create a new badge in the Badge Manager.",
+            "This badge has already reached the maximum limit of 3 lessons. Please select another badge or create a new custom badge.",
         },
         { status: 400 }
       );
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
       await supabase.from("lesson_pages").insert(pageRows);
     }
 
-    // 4. Insert vocabulary if provided
+    // 4. Insert highlighted vocabulary if provided
     if (Array.isArray(vocabulary) && vocabulary.length > 0) {
       const vocabRows = vocabulary
         .filter((v) => v.word?.trim())
@@ -130,6 +131,52 @@ export async function POST(request: Request) {
 
       if (vocabRows.length > 0) {
         await supabase.from("vocabulary_words").insert(vocabRows);
+      }
+    }
+
+    // 5. Create Story Quiz if questions provided
+    if (Array.isArray(quiz_questions) && quiz_questions.length > 0) {
+      const { data: createdQuiz } = await supabase
+        .from("quizzes")
+        .insert({
+          lesson_id: newLesson.lesson_id,
+          badge_id: targetBadgeId,
+          quiz_title: `${newLesson.lesson_title} - Comprehension Quiz`,
+          quiz_type: "lesson",
+          passing_score: passing_score || 70,
+          total_questions: quiz_questions.length,
+          time_limit_minutes: 10,
+        })
+        .select()
+        .single();
+
+      if (createdQuiz) {
+        for (let qIdx = 0; qIdx < quiz_questions.length; qIdx++) {
+          const q = quiz_questions[qIdx];
+          const { data: createdQ } = await supabase
+            .from("quiz_questions")
+            .insert({
+              quiz_id: createdQuiz.quiz_id,
+              question_number: qIdx + 1,
+              question_text: q.question_text || `Question ${qIdx + 1}`,
+              question_type: "multiple_choice",
+              points: q.points || 10,
+              explanation: q.explanation || "Well done!",
+              hint: q.hint || "",
+            })
+            .select()
+            .single();
+
+          if (createdQ && Array.isArray(q.choices)) {
+            const choiceRows = q.choices.map((c: { choice_letter: string; choice_text: string; is_correct: boolean }) => ({
+              question_id: createdQ.question_id,
+              choice_letter: c.choice_letter,
+              choice_text: c.choice_text,
+              is_correct: !!c.is_correct,
+            }));
+            await supabase.from("question_choices").insert(choiceRows);
+          }
+        }
       }
     }
 
@@ -152,10 +199,20 @@ export async function PUT(request: Request) {
       passing_score,
       status,
       target_section,
+      pages,
+      vocabulary,
     } = body;
 
     if (!lesson_id) {
       return NextResponse.json({ error: "Lesson ID is required" }, { status: 400 });
+    }
+
+    // Protect default developer lessons (1-15)
+    if (Number(lesson_id) <= 15) {
+      return NextResponse.json(
+        { error: "Protected Core Curriculum stories (Lessons 1-15) cannot be modified." },
+        { status: 403 }
+      );
     }
 
     const supabase = createAdminClient();
@@ -172,7 +229,7 @@ export async function PUT(request: Request) {
       return NextResponse.json(
         {
           error:
-            "This badge has already reached the maximum limit of 3 lessons. Please select another badge or create a new badge in the Badge Manager.",
+            "This badge has already reached the maximum limit of 3 lessons. Please select another badge.",
         },
         { status: 400 }
       );
@@ -198,6 +255,36 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Update pages if provided
+    if (Array.isArray(pages) && pages.length > 0) {
+      await supabase.from("lesson_pages").delete().eq("lesson_id", lesson_id);
+      const pageRows = pages.map((p, idx) => ({
+        lesson_id,
+        page_number: idx + 1,
+        page_title: p.page_title || `Page ${idx + 1}`,
+        content: p.content || "",
+        image_url: p.image_url || "/images/story1.png",
+        audio_url: p.audio_url || "",
+      }));
+      await supabase.from("lesson_pages").insert(pageRows);
+    }
+
+    // Update vocabulary if provided
+    if (Array.isArray(vocabulary)) {
+      await supabase.from("vocabulary_words").delete().eq("lesson_id", lesson_id);
+      const vocabRows = vocabulary
+        .filter((v) => v.word?.trim())
+        .map((v) => ({
+          lesson_id,
+          word: v.word.trim(),
+          definition: v.definition?.trim() || "",
+          example_sentence: v.example_sentence?.trim() || "",
+        }));
+      if (vocabRows.length > 0) {
+        await supabase.from("vocabulary_words").insert(vocabRows);
+      }
+    }
+
     return NextResponse.json({ success: true, lesson: updated });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Error updating lesson";
@@ -212,6 +299,14 @@ export async function DELETE(request: Request) {
 
     if (!lessonId) {
       return NextResponse.json({ error: "Lesson ID is required" }, { status: 400 });
+    }
+
+    // Protect default developer lessons (1-15)
+    if (Number(lessonId) <= 15) {
+      return NextResponse.json(
+        { error: "Protected Core Curriculum stories (Lessons 1-15) cannot be deleted." },
+        { status: 403 }
+      );
     }
 
     const supabase = createAdminClient();

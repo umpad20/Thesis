@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchClassRosterReports, type TeacherReportRow } from "@/utils/supabase-queries";
-import { fetchTeacherSectionsFromSupabase } from "@/utils/auth-helpers";
+import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
 
 export default function TeacherReportsPage() {
   const [reports, setReports] = useState<TeacherReportRow[]>([]);
@@ -20,9 +20,12 @@ export default function TeacherReportsPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
+      const user = getCurrentUser();
+      const teacherId = user?.id;
+
       const [roster, liveSections] = await Promise.all([
-        fetchClassRosterReports(selectedSection),
-        fetchTeacherSectionsFromSupabase(),
+        fetchClassRosterReports(selectedSection, teacherId),
+        fetchTeacherSectionsFromSupabase(teacherId),
       ]);
       setReports(roster);
       if (Array.isArray(liveSections) && liveSections.length > 0) {

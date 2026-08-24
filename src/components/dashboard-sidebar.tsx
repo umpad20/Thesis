@@ -14,6 +14,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
+  Award,
 } from "lucide-react";
 import { signOutUser } from "@/utils/auth-helpers";
 
@@ -28,7 +29,8 @@ const studentNavItems: NavItem[] = [
   { name: "My Learning", href: "/dashboard", icon: LayoutDashboard },
   { name: "Badge Pathway", href: "/dashboard/badges", icon: Map, badge: "Mastery Map" },
   { name: "Vocabulary Vault", href: "/dashboard/vocabulary", icon: SpellCheck },
-  { name: "My Achievements", href: "/dashboard/achievements", icon: Trophy },
+  { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, badge: "Top XP" },
+  { name: "My Achievements", href: "/dashboard/achievements", icon: Award },
 ];
 
 interface DashboardSidebarProps {

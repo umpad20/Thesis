@@ -3,24 +3,42 @@ import { createAdminClient } from "@/utils/supabase/admin";
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const teacherId = searchParams.get("teacherId");
+
     const supabase = createAdminClient();
-    const { data, error } = await supabase
+
+    let query = supabase
       .from("teacher_sections")
-      .select("section_name")
+      .select("section_name, teacher_id")
       .order("section_id", { ascending: true });
 
-    if (error) {
-      // Fallback default sections
-      return NextResponse.json({ sections: ["Grade 3-A", "Grade 3-B"] });
+    if (teacherId) {
+      query = query.eq("teacher_id", teacherId);
     }
 
-    const sections = (data || []).map((row) => row.section_name);
-    if (!sections.includes("Grade 3-A")) sections.unshift("Grade 3-A");
-    if (!sections.includes("Grade 3-B")) sections.push("Grade 3-B");
+    const { data, error } = await query;
+
+    if (error) {
+      return NextResponse.json({ sections: ["Grade 3-A"] });
+    }
+
+    let sections = (data || []).map((row) => row.section_name);
+
+    // If teacher has no registered sections yet, default to Grade 3-A
+    if (sections.length === 0) {
+      if (teacherId) {
+        await supabase.from("teacher_sections").insert({
+          section_name: "Grade 3-A",
+          teacher_id: teacherId,
+        });
+      }
+      sections = ["Grade 3-A"];
+    }
 
     return NextResponse.json({ sections });
-  } catch (err: unknown) {
-    return NextResponse.json({ sections: ["Grade 3-A", "Grade 3-B"] });
+  } catch {
+    return NextResponse.json({ sections: ["Grade 3-A"] });
   }
 }
 
@@ -39,33 +57,32 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
 
-    // Insert section into Supabase
-    const { error: insertError } = await supabase
+    // Insert section into Supabase for this teacher
+    await supabase
       .from("teacher_sections")
-      .upsert(
-        {
-          section_name: cleanSection,
-          teacher_id: teacherId || null,
-        },
-        { onConflict: "section_name" }
-      );
+      .insert({
+        section_name: cleanSection,
+        teacher_id: teacherId || null,
+      });
 
-    if (insertError) {
-      console.error("Error creating section in Supabase:", insertError);
-    }
-
-    // Fetch all current sections
-    const { data } = await supabase
+    // Fetch updated sections for this teacher
+    let query = supabase
       .from("teacher_sections")
       .select("section_name")
       .order("section_id", { ascending: true });
 
-    const sections = (data || []).map((row) => row.section_name);
-    if (!sections.includes(cleanSection)) sections.push(cleanSection);
+    if (teacherId) {
+      query = query.eq("teacher_id", teacherId);
+    }
 
-    return NextResponse.json({ success: true, sections });
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : "Error saving section";
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+    const { data } = await query;
+    const sections = (data || []).map((row) => row.section_name);
+    if (!sections.includes(cleanSection)) {
+      sections.push(cleanSection);
+    }
+
+    return NextResponse.json({ sections });
+  } catch {
+    return NextResponse.json({ error: "Failed to add section" }, { status: 500 });
   }
 }

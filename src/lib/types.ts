@@ -102,14 +102,12 @@ export interface VocabularyWord {
   audio_url?: string | null;
 }
 
-export interface Quiz {
-  quiz_id: number;
-  lesson_id: number | null;
-  badge_id: number | null;
-  quiz_type: string;
-  quiz_title: string;
-  passing_score: number;
-  created_at?: string;
+export interface QuestionChoice {
+  choice_id: number;
+  question_id: number;
+  choice_text: string;
+  choice_letter?: string;
+  is_correct: boolean;
 }
 
 export interface QuizQuestion {
@@ -122,11 +120,19 @@ export interface QuizQuestion {
   explanation: string;
 }
 
-export interface QuestionChoice {
-  choice_id: number;
-  question_id: number;
-  choice_text: string;
-  is_correct: boolean;
+export interface QuizQuestionWithChoices extends QuizQuestion {
+  choices: QuestionChoice[];
+}
+
+export interface Quiz {
+  quiz_id: number;
+  lesson_id: number | null;
+  badge_id: number | null;
+  quiz_type: string;
+  quiz_title: string;
+  passing_score: number;
+  questions?: QuizQuestionWithChoices[];
+  created_at?: string;
 }
 
 export interface StudentBadgeProgress {
@@ -187,5 +193,47 @@ export interface AvatarOption {
   emoji: string;
   label: string;
   bgColor: string;
+}
+
+export type RankTier = "grand_scholar" | "star_explorer" | "rising_reader" | "story_starter";
+
+export interface LeaderboardEntry {
+  rank: number;
+  studentId: string;
+  studentName: string;
+  avatar: string;
+  section: string;
+  totalXp: number;
+  comprehensionPct: number;
+  quizzesPassed: number;
+  streakDays: number;
+  rankTier: RankTier;
+  rankTierLabel: string;
+  currentBadgeName: string;
+}
+
+export type InterventionRiskLevel = "critical" | "watchlist" | "mastering";
+
+export interface InterventionPupil {
+  studentId: string;
+  studentName: string;
+  avatar: string;
+  section: string;
+  comprehensionPct: number;
+  quizzesPassed: number;
+  failedAttemptsCount: number;
+  lastActiveDate: string;
+  daysInactive: number;
+  riskLevel: InterventionRiskLevel;
+  struggleReason: string;
+  recommendedAction: string;
+}
+
+export interface InterventionRadarSummary {
+  criticalCount: number;
+  watchlistCount: number;
+  masteringCount: number;
+  totalEnrolled: number;
+  pupils: InterventionPupil[];
 }
 

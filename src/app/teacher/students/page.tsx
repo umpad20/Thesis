@@ -67,8 +67,11 @@ export default function TeacherStudentsPage() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
+      const user = getCurrentUser();
+      const teacherId = user?.id;
+
       try {
-        const liveSections = await fetchTeacherSectionsFromSupabase();
+        const liveSections = await fetchTeacherSectionsFromSupabase(teacherId);
         if (Array.isArray(liveSections) && liveSections.length > 0) {
           setSections(liveSections);
           setNewSection(liveSections[0]);
@@ -78,7 +81,7 @@ export default function TeacherStudentsPage() {
       }
 
       try {
-        const liveStudents = await fetchStudentsFromSupabase();
+        const liveStudents = await fetchStudentsFromSupabase(selectedSection, teacherId);
         setStudents(liveStudents || []);
       } catch {
         setStudents([]);
@@ -86,7 +89,7 @@ export default function TeacherStudentsPage() {
       setLoading(false);
     }
     loadData();
-  }, []);
+  }, [selectedSection]);
 
   const safeSections = Array.isArray(sections) && sections.length > 0 ? sections : ["Grade 3-A"];
 

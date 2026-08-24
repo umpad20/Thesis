@@ -16,7 +16,7 @@ import {
   Layers,
   PlusCircle,
 } from "lucide-react";
-import { signOutUser } from "@/utils/auth-helpers";
+import { signOutUser, getCurrentUser } from "@/utils/auth-helpers";
 import { fetchClassRosterReports, fetchAllLessons } from "@/utils/supabase-queries";
 
 export function TeacherSidebar() {
@@ -27,8 +27,11 @@ export function TeacherSidebar() {
   useEffect(() => {
     async function loadCounts() {
       try {
+        const user = getCurrentUser();
+        const teacherId = user?.id;
+
         const [roster, lessons] = await Promise.all([
-          fetchClassRosterReports("all"),
+          fetchClassRosterReports("all", teacherId),
           fetchAllLessons(),
         ]);
         setPupilsCount(roster.length);

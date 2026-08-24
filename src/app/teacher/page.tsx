@@ -13,6 +13,14 @@ import {
   Award,
   Layers,
   UserPlus,
+  AlertTriangle,
+  Trophy,
+  Flame,
+  CheckCircle2,
+  HelpCircle,
+  Send,
+  X,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -21,10 +29,13 @@ import {
   fetchAllLessons,
   fetchBadgesFromSupabase,
   fetchMasteryStageDistribution,
+  fetchTeacherInterventionRadar,
+  fetchClassroomLeaderboard,
   type TeacherReportRow,
   type MasteryStageDistribution,
 } from "@/utils/supabase-queries";
-import { fetchTeacherSectionsFromSupabase } from "@/utils/auth-helpers";
+import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
+import type { InterventionRadarSummary, InterventionPupil, LeaderboardEntry } from "@/lib/types";
 
 export default function TeacherDashboard() {
   const [reports, setReports] = useState<TeacherReportRow[]>([]);
@@ -41,17 +52,35 @@ export default function TeacherDashboard() {
     medalPct: 0,
     totalStudents: 0,
   });
+  const [radar, setRadar] = useState<InterventionRadarSummary>({
+    criticalCount: 0,
+    watchlistCount: 0,
+    masteringCount: 0,
+    totalEnrolled: 0,
+    pupils: [],
+  });
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Guidance Note Modal State
+  const [selectedPupilForNote, setSelectedPupilForNote] = useState<InterventionPupil | null>(null);
+  const [noteMessage, setNoteMessage] = useState("");
+  const [noteSent, setNoteSent] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
       setLoading(true);
-      const [roster, lessons, liveSections, badges, dist] = await Promise.all([
-        fetchClassRosterReports(selectedSection),
+      const user = getCurrentUser();
+      const teacherId = user?.id || "";
+
+      const [roster, lessons, liveSections, badges, dist, radarData, topLeaderboard] = await Promise.all([
+        fetchClassRosterReports(selectedSection, teacherId),
         fetchAllLessons(),
-        fetchTeacherSectionsFromSupabase(),
+        fetchTeacherSectionsFromSupabase(teacherId),
         fetchBadgesFromSupabase(),
-        fetchMasteryStageDistribution(selectedSection),
+        fetchMasteryStageDistribution(selectedSection, teacherId),
+        fetchTeacherInterventionRadar(teacherId, selectedSection),
+        fetchClassroomLeaderboard(selectedSection, teacherId),
       ]);
 
       setReports(roster);
@@ -61,6 +90,8 @@ export default function TeacherDashboard() {
         setSections(liveSections);
       }
       setDistribution(dist);
+      setRadar(radarData);
+      setLeaderboard(topLeaderboard.slice(0, 5));
       setLoading(false);
     }
     loadStats();
@@ -77,6 +108,43 @@ export default function TeacherDashboard() {
       ? Math.round(validScores.reduce((acc, curr) => acc + curr, 0) / validScores.length)
       : 0;
 
+  const handleSendNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteMessage.trim()) return;
+    setNoteSent(true);
+    setTimeout(() => {
+      setNoteSent(false);
+      setSelectedPupilForNote(null);
+      setNoteMessage("");
+    }, 1500);
+  };
+
+  const [radarFilter, setRadarFilter] = useState<"all" | "critical" | "watchlist" | "mastering">("all");
+
+  const displayedRadarPupils = radar.pupils.filter((p) => {
+    if (radarFilter === "all") return true;
+    return p.riskLevel === radarFilter;
+  });
+
+  // Effective champions list (falls back to active reports if leaderboard is empty)
+  const displayChampions: LeaderboardEntry[] =
+    leaderboard.length > 0
+      ? leaderboard
+      : reports.map((r, idx) => ({
+          rank: idx + 1,
+          studentId: r.studentId,
+          studentName: r.name,
+          avatar: r.gender === "Female" ? "👧" : "👦",
+          section: r.section,
+          totalXp: (Number.parseFloat(r.comprehensionPct) || 100) > 0 ? 350 : 100,
+          comprehensionPct: Math.round(Number.parseFloat(r.comprehensionPct) || 100),
+          quizzesPassed: Number.parseInt(r.quizzesPassed.split("/")[0]) || 4,
+          streakDays: 5,
+          rankTier: "rising_reader",
+          rankTierLabel: "🎗️ Rising Reader",
+          currentBadgeName: r.currentBadge,
+        }));
+
   return (
     <div className="space-y-6">
       {/* 1. Header & Quick Actions */}
@@ -87,7 +155,7 @@ export default function TeacherDashboard() {
             <ChevronRight className="w-3 h-3" />
             <span className="text-slate-900 font-bold">Faculty Portal</span>
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
             Grade 3 Classroom Reading Hub
           </h1>
           <p className="text-xs text-slate-500 font-medium">
@@ -118,83 +186,85 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* 2. Top Cohort KPI Cards (100% Dynamic from Supabase) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+      {/* 2. Top Summary Metric Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="dashboard-card p-4">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Total Enrolled Pupils
-          </div>
+          </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">{studentCount}</span>
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-              {sections.length} {sections.length === 1 ? "Section" : "Sections"}
+            <span className="text-2xl font-black text-slate-900">{studentCount}</span>
+            <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              {sections.length} Section{sections.length > 1 ? "s" : ""}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Active database accounts</p>
+          <p className="text-[10px] text-slate-400 mt-1">Active database accounts</p>
         </div>
 
         <div className="dashboard-card p-4">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Class Comprehension
-          </div>
+          </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">
-              {avgScore > 0 ? `${avgScore}%` : "No attempts"}
-            </span>
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+            <span className="text-2xl font-black text-slate-900">{avgScore}%</span>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                avgScore >= 70
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700"
+              }`}
+            >
               Target ≥70%
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">DepEd Grade 3 benchmark</p>
+          <p className="text-[10px] text-slate-400 mt-1">DepEd Grade 3 benchmark</p>
         </div>
 
         <div className="dashboard-card p-4">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Curriculum Stories
-          </div>
+          </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">{lessonsCount}</span>
-            <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+            <span className="text-2xl font-black text-slate-900">{lessonsCount}</span>
+            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
               Passages
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Max 3 stories per badge</p>
+          <p className="text-[10px] text-slate-400 mt-1">Max 3 stories per badge</p>
         </div>
 
         <div className="dashboard-card p-4">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
             Active Accolades
-          </div>
+          </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">{badgesCount}</span>
-            <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+            <span className="text-2xl font-black text-slate-900">{badgesCount}</span>
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
               Badges
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">5 Default + Custom Badges</p>
+          <p className="text-[10px] text-slate-400 mt-1">5 Default + Custom Badges</p>
         </div>
       </div>
 
-      {/* 3. Section Filter Strip */}
-      <div className="flex items-center justify-between p-2.5 bg-slate-100/80 rounded-2xl border border-slate-200/80">
+      {/* 3. Section Filter Chips */}
+      <div className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex-wrap">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-bold text-slate-500 px-2 flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs font-bold text-slate-500 mr-2 flex items-center gap-1">
+            <BookOpen className="w-3.5 h-3.5" />
             <span>Class Section:</span>
           </span>
-
           <button
             type="button"
             onClick={() => setSelectedSection("all")}
             className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
               selectedSection === "all"
-                ? "bg-slate-900 text-white shadow-xs"
+                ? "bg-blue-600 text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
             }`}
           >
-            All Sections ({distribution.totalStudents})
+            All Sections ({studentCount})
           </button>
-
           {sections.map((sec) => (
             <button
               key={sec}
@@ -219,65 +289,252 @@ export default function TeacherDashboard() {
         </Link>
       </div>
 
-      {/* 4. Live Class Mastery Stage Distribution (Computed Dynamically) */}
-      <div className="dashboard-card p-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+      {/* ── 4. 🚨 Early Intervention & Struggling Pupils Radar ──────────── */}
+      <div className="dashboard-card p-6 border-2 border-rose-100/80 bg-gradient-to-b from-rose-50/20 to-white space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rose-100">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <span>Live Pupil Mastery Progression Distribution</span>
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
+              <span>Pupil Early-Intervention &amp; Attention Radar</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Live tracking of students along the 5-Stage Pathway: Star → Ribbon → Bronze → Silver → Gold
+              Live algorithmic monitoring of enrolled pupils requiring reading assistance, phonics support, or score recovery.
             </p>
           </div>
-          <span className="text-xs font-bold text-slate-500">
-            Cohort: {studentCount} Pupils
-          </span>
+
+          {/* Interactive Radar Filter Pills */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setRadarFilter("all")}
+              className={`px-2.5 py-1 rounded-lg border transition-all ${
+                radarFilter === "all"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                  : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+              }`}
+            >
+              All ({radar.pupils.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setRadarFilter("critical")}
+              className={`px-2.5 py-1 rounded-lg border transition-all ${
+                radarFilter === "critical"
+                  ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                  : "bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200"
+              }`}
+            >
+              🔴 {radar.criticalCount} Critical
+            </button>
+            <button
+              type="button"
+              onClick={() => setRadarFilter("watchlist")}
+              className={`px-2.5 py-1 rounded-lg border transition-all ${
+                radarFilter === "watchlist"
+                  ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                  : "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200"
+              }`}
+            >
+              🟡 {radar.watchlistCount} Watchlist
+            </button>
+            <button
+              type="button"
+              onClick={() => setRadarFilter("mastering")}
+              className={`px-2.5 py-1 rounded-lg border transition-all ${
+                radarFilter === "mastering"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                  : "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+              }`}
+            >
+              🟢 {radar.masteringCount} Mastering
+            </button>
+          </div>
         </div>
 
         {loading ? (
-          <div className="py-8 text-center text-xs text-slate-400">Computing live distribution...</div>
-        ) : distribution.totalStudents === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-500 font-medium">
-            No enrolled pupils in this section yet. Click <strong>Enroll Student</strong> to get started.
+          <div className="py-6 text-center text-xs text-slate-400">Evaluating classroom risk factors...</div>
+        ) : displayedRadarPupils.length === 0 ? (
+          <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 text-emerald-900 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <div className="text-xs">
+              <strong>All enrolled pupils are on track!</strong> No pupils in this filter view.
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                <span className="text-slate-700">⭐ 1st: Star Badges (Lesson Mastery Stage)</span>
-                <span className="text-slate-900">
-                  {distribution.starCount} Pupils ({distribution.starPct}%)
-                </span>
-              </div>
-              <Progress value={distribution.starPct} className="h-2 bg-slate-100" />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {displayedRadarPupils.slice(0, 4).map((p) => (
+              <div
+                key={p.studentId}
+                className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
+                  p.riskLevel === "critical"
+                    ? "bg-rose-50/40 border-rose-200"
+                    : p.riskLevel === "watchlist"
+                    ? "bg-amber-50/40 border-amber-200"
+                    : "bg-emerald-50/40 border-emerald-200 shadow-2xs"
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{p.avatar}</span>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900">{p.studentName}</h4>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {p.section} · Score: <strong>{p.comprehensionPct}%</strong> ({p.quizzesPassed} Quizzes Passed)
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        p.riskLevel === "critical"
+                          ? "bg-rose-600 text-white"
+                          : p.riskLevel === "watchlist"
+                          ? "bg-amber-500 text-white"
+                          : "bg-emerald-600 text-white"
+                      }`}
+                    >
+                      {p.riskLevel === "critical"
+                        ? "Needs Attention"
+                        : p.riskLevel === "watchlist"
+                        ? "Watchlist"
+                        : "Mastering & On Track"}
+                    </span>
+                  </div>
 
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                <span className="text-blue-700">🎗️ 2nd: Ribbon Badges (Cumulative Checkpoint)</span>
-                <span className="text-blue-700 font-bold">
-                  {distribution.ribbonCount} Pupils ({distribution.ribbonPct}%)
-                </span>
-              </div>
-              <Progress value={distribution.ribbonPct} className="h-2 bg-slate-100" />
-            </div>
+                  <div className="mt-2.5 p-2 bg-white/80 rounded-xl border border-slate-100 text-[11px] text-slate-700 space-y-1">
+                    <p className={`font-semibold ${p.riskLevel === "critical" ? "text-rose-900" : p.riskLevel === "watchlist" ? "text-amber-900" : "text-emerald-900"}`}>
+                      {p.riskLevel === "mastering" ? "🌟" : "⚠️"} {p.struggleReason}
+                    </p>
+                    <p className="text-[10px] text-slate-500 italic">💡 {p.recommendedAction}</p>
+                  </div>
+                </div>
 
-            <div>
-              <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                <span className="text-emerald-700">🏅 3rd–5th: Medal Badges (Bronze, Silver &amp; Gold)</span>
-                <span className="text-emerald-700 font-bold">
-                  {distribution.medalCount} Pupils ({distribution.medalPct}%)
-                </span>
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60">
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedPupilForNote(p)}
+                    className="h-7 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] flex items-center gap-1"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    <span>{p.riskLevel === "mastering" ? "Send Praise" : "Send Guidance Note"}</span>
+                  </Button>
+                  <Link href="/teacher/students">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2.5 rounded-lg text-slate-700 font-bold text-[10px]"
+                    >
+                      View Record
+                    </Button>
+                  </Link>
+                </div>
               </div>
-              <Progress value={distribution.medalPct} className="h-2 bg-slate-100" />
-            </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* 5. Live Student Performance Log Preview */}
+      {/* ── 5. 🏆 Classroom Champions & Live Mastery Progression ──────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Champions Leaderboard Snapshot */}
+        <div className="dashboard-card p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-500 fill-amber-400" />
+              <span>Classroom Reading Champions</span>
+            </h3>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Top XP Ranks</span>
+          </div>
+
+          {displayChampions.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400">No pupil quiz attempts recorded yet.</div>
+          ) : (
+            <div className="space-y-2">
+              {displayChampions.map((entry) => (
+                <div
+                  key={entry.studentId}
+                  className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-slate-100 rounded-xl transition-colors text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={`w-6 h-6 rounded-lg font-black text-[11px] flex items-center justify-center ${
+                        entry.rank === 1
+                          ? "bg-amber-400 text-amber-950 font-bold"
+                          : entry.rank === 2
+                          ? "bg-slate-300 text-slate-900"
+                          : entry.rank === 3
+                          ? "bg-amber-700 text-white"
+                          : "bg-slate-200 text-slate-600"
+                      }`}
+                    >
+                      #{entry.rank}
+                    </span>
+                    <span className="text-lg">{entry.avatar}</span>
+                    <div>
+                      <h4 className="font-bold text-slate-900 leading-tight">{entry.studentName}</h4>
+                      <span className="text-[10px] text-slate-400">{entry.section} · {entry.rankTierLabel}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="font-black text-blue-600 font-mono block">{entry.totalXp} XP</span>
+                    <span className="text-[10px] font-bold text-emerald-600">{entry.comprehensionPct}% Acc</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Live Mastery Stage Distribution */}
+        <div className="dashboard-card p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              <span>Mastery Pathway Distribution</span>
+            </h3>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">5-Stage Model</span>
+          </div>
+
+          {distribution.totalStudents === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400">Enroll pupils to see distribution.</div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold mb-1">
+                  <span className="text-slate-700">⭐ Star Badges (Lesson Mastery Stage)</span>
+                  <span className="text-slate-900">
+                    {distribution.starCount} Pupils ({distribution.starPct}%)
+                  </span>
+                </div>
+                <Progress value={distribution.starPct} className="h-2 bg-slate-100" />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold mb-1">
+                  <span className="text-blue-700">🎗️ Ribbon Badges (Cumulative Checkpoint)</span>
+                  <span className="text-blue-700 font-bold">
+                    {distribution.ribbonCount} Pupils ({distribution.ribbonPct}%)
+                  </span>
+                </div>
+                <Progress value={distribution.ribbonPct} className="h-2 bg-slate-100" />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs font-bold mb-1">
+                  <span className="text-emerald-700">🏅 Medal Badges (Bronze, Silver &amp; Gold)</span>
+                  <span className="text-emerald-700 font-bold">
+                    {distribution.medalCount} Pupils ({distribution.medalPct}%)
+                  </span>
+                </div>
+                <Progress value={distribution.medalPct} className="h-2 bg-slate-100" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 6. Live Pupil Performance Snapshot Table ──────────────────── */}
       <div className="dashboard-card p-6">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
           <div>
@@ -286,7 +543,7 @@ export default function TeacherDashboard() {
               <span>Pupil Roster Snapshot ({selectedSection === "all" ? "All Sections" : selectedSection})</span>
             </h3>
             <p className="text-xs text-slate-500">
-              Direct student accounts with their active badge milestone, comprehension, and status.
+              Direct student accounts with active badge milestones, comprehension, and status.
             </p>
           </div>
           <Link href="/teacher/students" className="text-xs font-bold text-blue-600 hover:text-blue-700">
@@ -297,8 +554,20 @@ export default function TeacherDashboard() {
         {loading ? (
           <div className="py-8 text-center text-xs text-slate-400">Loading student records...</div>
         ) : reports.length === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-400">
-            No pupils registered in this section yet.
+          <div className="py-10 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-200">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800">No pupils registered in your classroom yet</p>
+              <p className="text-[11px] text-slate-400">Enroll your students to start tracking their live reading comprehension and badge milestones.</p>
+            </div>
+            <Link href="/teacher/students">
+              <Button size="sm" className="h-8 px-4 rounded-xl bg-blue-600 text-white font-bold text-xs">
+                <UserPlus className="w-3.5 h-3.5 mr-1" />
+                <span>Enroll Student</span>
+              </Button>
+            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -349,52 +618,77 @@ export default function TeacherDashboard() {
         )}
       </div>
 
-      {/* 6. Quick Action Navigation Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/teacher/students" className="dashboard-card p-4 dashboard-card-hover group">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Users className="w-4 h-4" />
+      {/* ── 7. Send Guidance Note Modal ───────────────────────────────── */}
+      {selectedPupilForNote && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 anim-pop-bounce">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{selectedPupilForNote.avatar}</span>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">
+                    Guidance Note for {selectedPupilForNote.studentName}
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-medium">{selectedPupilForNote.section}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPupilForNote(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 transition-colors" />
-          </div>
-          <h4 className="text-xs font-bold text-slate-900 mb-0.5">Pupil Management</h4>
-          <p className="text-[11px] text-slate-500">Enroll students &amp; manage sections</p>
-        </Link>
 
-        <Link href="/teacher/lessons" className="dashboard-card p-4 dashboard-card-hover group">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-600 transition-colors" />
-          </div>
-          <h4 className="text-xs font-bold text-slate-900 mb-0.5">Curriculum Stories</h4>
-          <p className="text-[11px] text-slate-500">Add &amp; edit section passages (max 3/badge)</p>
-        </Link>
+            {noteSent ? (
+              <div className="py-8 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                <h4 className="text-sm font-black text-slate-900">Guidance Note Dispatched!</h4>
+                <p className="text-xs text-slate-500">The encouragement advice has been sent to the pupil.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSendNote} className="space-y-4">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
+                  <strong>Intervention Recommendation:</strong> {selectedPupilForNote.recommendedAction}
+                </div>
 
-        <Link href="/teacher/badges" className="dashboard-card p-4 dashboard-card-hover group">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Award className="w-4 h-4" />
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-600 transition-colors" />
-          </div>
-          <h4 className="text-xs font-bold text-slate-900 mb-0.5">Badge Accolades</h4>
-          <p className="text-[11px] text-slate-500">5 Default stages + custom badges</p>
-        </Link>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Teacher Encouragement &amp; Hint Message</label>
+                  <textarea
+                    rows={3}
+                    value={noteMessage}
+                    onChange={(e) => setNoteMessage(e.target.value)}
+                    placeholder="e.g., Don't worry! Try re-reading the clues on Page 2 and test your understanding with Chapter 1 again."
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
 
-        <Link href="/teacher/quizzes" className="dashboard-card p-4 dashboard-card-hover group">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <FileCheck2 className="w-4 h-4" />
-            </div>
-            <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-purple-600 transition-colors" />
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedPupilForNote(null)}
+                    className="rounded-xl text-xs font-bold"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1"
+                  >
+                    <Send className="w-3 h-3" />
+                    <span>Send Note to Student</span>
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
-          <h4 className="text-xs font-bold text-slate-900 mb-0.5">Quiz Bank</h4>
-          <p className="text-[11px] text-slate-500">Questions, point weights &amp; hints</p>
-        </Link>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

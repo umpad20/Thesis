@@ -32,7 +32,7 @@ import {
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { soundEffects } from "@/utils/sound-effects";
-import type { Badge, BadgeType, MedalType } from "@/lib/types";
+import type { Badge, BadgeType, MedalType, QuestionChoice } from "@/lib/types";
 
 function QuizContent() {
   const searchParams = useSearchParams();
@@ -82,7 +82,7 @@ function QuizContent() {
 
   const questions = quizData?.questions || [];
   const currentQuestion = questions[currentIndex];
-  const choices = currentQuestion?.choices || [];
+  const choices: QuestionChoice[] = (currentQuestion?.choices || []) as QuestionChoice[];
   const totalQuestions = questions.length;
   const maxScore = Math.max(totalQuestions * (currentQuestion?.points || 10), 10);
 
@@ -360,7 +360,10 @@ function QuizContent() {
   // B. REGULAR STORY QUIZ OR RETENTION SCREEN
   // ══════════════════════════════════════════════════════════════════════════
   if (quizFinished) {
-    const nextLessonId = lessonId && lessonId < 15 ? lessonId + 1 : null;
+    const isLastLessonOfStage = lessonId ? lessonId % 3 === 0 : false;
+    const currentStageBadgeId = quizData?.badge_id || (lessonId ? Math.ceil(lessonId / 3) : badgeId);
+    const currentStageBadge = badges.find((b) => b.badge_id === currentStageBadgeId) || currentBadge;
+    const nextLessonId = lessonId && !isLastLessonOfStage ? lessonId + 1 : null;
 
     return (
       <div className="max-w-2xl mx-auto space-y-6 py-6 anim-pop-bounce">
@@ -382,17 +385,31 @@ function QuizContent() {
           <div>
             <span
               className={`text-xs font-black uppercase tracking-widest block mb-1.5 ${
-                isPassed ? "text-emerald-600" : "text-amber-600"
+                isPassed
+                  ? isLastLessonOfStage
+                    ? "text-purple-600 animate-pulse"
+                    : "text-emerald-600"
+                  : "text-amber-600"
               }`}
             >
-              {isPassed ? "✨ STORY COMPREHENSION PASSED! ✨" : "KEEP PRACTICING (RETAINED)"}
+              {isPassed
+                ? isLastLessonOfStage
+                  ? "🌟 ALL 3 STORIES COMPLETED — FINAL QUIZ UNLOCKED! 🌟"
+                  : "✨ STORY COMPREHENSION PASSED! ✨"
+                : "KEEP PRACTICING (RETAINED)"}
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {isPassed ? "Story Progress & XP Saved!" : "Target Score Not Reached"}
+              {isPassed
+                ? isLastLessonOfStage
+                  ? "Ready for Stage Final Assessment!"
+                  : "Story Progress & XP Saved!"
+                : "Target Score Not Reached"}
             </h2>
             <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
               {isPassed
-                ? "Great job! You passed the reading comprehension assessment and unlocked the next story in this chapter!"
+                ? isLastLessonOfStage
+                  ? `Incredible achievement! You have mastered all 3 stories in Stage ${currentStageBadgeId} (${currentStageBadge.badge_name}). You must now pass the Stage Final Mastery Assessment to earn your seal and unlock the next stage!`
+                  : "Great job! You passed the reading comprehension assessment and unlocked the next story in this chapter!"
                 : `You scored ${percentage}%. You need ≥${passingScore}% to pass and advance. Review the story passage and retry!`}
             </p>
           </div>
@@ -427,27 +444,52 @@ function QuizContent() {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-slate-100">
             {isPassed ? (
-              <>
-                <Link href="/dashboard/badges" className="w-full sm:w-auto">
-                  <Button className="w-full sm:w-auto h-11 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2">
-                    <Map className="w-4 h-4" />
-                    <span>View Living Storybook</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-
-                {nextLessonId && (
-                  <Link href={`/dashboard/lessons?lessonId=${nextLessonId}`} className="w-full sm:w-auto">
-                    <Button
-                      variant="outline"
-                      className="w-full sm:w-auto h-11 px-5 rounded-xl border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold text-xs shadow-2xs"
-                    >
-                      <BookOpen className="w-4 h-4 mr-2 text-emerald-600" />
-                      <span>Start Next Story</span>
+              isLastLessonOfStage ? (
+                <>
+                  <Link
+                    href={`/dashboard/quiz?badgeId=${currentStageBadgeId}&type=final`}
+                    className="w-full sm:w-auto"
+                  >
+                    <Button className="w-full sm:w-auto h-12 px-7 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 animate-bounce">
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Take Stage Final Mastery Quiz ⭐</span>
+                      <ArrowRight className="w-4 h-4" />
                     </Button>
                   </Link>
-                )}
-              </>
+
+                  <Link href="/dashboard/badges" className="w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto h-12 px-5 rounded-2xl border-slate-200 text-slate-700 font-bold text-xs bg-white hover:bg-slate-50"
+                    >
+                      <Map className="w-4 h-4 mr-2 text-blue-600" />
+                      <span>View Storybook Map</span>
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/dashboard/badges" className="w-full sm:w-auto">
+                    <Button className="w-full sm:w-auto h-11 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-2">
+                      <Map className="w-4 h-4" />
+                      <span>View Living Storybook</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+
+                  {nextLessonId && (
+                    <Link href={`/dashboard/lessons?lessonId=${nextLessonId}`} className="w-full sm:w-auto">
+                      <Button
+                        variant="outline"
+                        className="w-full sm:w-auto h-11 px-5 rounded-xl border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-bold text-xs shadow-2xs"
+                      >
+                        <BookOpen className="w-4 h-4 mr-2 text-emerald-600" />
+                        <span>Start Next Story</span>
+                      </Button>
+                    </Link>
+                  )}
+                </>
+              )
             ) : (
               <>
                 <Button
