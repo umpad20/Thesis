@@ -15,6 +15,7 @@ import {
   LogOut,
   Layers,
   PlusCircle,
+  Settings,
 } from "lucide-react";
 import { signOutUser, getCurrentUser } from "@/utils/auth-helpers";
 import { fetchClassRosterReports, fetchAllLessons } from "@/utils/supabase-queries";
@@ -52,18 +53,17 @@ export function TeacherSidebar() {
       badge: pupilsCount !== null ? `${pupilsCount} Pupils` : undefined,
     },
     {
-      name: "Curriculum Manager",
-      href: "/teacher/lessons",
-      icon: BookOpen,
-      badge: storiesCount !== null ? `${storiesCount} Stories` : undefined,
+      name: "Curriculum & Stage Badges",
+      href: "/teacher/badges",
+      icon: Map,
+      badge: "5 Stages",
     },
-    { name: "Quiz & Questions", href: "/teacher/quizzes", icon: FileCheck2 },
-    { name: "Badge Mastery Rules", href: "/teacher/badges", icon: Map },
     { name: "Reports", href: "/teacher/reports", icon: BarChart3, badge: "CSV" },
+    { name: "Settings", href: "/teacher/settings", icon: Settings },
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col flex-shrink-0 min-h-screen">
+    <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-hidden z-40">
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100">
         <Link href="/teacher" className="flex items-center gap-3">
@@ -136,23 +136,6 @@ export function TeacherSidebar() {
               );
             })}
           </nav>
-        </div>
-
-        {/* Content Authoring Info */}
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
-          <div className="flex items-center gap-2 mb-1.5 font-bold text-slate-900">
-            <PlusCircle className="w-4 h-4 text-blue-600" />
-            <span>Content Authoring</span>
-          </div>
-          <p className="text-slate-500 text-[11px] leading-relaxed mb-3">
-            Add new reading passages or customize quiz question banks for your assigned sections.
-          </p>
-          <Link
-            href="/teacher/lessons"
-            className="block text-center py-2 px-3 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
-          >
-            + Create New Story Passage
-          </Link>
         </div>
       </div>
 

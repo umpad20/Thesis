@@ -83,6 +83,19 @@ export interface EnrolledStudent {
   avatar?: string;
 }
 
+export interface SentenceVisualCue {
+  sentence_id: string;
+  lesson_id: number;
+  page_number: number;
+  sentence_text: string;
+  speaker: string;
+  speaker_avatar: string;
+  scene_title: string;
+  scene_image_url: string;
+  action_tag: string;
+  cue_color: string;
+}
+
 export interface LessonPage {
   page_id: number;
   lesson_id: number;
@@ -91,6 +104,7 @@ export interface LessonPage {
   content: string;
   image_url?: string | null;
   audio_url?: string | null;
+  visual_cues?: SentenceVisualCue[];
 }
 
 export interface VocabularyWord {

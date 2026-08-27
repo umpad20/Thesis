@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TeacherDashboardSkeleton } from "@/components/page-skeletons";
 import { fetchClassRosterReports, type TeacherReportRow } from "@/utils/supabase-queries";
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
 
@@ -35,6 +36,10 @@ export default function TeacherReportsPage() {
     }
     loadData();
   }, [selectedSection]);
+
+  if (loading) {
+    return <TeacherDashboardSkeleton />;
+  }
 
   const avgComp =
     reports.length > 0

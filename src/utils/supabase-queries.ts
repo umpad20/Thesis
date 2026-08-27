@@ -431,6 +431,125 @@ export async function fetchStageFinalQuiz(badgeId: number): Promise<QuizWithQues
   }
 }
 
+export interface StageCurriculumDetail {
+  lessons: Array<{
+    lesson_id: number;
+    lesson_title: string;
+    badge_id: number;
+    difficulty_level: string;
+    lesson_description: string;
+    pages: LessonPage[];
+    quiz?: {
+      quiz_id: number;
+      quiz_title: string;
+      questions?: Array<{
+        question_id: number;
+        question_text: string;
+        points: number;
+        hint: string;
+        explanation: string;
+        choices: Array<{ choice_id: number; choice_text: string; is_correct: boolean }>;
+      }>;
+    };
+  }>;
+  finalQuiz: QuizWithQuestions | null;
+}
+
+export async function fetchStageCurriculumDetails(badgeId: number): Promise<StageCurriculumDetail> {
+  try {
+    const supabase = createClient();
+
+    // 1. Fetch lessons
+    const { data: lessonsData } = await supabase
+      .from("lessons")
+      .select("*")
+      .eq("badge_id", badgeId)
+      .order("lesson_order", { ascending: true })
+      .order("lesson_id", { ascending: true });
+
+    const lessons = lessonsData || [];
+    const lessonIds = lessons.map((l) => l.lesson_id);
+
+    // 2. Fetch pages
+    let pagesData: LessonPage[] = [];
+    if (lessonIds.length > 0) {
+      const { data: pages } = await supabase
+        .from("lesson_pages")
+        .select("*")
+        .in("lesson_id", lessonIds)
+        .order("page_number", { ascending: true });
+      pagesData = (pages as LessonPage[]) || [];
+    }
+
+    // 3. Fetch lesson quizzes
+    let quizzesData: any[] = [];
+    if (lessonIds.length > 0) {
+      const { data: quizzes } = await supabase
+        .from("quizzes")
+        .select("*")
+        .in("lesson_id", lessonIds);
+      quizzesData = quizzes || [];
+    }
+
+    const quizIds = quizzesData.map((q) => q.quiz_id);
+    let questionsData: any[] = [];
+    let choicesData: any[] = [];
+    if (quizIds.length > 0) {
+      const { data: questions } = await supabase
+        .from("quiz_questions")
+        .select("*")
+        .in("quiz_id", quizIds)
+        .order("question_id", { ascending: true });
+      questionsData = questions || [];
+
+      const questionIds = questionsData.map((q) => q.question_id);
+      if (questionIds.length > 0) {
+        const { data: choices } = await supabase
+          .from("question_choices")
+          .select("*")
+          .in("question_id", questionIds);
+        choicesData = choices || [];
+      }
+    }
+
+    const enrichedLessons = lessons.map((l) => {
+      const lPages = pagesData.filter((p) => p.lesson_id === l.lesson_id);
+      const lQuiz = quizzesData.find((q) => q.lesson_id === l.lesson_id);
+      let lQuestionsWithChoices: any[] = [];
+      if (lQuiz) {
+        const lQuestions = questionsData.filter((q) => q.quiz_id === lQuiz.quiz_id);
+        lQuestionsWithChoices = lQuestions.map((q) => ({
+          ...q,
+          choices: choicesData.filter((c) => c.question_id === q.question_id),
+        }));
+      }
+
+      return {
+        lesson_id: l.lesson_id,
+        lesson_title: l.lesson_title,
+        badge_id: l.badge_id,
+        difficulty_level: l.difficulty_level,
+        lesson_description: l.lesson_description,
+        pages: lPages,
+        quiz: lQuiz ? { ...lQuiz, questions: lQuestionsWithChoices } : undefined,
+      };
+    });
+
+    const finalQuiz = await fetchStageFinalQuiz(badgeId);
+
+    return {
+      lessons: enrichedLessons,
+      finalQuiz,
+    };
+  } catch (err) {
+    console.error("fetchStageCurriculumDetails error:", err);
+    return {
+      lessons: [],
+      finalQuiz: null,
+    };
+  }
+}
+
 /**
  * Submit real student quiz attempt directly into Supabase
  */

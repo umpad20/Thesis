@@ -376,17 +376,8 @@ export function TeacherHeader() {
         )}
       </div>
 
-      {/* ── Right: Quick Actions, Notification Center & Faculty Profile ── */}
+      {/* ── Right: Notification Center & Faculty Profile ── */}
       <div className="flex items-center gap-2.5 sm:gap-3">
-        {/* Quick Action Button: New Story Passage */}
-        <Button
-          size="sm"
-          onClick={() => router.push("/teacher/lessons")}
-          className="hidden sm:flex h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 items-center gap-1.5"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Story Passage</span>
-        </Button>
 
         {/* Reports Button */}
         <Button

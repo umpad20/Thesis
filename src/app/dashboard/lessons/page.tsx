@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Volume2,
   VolumeX,
   ArrowRight,
   ArrowLeft,
-  CheckCircle2,
   ChevronRight,
   BookOpen,
   Map,
   Sparkles,
   Award,
   Lock,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BadgeGraphic } from "@/components/badge-graphic";
@@ -27,9 +28,25 @@ import {
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { soundEffects } from "@/utils/sound-effects";
-import type { Lesson, LessonPage, VocabularyWord, Badge, StudentBadgeProgress } from "@/lib/types";
+import { speakSentenceWithVoice } from "@/utils/voice-settings";
+import { getSentenceVisualCues } from "@/utils/lesson-visual-data";
+import { LessonReaderSkeleton } from "@/components/page-skeletons";
+import type { Lesson, LessonPage, VocabularyWord, Badge, StudentBadgeProgress, SentenceVisualCue } from "@/lib/types";
+
+interface StorySlide {
+  slideId: string;
+  slideIndex: number;
+  pageNumber: number;
+  sentenceText: string;
+  speaker: string;
+  speakerAvatar: string;
+  actionTag: string;
+  sceneTitle: string;
+  sceneImageUrl: string;
+}
 
 function LessonReaderContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedLessonId = searchParams.get("lessonId")
     ? Number(searchParams.get("lessonId"))
@@ -43,10 +60,10 @@ function LessonReaderContent() {
   const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
-  const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
-  const [isPlayingFullAudio, setIsPlayingFullAudio] = useState<boolean>(false);
+  const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
+  const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [pageFlipDirection, setPageFlipDirection] = useState<"forward" | "backward" | null>(null);
+  const [showExitModal, setShowExitModal] = useState<boolean>(false);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -70,6 +87,7 @@ function LessonReaderContent() {
       const details = await fetchLessonDetails(targetId);
       setPages(details.pages);
       setVocabulary(details.vocabulary);
+      setCurrentSlideIndex(0);
       setLoading(false);
     }
     loadLessons();
@@ -80,8 +98,8 @@ function LessonReaderContent() {
     publishedLessons[0] || {
       lesson_id: 1,
       badge_id: 1,
-      lesson_title: "Loading Story...",
-      lesson_description: "Reading module loading from database.",
+      lesson_title: "The New Classmate",
+      lesson_description: "A heartwarming story about welcoming a new friend.",
       lesson_order: 1,
       difficulty_level: "easy" as const,
       passing_score: 70,
@@ -103,149 +121,124 @@ function LessonReaderContent() {
     },
   ];
 
-  const currentPage = displayPages[currentPageIndex] || displayPages[0];
-  const totalPages = displayPages.length;
-  const isLastPage = currentPageIndex === totalPages - 1;
+  // Flatten all pages into clean 1-sentence-per-page slides
+  const allSlides: StorySlide[] = useMemo(() => {
+    const slides: StorySlide[] = [];
+    let globalIndex = 0;
 
-  // Split content into clean paragraphs and sentences
-  const paragraphs = useMemo(() => {
-    if (!currentPage.content) return [];
-    return currentPage.content.split(/\n\n+/).filter((p) => p.trim().length > 0);
-  }, [currentPage.content]);
+    for (const page of displayPages) {
+      const cues = getSentenceVisualCues(
+        selectedLessonId,
+        page.page_number,
+        page.content,
+        page.image_url || undefined
+      );
 
-  // Extract all sentences for linear text-to-speech tracking
-  const allSentences = useMemo(() => {
-    if (!currentPage.content) return [];
-    const lines: string[] = [];
-    const rawParagraphs = currentPage.content.split(/\n+/);
-    for (const p of rawParagraphs) {
-      const trimmed = p.trim();
-      if (!trimmed) continue;
-      const splitSentences = trimmed.match(/[^.!?]+[.!?]+["']?|[^.!?]+$/g);
-      if (splitSentences) {
-        for (const s of splitSentences) {
-          const sTrim = s.trim();
-          if (sTrim) lines.push(sTrim);
-        }
-      } else {
-        lines.push(trimmed);
+      for (const cue of cues) {
+        slides.push({
+          slideId: cue.sentence_id,
+          slideIndex: globalIndex,
+          pageNumber: page.page_number,
+          sentenceText: cue.sentence_text,
+          speaker: cue.speaker,
+          speakerAvatar: cue.speaker_avatar,
+          actionTag: cue.action_tag,
+          sceneTitle: cue.scene_title,
+          sceneImageUrl: cue.scene_image_url || page.image_url || "/images/stories/lesson1_new_classmate.jpg",
+        });
+        globalIndex++;
       }
     }
-    return lines;
-  }, [currentPage.content]);
 
-  // Read single sentence aloud
-  const speakSentence = (sentenceText: string, index: number) => {
-    setActiveSentenceIndex(index);
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(sentenceText);
-      utterance.rate = 0.85;
-      utterance.pitch = 1.05;
-      utterance.onend = () => {
-        // preserve sentence focus
-      };
-      window.speechSynthesis.speak(utterance);
+    // Graceful fallback if no cues generated
+    if (slides.length === 0) {
+      slides.push({
+        slideId: "default-1",
+        slideIndex: 0,
+        pageNumber: 1,
+        sentenceText: displayPages[0]?.content || "Enjoy reading this story.",
+        speaker: "Narrator",
+        speakerAvatar: "📖",
+        actionTag: "Story Reading",
+        sceneTitle: "Reading Time",
+        sceneImageUrl: displayPages[0]?.image_url || "/images/stories/lesson1_new_classmate.jpg",
+      });
     }
+
+    return slides;
+  }, [displayPages, selectedLessonId]);
+
+  const totalSlides = allSlides.length;
+  const currentSlide = allSlides[currentSlideIndex] || allSlides[0];
+  const isLastSlide = currentSlideIndex === totalSlides - 1;
+  const progressPercent = Math.round(((currentSlideIndex + 1) / totalSlides) * 100);
+
+  // Speak single active sentence aloud
+  const speakCurrentSentence = () => {
+    setIsPlayingAudio(true);
+    speakSentenceWithVoice(
+      currentSlide.sentenceText,
+      () => setIsPlayingAudio(false),
+      () => setIsPlayingAudio(false)
+    );
   };
 
-  // Read entire page aloud sentence by sentence
-  const toggleFullAudio = () => {
-    if (isPlayingFullAudio) {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      setIsPlayingFullAudio(false);
-      setActiveSentenceIndex(null);
-    } else {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        setIsPlayingFullAudio(true);
-
-        let sIdx = 0;
-        const playNext = () => {
-          if (sIdx >= allSentences.length) {
-            setIsPlayingFullAudio(false);
-            setActiveSentenceIndex(null);
-            return;
-          }
-          setActiveSentenceIndex(sIdx);
-          const utterance = new SpeechSynthesisUtterance(allSentences[sIdx]);
-          utterance.rate = 0.85;
-          utterance.pitch = 1.05;
-          utterance.onend = () => {
-            sIdx++;
-            playNext();
-          };
-          window.speechSynthesis.speak(utterance);
-        };
-        playNext();
-      }
-    }
-  };
-
-  // Navigate Page with 3D Page Turn Animation and Sound
-  const handlePageChange = (newIndex: number, direction: "forward" | "backward") => {
-    if (newIndex < 0 || newIndex >= totalPages) return;
+  const handleSlideChange = (newIndex: number, direction: "forward" | "backward") => {
+    if (newIndex < 0 || newIndex >= totalSlides) return;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
-    setIsPlayingFullAudio(false);
-    setActiveSentenceIndex(null);
-
-    soundEffects.playPageTurn();
+    setIsPlayingAudio(false);
     setPageFlipDirection(direction);
+    soundEffects.play("pageFlip");
+
     setTimeout(() => {
-      setCurrentPageIndex(newIndex);
-    }, 280);
-    setTimeout(() => {
+      setCurrentSlideIndex(newIndex);
       setPageFlipDirection(null);
-    }, 600);
+    }, 180);
   };
+
+  // Check stage milestone locking
+  const isLessonLocked = useMemo(() => {
+    if (!activeLesson.badge_id || activeLesson.badge_id === 1) return false;
+    const prevBadgeId = activeLesson.badge_id - 1;
+    const prevProg = badgeProgress.find((p) => p.badge_id === prevBadgeId);
+    if (!prevProg) return true;
+    return prevProg.status !== "completed" && (prevProg.completion_percentage || 0) < 100;
+  }, [activeLesson.badge_id, badgeProgress]);
 
   if (loading) {
-    return (
-      <div className="py-24 text-center space-y-3">
-        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-slate-500 font-semibold">Opening Story Passage...</p>
-      </div>
-    );
+    return <LessonReaderSkeleton />;
   }
 
-  const currentBadgeId = activeLesson.badge_id || (activeLesson.lesson_id ? Math.ceil(activeLesson.lesson_id / 3) : 1);
-  const prevBadgeId = currentBadgeId > 1 ? currentBadgeId - 1 : null;
-  const isStageLocked =
-    prevBadgeId !== null &&
-    !badgeProgress.some((bp) => bp.badge_id === prevBadgeId && bp.status === "completed");
+  if (isLessonLocked) {
+    const reqBadgeId = (activeLesson.badge_id || 2) - 1;
+    const reqBadge = badges.find((b) => b.badge_id === reqBadgeId);
 
-  if (isStageLocked && activeLesson.lesson_id > 3) {
     return (
-      <div className="max-w-2xl mx-auto py-12 text-center dashboard-card p-8 space-y-5 anim-pop-bounce">
-        <div className="w-16 h-16 rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto shadow-md">
-          <Lock className="w-8 h-8" />
-        </div>
-        <div>
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full">
-            🔒 Stage Milestone Locked
-          </span>
-          <h2 className="text-xl font-black text-slate-900 mt-2">
-            Pass Stage {prevBadgeId} Final Assessment First
-          </h2>
-          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-            You must complete all 3 chapter stories and pass the Stage {prevBadgeId} Final Mastery Assessment to unlock Stage {currentBadgeId} ({assignedBadge?.badge_name || "Stage"}).
-          </p>
-        </div>
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <Link href={`/dashboard/quiz?badgeId=${prevBadgeId}&type=final`}>
-            <Button className="h-11 px-6 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black text-xs shadow-md">
-              <Sparkles className="w-4 h-4 mr-1.5" />
-              <span>Take Stage {prevBadgeId} Final Quiz ⭐</span>
-            </Button>
-          </Link>
+      <div className="max-w-2xl mx-auto py-12 px-4">
+        <div className="dashboard-card p-8 text-center space-y-5 border-2 border-amber-200 bg-gradient-to-b from-amber-50/40 to-white shadow-xl">
+          <div className="w-16 h-16 rounded-3xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center mx-auto text-amber-700 shadow-inner">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div>
+            <span className="text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200">
+              Stage Milestone Locked
+            </span>
+            <h2 className="text-xl font-black text-slate-900 mt-2">
+              Complete Stage {reqBadgeId} Mastery First!
+            </h2>
+            <p className="text-xs text-slate-600 max-w-md mx-auto mt-2 leading-relaxed">
+              To read <strong>{activeLesson.lesson_title}</strong>, you must first pass the Stage Final Assessment for{" "}
+              <strong>{reqBadge?.badge_name || `Stage ${reqBadgeId} Badge`}</strong>.
+            </p>
+          </div>
+
           <Link href="/dashboard/badges">
-            <Button variant="outline" className="h-11 px-5 rounded-xl text-xs font-bold">
-              <Map className="w-4 h-4 mr-1.5" />
-              <span>Storybook Map</span>
+            <Button className="h-10 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md">
+              <Map className="w-4 h-4 mr-2" />
+              <span>Go to Storybook Pathway</span>
             </Button>
           </Link>
         </div>
@@ -254,23 +247,33 @@ function LessonReaderContent() {
   }
 
   return (
-    <div className="space-y-5 max-w-5xl mx-auto">
-      {/* ── 1. Top Navigation Bar (Non-clickable trail + Back to Storybook button) ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 max-w-5xl mx-auto">
+      {/* ── 1. Top Navigation & Story Progress Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <span className="text-blue-600 font-bold flex items-center gap-1">
-              <Map className="w-3.5 h-3.5" />
-              <span>Living Storybook</span>
-            </span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-700 font-bold">{assignedBadge?.badge_name || "Stage"}</span>
-            <ChevronRight className="w-3 h-3" />
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
+            <button
+              type="button"
+              onClick={() => setShowExitModal(true)}
+              className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 transition-colors group cursor-pointer"
+            >
+              <Map className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
+              <span className="underline decoration-blue-200 underline-offset-2">Storybook Map</span>
+            </button>
+            <ChevronRight className="w-3 h-3 text-slate-300" />
+            <button
+              type="button"
+              onClick={() => setShowExitModal(true)}
+              className="text-slate-600 hover:text-slate-900 font-bold transition-colors cursor-pointer"
+            >
+              {assignedBadge?.badge_name || "Stage"}
+            </button>
+            <ChevronRight className="w-3 h-3 text-slate-300" />
             <span className="text-slate-500 font-medium">{activeLesson.lesson_title}</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
               {activeLesson.lesson_title}
             </h1>
             <span
@@ -285,47 +288,62 @@ function LessonReaderContent() {
               {activeLesson.difficulty_level.toUpperCase()}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">{activeLesson.lesson_description}</p>
         </div>
 
-        {/* Exit Button */}
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/badges">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs"
-            >
-              <Map className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-              <span>Back to Storybook</span>
-            </Button>
-          </Link>
+        {/* Progress Pill + Exit Map Button */}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-1.5 text-xs font-black text-slate-700">
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+              <span>
+                Sentence {currentSlideIndex + 1} of {totalSlides}
+              </span>
+              <span className="text-slate-400 font-medium">({progressPercent}%)</span>
+            </div>
+            {/* Progress Bar */}
+            <div className="w-32 sm:w-40 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowExitModal(true)}
+            className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs h-9 px-3 cursor-pointer"
+          >
+            <Map className="w-3.5 h-3.5 mr-1 text-amber-600" />
+            <span>Map</span>
+          </Button>
         </div>
       </div>
 
-      {/* ── 2. Authentic 2-Page Open Storybook / Notebook Spread ────────── */}
+      {/* ── 2. Authentic 2-Page Open Storybook Spread (Clean 1-Sentence Per Page) ── */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-2.5 sm:p-5 rounded-3xl shadow-2xl border-4 border-amber-300/40 relative overflow-hidden book-perspective">
-        {/* Subtle Outer Cover Texture & Edge Accents */}
+        {/* Book Corner Accents */}
         <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-amber-300/60 rounded-tl-sm pointer-events-none" />
         <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-amber-300/60 rounded-tr-sm pointer-events-none" />
         <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-amber-300/60 rounded-bl-sm pointer-events-none" />
         <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-300/60 rounded-br-sm pointer-events-none" />
 
         {/* 2-Page Paper Spread Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-[#fffefb] border border-amber-200/90 shadow-inner relative">
-          {/* Central Book Spine Crease Shadow (Desktop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-[#fffefb] border border-amber-200/90 shadow-inner relative min-h-[460px] sm:min-h-[520px]">
+          {/* Central Book Spine Crease Shadow */}
           <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-gradient-to-r from-amber-900/10 via-amber-950/20 to-amber-900/10 pointer-events-none z-20 hidden lg:block shadow-inner" />
 
           {/* ══════════════════════════════════════════════════════════════════
-              LEFT PAGE: Story Illustration & Chapter Art Plate
+              LEFT PAGE: Sentence Scene Illustration Plate
               ══════════════════════════════════════════════════════════════════ */}
           <div
             className={`p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all ${
               pageFlipDirection === "backward" ? "leaf-flip-backward" : ""
             }`}
           >
-            {/* Left Page Header: Stage Seal & Story Title */}
             <div>
+              {/* Left Page Top Header */}
               <div className="flex items-center justify-between pb-3 border-b border-amber-200/60 mb-4">
                 {assignedBadge ? (
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50/80 px-2.5 py-1 rounded-xl border border-amber-200/80">
@@ -342,31 +360,18 @@ function LessonReaderContent() {
                 )}
 
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Story Passage
+                  Page {currentSlide.pageNumber}
                 </span>
               </div>
 
-              {/* Framed Story Illustration Photo */}
-              {currentPage.image_url ? (
-                <div className="relative w-full h-56 sm:h-72 md:h-80 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-md group">
-                  <img
-                    src={currentPage.image_url}
-                    alt={currentPage.page_title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
-                  <div className="absolute bottom-3 left-3 text-white">
-                    <span className="text-xs font-bold drop-shadow-sm">
-                      {currentPage.page_title}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="w-full h-56 sm:h-72 rounded-2xl bg-amber-50/60 border-2 border-dashed border-amber-200 flex flex-col items-center justify-center text-slate-400 gap-2">
-                  <BookOpen className="w-10 h-10 text-amber-300" />
-                  <span className="text-xs font-medium">Reading Illustration</span>
-                </div>
-              )}
+              {/* Clean Framed Story Illustration Photo (No Overlaid Badges) */}
+              <div className="relative w-full h-56 sm:h-72 md:h-80 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/90 shadow-md group">
+                <img
+                  src={currentSlide.sceneImageUrl}
+                  alt={currentSlide.sceneTitle}
+                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
+                />
+              </div>
             </div>
 
             {/* Left Page Footer: Voice Audio Narration Controller */}
@@ -374,115 +379,94 @@ function LessonReaderContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={toggleFullAudio}
-                className={`h-9 px-3.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
-                  isPlayingFullAudio
+                onClick={speakCurrentSentence}
+                className={`h-9 px-4 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                  isPlayingAudio
                     ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 animate-pulse"
                     : "bg-white text-slate-700 border-amber-200/90 hover:bg-amber-50"
                 }`}
               >
-                {isPlayingFullAudio ? (
+                {isPlayingAudio ? (
                   <>
                     <VolumeX className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
-                    <span>Stop Reading</span>
+                    <span>Speaking...</span>
                   </>
                 ) : (
                   <>
                     <Volume2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-                    <span>Read Aloud (Voice)</span>
+                    <span>Read Aloud</span>
                   </>
                 )}
               </Button>
 
               <span className="text-[11px] font-bold text-slate-400">
-                Page {currentPageIndex + 1}
+                Scene {currentSlideIndex + 1}
               </span>
             </div>
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════
-              RIGHT PAGE: Story Prose & Progress Action
+              RIGHT PAGE: Single Clean Sentence Reading & Page Stepper
               ══════════════════════════════════════════════════════════════════ */}
           <div
             className={`p-6 sm:p-8 flex flex-col justify-between bg-[#fffefb] relative transition-all ${
               pageFlipDirection === "forward" ? "leaf-flip-forward" : ""
             }`}
           >
-            {/* Right Page Header: Title & Instructions */}
+            {/* Right Page Header */}
             <div>
-              <div className="pb-3 border-b border-amber-200/60 mb-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-                    {currentPage.page_title}
-                  </h2>
-                  <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                    Page {currentPageIndex + 1} of {totalPages}
-                  </span>
-                </div>
-                <span className="text-[10px] text-slate-400 font-medium block mt-0.5">
-                  Tap highlighted words for definitions · Tap paragraphs to listen
+              <div className="flex items-center justify-between pb-3 border-b border-amber-200/60 mb-6">
+                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Reading Story</span>
+                </span>
+
+                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
+                  Sentence {currentSlideIndex + 1} of {totalSlides}
                 </span>
               </div>
 
-              {/* Continuous Flowing Story Paragraphs */}
-              <div className="space-y-4 pt-1 pb-4">
-                {paragraphs.map((paraText, pIdx) => {
-                  const isDialogue = paraText.trim().startsWith('"');
-                  const isSpeakingThis = activeSentenceIndex === pIdx;
+              {/* Single Elegant Sentence Card */}
+              <div className="p-6 sm:p-8 rounded-3xl bg-amber-50/40 border-2 border-amber-200/70 shadow-xs space-y-4">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  📖 Tap underlined words for phonics & definitions:
+                </span>
 
-                  return (
-                    <div
-                      key={pIdx}
-                      onClick={() => speakSentence(paraText, pIdx)}
-                      className={`relative transition-all duration-300 rounded-xl cursor-pointer p-2 -mx-2 hover:bg-blue-50/40 ${
-                        isSpeakingThis
-                          ? "bg-blue-50/90 ring-2 ring-blue-400/30 shadow-xs"
-                          : ""
-                      } ${
-                        isDialogue
-                          ? "pl-3.5 border-l-3 border-l-blue-500 bg-blue-50/20 py-1.5 rounded-r-xl"
-                          : ""
-                      }`}
-                      title="Tap paragraph to read aloud"
-                    >
-                      <p className="text-sm sm:text-base leading-relaxed sm:leading-loose text-slate-800 font-normal tracking-normal text-justify sm:text-left">
-                        <VocabularyHighlightedText
-                          text={paraText}
-                          vocabularyList={vocabulary}
-                        />
-                      </p>
-                    </div>
-                  );
-                })}
+                <p className="text-lg sm:text-xl md:text-2xl font-serif text-slate-900 leading-relaxed sm:leading-loose font-medium">
+                  <VocabularyHighlightedText
+                    text={currentSlide.sentenceText}
+                    vocabularyList={vocabulary}
+                  />
+                </p>
               </div>
             </div>
 
-            {/* Right Page Footer: Page Turn / Quiz Handoff Action Buttons */}
-            <div className="mt-4 pt-4 border-t border-amber-200/60 flex items-center justify-between gap-3">
+            {/* Right Page Footer: Previous & Next Page Turn Actions */}
+            <div className="mt-6 pt-4 border-t border-amber-200/60 flex items-center justify-between gap-3">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handlePageChange(currentPageIndex - 1, "backward")}
-                disabled={currentPageIndex === 0}
-                className="h-10 px-4 rounded-xl text-xs font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40"
+                onClick={() => handleSlideChange(currentSlideIndex - 1, "backward")}
+                disabled={currentSlideIndex === 0}
+                className="h-11 px-4 rounded-xl text-xs font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40"
               >
                 <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-                <span>Prev Page</span>
+                <span>Prev Sentence</span>
               </Button>
 
-              {!isLastPage ? (
+              {!isLastSlide ? (
                 <Button
-                  onClick={() => handlePageChange(currentPageIndex + 1, "forward")}
-                  className="h-10 px-5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+                  onClick={() => handleSlideChange(currentSlideIndex + 1, "forward")}
+                  className="h-11 px-6 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all"
                 >
-                  <span>Turn Page</span>
+                  <span>Next Sentence</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                 </Button>
               ) : (
                 <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}`}>
-                  <Button className="h-10 px-5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Take Comprehension Quiz</span>
+                  <Button className="h-11 px-6 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Finish & Take Quiz</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                   </Button>
                 </Link>
@@ -491,20 +475,65 @@ function LessonReaderContent() {
           </div>
         </div>
       </div>
+
+      {/* ── 3. Friendly Exit Confirmation Warning Modal ── */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-amber-200 space-y-5 text-center relative anim-pop-bounce">
+            <button
+              onClick={() => setShowExitModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-16 h-16 rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+              <Map className="w-8 h-8" />
+            </div>
+
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
+                Leaving Story
+              </span>
+              <h3 className="text-xl font-black text-slate-900 mt-2">
+                Exit to Storybook Map?
+              </h3>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto mt-2 leading-relaxed">
+                You are currently reading <strong>Sentence {currentSlideIndex + 1} of {totalSlides}</strong> in <em>{activeLesson.lesson_title}</em>. Would you like to keep reading or exit to the map?
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                    window.speechSynthesis.cancel();
+                  }
+                  setShowExitModal(false);
+                  router.push("/dashboard/badges");
+                }}
+                className="w-full sm:w-auto h-11 px-5 rounded-xl border-slate-200 text-xs font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer"
+              >
+                <span>Yes, Exit to Map</span>
+              </Button>
+              <Button
+                onClick={() => setShowExitModal(false)}
+                className="w-full sm:w-auto h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 transition-all cursor-pointer"
+              >
+                <span>Keep Reading 📖</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function LessonPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="py-24 text-center space-y-3">
-          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-slate-500 font-semibold">Opening Story Module...</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<LessonReaderSkeleton />}>
       <LessonReaderContent />
     </Suspense>
   );

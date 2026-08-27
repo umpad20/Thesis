@@ -21,6 +21,7 @@ import {
   fetchBadgesFromSupabase,
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
+import { LeaderboardSkeleton } from "@/components/page-skeletons";
 import { createClient } from "@/utils/supabase/client";
 import type { LeaderboardEntry } from "@/lib/types";
 
@@ -68,25 +69,17 @@ export default function StudentLeaderboardPage() {
         if (myProfile?.section) {
           sectionName = myProfile.section;
           setMySection(sectionName);
-          setSelectedSection(sectionName);
         }
       }
 
-      // Default to My Class Cohort
-      const entries = teacherId
+      const initialEntries = teacherId
         ? await fetchClassroomLeaderboard(undefined, teacherId)
         : await fetchClassroomLeaderboard(sectionName);
 
-      setLeaderboard(entries);
-
-      // Fetch all available sections for section tab
-      const allWorldEntries = await fetchClassroomLeaderboard("all");
-      const sections = Array.from(new Set(allWorldEntries.map((e) => e.section).filter(Boolean)));
-      if (sections.length > 0) {
-        setAvailableSections(sections);
-      }
+      setLeaderboard(initialEntries);
       setLoading(false);
     }
+
     loadData();
   }, []);
 
@@ -114,6 +107,10 @@ export default function StudentLeaderboardPage() {
   const restLeaderboard = leaderboard.slice(3);
 
   const myRankEntry = leaderboard.find((e) => e.studentId === currentUserId);
+
+  if (loading) {
+    return <LeaderboardSkeleton />;
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">

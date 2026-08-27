@@ -8,13 +8,13 @@ import {
   Map,
   SpellCheck,
   Trophy,
-  Sparkles,
   GraduationCap,
   ChevronRight,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
   Award,
+  Settings,
 } from "lucide-react";
 import { signOutUser } from "@/utils/auth-helpers";
 
@@ -31,6 +31,7 @@ const studentNavItems: NavItem[] = [
   { name: "Vocabulary Vault", href: "/dashboard/vocabulary", icon: SpellCheck },
   { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, badge: "Top XP" },
   { name: "My Achievements", href: "/dashboard/achievements", icon: Award },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 interface DashboardSidebarProps {
@@ -61,7 +62,7 @@ export function DashboardSidebar({ isCollapsed: controlledCollapsed, onToggle }:
 
   return (
     <aside
-      className={`bg-white border-r border-slate-200/80 flex flex-col flex-shrink-0 min-h-screen transition-all duration-300 z-40 ${
+      className={`bg-white border-r border-slate-200/80 flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-hidden transition-all duration-300 z-40 ${
         isCollapsed ? "w-18" : "w-64"
       }`}
     >
@@ -152,19 +153,6 @@ export function DashboardSidebar({ isCollapsed: controlledCollapsed, onToggle }:
             })}
           </nav>
         </div>
-
-        {/* School Info Widget (Hidden when collapsed) */}
-        {!isCollapsed && (
-          <div className="p-3.5 rounded-xl bg-blue-50/50 border border-blue-100 text-xs">
-            <div className="flex items-center gap-2 mb-1 font-bold text-blue-900">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              <span>Pedro Victorina Calo ES</span>
-            </div>
-            <p className="text-slate-600 text-[11px] leading-relaxed">
-              Grade 3 reading comprehension mastery program.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Footer / Account Exit */}

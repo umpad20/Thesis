@@ -311,6 +311,23 @@ class SoundSynthesizer {
       }
     }
   }
+
+  /**
+   * Generic trigger helper for UI sounds
+   */
+  play(type: "pageFlip" | "pop" | "click" | "correct" | "wrong" | "victory" | string) {
+    if (type === "pageFlip") {
+      this.playPageTurn();
+    } else if (type === "correct") {
+      this.playCorrect(false);
+    } else if (type === "wrong") {
+      this.playWrong(false);
+    } else if (type === "victory") {
+      this.playVictory();
+    } else {
+      this.playPageTurn();
+    }
+  }
 }
 
 export const soundEffects = new SoundSynthesizer();

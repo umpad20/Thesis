@@ -33,6 +33,7 @@ import {
   fetchStudentsFromSupabase,
   getCurrentUser,
 } from "@/utils/auth-helpers";
+import { TableRosterSkeleton } from "@/components/page-skeletons";
 import type { EnrolledStudent, StudentEnrollmentInput } from "@/lib/types";
 
 export default function TeacherStudentsPage() {
@@ -349,7 +350,7 @@ export default function TeacherStudentsPage() {
         </div>
 
         {loading ? (
-          <div className="py-12 text-center text-xs text-slate-400">Loading student roster...</div>
+          <TableRosterSkeleton />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">

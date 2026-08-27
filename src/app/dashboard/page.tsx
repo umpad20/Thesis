@@ -24,10 +24,12 @@ import {
   type LiveStudentStats,
 } from "@/utils/supabase-queries";
 import { getCurrentUser, UserProfile } from "@/utils/auth-helpers";
+import { DashboardHomeSkeleton } from "@/components/page-skeletons";
 import type { Badge, StudentBadgeProgress, Lesson } from "@/lib/types";
 
 export default function StudentDashboard() {
   const [currentUser] = useState<UserProfile | null>(() => getCurrentUser());
+  const [loading, setLoading] = useState(true);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [badgeProgress, setBadgeProgress] = useState<StudentBadgeProgress[]>([]);
   const [stats, setStats] = useState<LiveStudentStats>({
@@ -46,6 +48,7 @@ export default function StudentDashboard() {
     const user = getCurrentUser();
 
     async function loadLiveData() {
+      setLoading(true);
       const studentId = user?.id || "";
       const studentName = user?.fullName || "Pupil";
       const studentSection = user?.section || "Grade 3-A";
@@ -75,6 +78,7 @@ export default function StudentDashboard() {
       if (studentLessons.length > 0) {
         setActiveStory(studentLessons[0]);
       }
+      setLoading(false);
     }
 
     loadLiveData();
@@ -89,6 +93,10 @@ export default function StudentDashboard() {
 
   const currentBadge =
     badges.find((b) => b.badge_id === currentBadgeProgress.badge_id) || badges[0];
+
+  if (loading) {
+    return <DashboardHomeSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

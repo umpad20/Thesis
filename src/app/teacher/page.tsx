@@ -35,6 +35,7 @@ import {
   type MasteryStageDistribution,
 } from "@/utils/supabase-queries";
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
+import { TeacherDashboardSkeleton } from "@/components/page-skeletons";
 import type { InterventionRadarSummary, InterventionPupil, LeaderboardEntry } from "@/lib/types";
 
 export default function TeacherDashboard() {
