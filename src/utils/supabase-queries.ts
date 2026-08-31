@@ -23,7 +23,11 @@ import type {
  * If section is provided, returns universal badges (target_section = 'all')
  * PLUS badges matching the specific student's enrolled section.
  */
-export async function fetchBadgesFromSupabase(section?: string): Promise<Badge[]> {
+export async function fetchBadgesFromSupabase(
+  section?: string,
+  teacherId?: string | null,
+  options?: { isTeacher?: boolean }
+): Promise<Badge[]> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -36,13 +40,46 @@ export async function fetchBadgesFromSupabase(section?: string): Promise<Badge[]
       return [];
     }
 
-    if (section && section !== "all") {
-      return (data as Badge[]).filter(
-        (b) => !b.target_section || b.target_section === "all" || b.target_section === section
-      );
+    const allBadges = data as Badge[];
+
+    // 1. If called from Teacher Hub / Admin or without section scoping
+    if (options?.isTeacher || section === undefined) {
+      if (teacherId) {
+        return allBadges.filter((b) => !b.teacher_id || b.teacher_id === teacherId);
+      }
+      return allBadges;
     }
 
-    return data as Badge[];
+    // 2. Student Portal view:
+    const coreBadges = allBadges.filter((b) => b.badge_id <= 5 && !b.teacher_id);
+
+    // If student has no teacher assigned or is Unassigned, only show core default badges
+    if (!teacherId || !section || section === "Unassigned") {
+      return coreBadges;
+    }
+
+    // Custom teacher badges matching student's teacher and section
+    const customBadges = allBadges.filter((b) => {
+      if (!b.teacher_id) return false;
+      if (b.teacher_id !== teacherId) return false;
+
+      if (
+        b.target_section === "all_my_sections" ||
+        b.target_section === "all" ||
+        b.target_section === section ||
+        (b.target_section &&
+          b.target_section
+            .split(",")
+            .map((s: string) => s.trim())
+            .includes(section))
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+
+    return [...coreBadges, ...customBadges];
   } catch (err) {
     console.error("fetchBadgesFromSupabase exception:", err);
     return [];
@@ -140,6 +177,132 @@ export interface LiveStudentStats {
   accuracyRate: number;
 }
 
+/**
+ * Logically calculate consecutive daily learning streak from activity timestamps.
+ * A streak increases by 1 for each contiguous previous calendar day of activity.
+ * If 1 full day is missed (offline/inactive for a whole calendar day), the streak breaks.
+ */
+export function calculateStudentStreak(
+  activityTimestamps: Array<string | Date | null | undefined>
+): number {
+  const validDates = activityTimestamps
+    .filter((t): t is string | Date => Boolean(t))
+    .map((t) => {
+      const d = typeof t === "string" ? new Date(t) : t;
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    });
+
+  if (validDates.length === 0) return 0;
+
+  // Unique sorted dates descending (most recent first)
+  const uniqueDates = Array.from(new Set(validDates)).sort((a, b) => b.localeCompare(a));
+  if (uniqueDates.length === 0) return 0;
+
+  const now = new Date();
+  const formatLocalDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = formatLocalDate(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = formatLocalDate(yesterday);
+
+  const mostRecentDate = uniqueDates[0];
+
+  // If the most recent activity was before yesterday (missed at least 1 whole day), streak resets to 0 (or 1 if active today)
+  if (mostRecentDate !== todayStr && mostRecentDate !== yesterdayStr) {
+    return 0;
+  }
+
+  // Count contiguous days backwards
+  let streak = 0;
+  const expectedDate = mostRecentDate === todayStr ? new Date(now) : new Date(yesterday);
+
+  for (const dateStr of uniqueDates) {
+    const expectedStr = formatLocalDate(expectedDate);
+    if (dateStr === expectedStr) {
+      streak++;
+      expectedDate.setDate(expectedDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return Math.max(1, streak);
+}
+
+/**
+ * Strict XP calculation engine:
+ * 1. Badge Milestone XP: Earned on distinct completed badges (+100 to +350 XP per badge).
+ * 2. First-time Quiz Pass: +50 XP per unique lesson/quiz passed for the first time.
+ * 3. Quiz Retake Practice: +5 XP for subsequent passed attempts on an already-passed quiz.
+ * 4. Failed Attempts: 0 XP (no reward for failing, but retrying and passing gives full +50 XP).
+ */
+export function calculateStudentXp(
+  badgeProgress: Array<{ badge_id: number; status: string }>,
+  quizAttempts: Array<{
+    quiz_id?: number | null;
+    lesson_id?: number | null;
+    status?: string;
+    percentage?: number;
+    started_at?: string;
+    completed_at?: string;
+  }>,
+  badgeXpMap?: Map<number, number>
+): { totalXp: number; distinctQuizzesPassed: number; lessonsCompletedCount: number } {
+  let totalXp = 0;
+
+  // 1. Badge Milestone XP (distinct completed badges)
+  const completedBadgeIds = new Set<number>();
+  for (const bp of badgeProgress || []) {
+    if (bp.status === "completed" && !completedBadgeIds.has(bp.badge_id)) {
+      completedBadgeIds.add(bp.badge_id);
+      const reward = badgeXpMap?.get(bp.badge_id) ?? (bp.badge_id <= 5 ? 250 : 350);
+      totalXp += reward;
+    }
+  }
+
+  // 2. Quiz attempts sorted chronologically ascending
+  const sortedAttempts = [...(quizAttempts || [])].sort((a, b) => {
+    const timeA = new Date(a.completed_at || a.started_at || 0).getTime();
+    const timeB = new Date(b.completed_at || b.started_at || 0).getTime();
+    return timeA - timeB;
+  });
+
+  const passedQuizIds = new Set<number>();
+  let distinctQuizzesPassed = 0;
+
+  for (const attempt of sortedAttempts) {
+    const isPassed = attempt.status === "passed" || Number(attempt.percentage || 0) >= 70;
+    const qKey = attempt.quiz_id || attempt.lesson_id;
+
+    if (isPassed && qKey != null) {
+      if (!passedQuizIds.has(qKey)) {
+        // First-time pass: Full +50 XP
+        passedQuizIds.add(qKey);
+        distinctQuizzesPassed++;
+        totalXp += 50;
+      } else {
+        // Retake on already-passed quiz: Practice review reward (+5 XP)
+        totalXp += 5;
+      }
+    }
+  }
+
+  return {
+    totalXp,
+    distinctQuizzesPassed,
+    lessonsCompletedCount: passedQuizIds.size,
+  };
+}
+
 export async function fetchStudentStats(
   studentId: string,
   studentName = "Pupil",
@@ -150,6 +313,7 @@ export async function fetchStudentStats(
   let lessonsCompleted = 0;
   let quizzesPassed = 0;
   let accuracyRate = 0;
+  let streakDays = 0;
 
   if (!studentId) {
     return {
@@ -159,7 +323,7 @@ export async function fetchStudentStats(
       totalXp: 0,
       lessonsCompleted: 0,
       quizzesPassed: 0,
-      streakDays: 1,
+      streakDays: 0,
       accuracyRate: 0,
     };
   }
@@ -167,53 +331,44 @@ export async function fetchStudentStats(
   try {
     const supabase = createClient();
 
-    // 1. Fetch completed badges to add badge XP
-    const { data: badgeProg } = await supabase
-      .from("student_badge_progress")
-      .select("badge_id, status")
-      .eq("student_id", studentId);
+    // 1. Fetch completed badges, lessons, and attempts
+    const [badgeRes, badgesMetaRes, lessonRes, attemptRes] = await Promise.all([
+      supabase.from("student_badge_progress").select("badge_id, status").eq("student_id", studentId),
+      supabase.from("badges").select("badge_id, xp_reward"),
+      supabase.from("student_lesson_progress").select("*").eq("student_id", studentId),
+      supabase.from("quiz_attempts").select("*").eq("student_id", studentId),
+    ]);
 
-    const { data: badges } = await supabase.from("badges").select("badge_id, xp_reward");
-    const badgeMap = new Map((badges || []).map((b) => [b.badge_id, b.xp_reward]));
+    const badgeProg = badgeRes.data || [];
+    const badges = badgesMetaRes.data || [];
+    const badgeMap = new Map((badges || []).map((b) => [b.badge_id, b.xp_reward || 100]));
+    const lessonProg = lessonRes.data || [];
+    const attempts = attemptRes.data || [];
 
-    if (badgeProg) {
-      for (const bp of badgeProg) {
-        if (bp.status === "completed") {
-          totalXp += badgeMap.get(bp.badge_id) || 100;
-        }
-      }
-    }
+    // Calculate Strict XP
+    const xpCalc = calculateStudentXp(badgeProg, attempts, badgeMap);
+    totalXp = xpCalc.totalXp;
+    quizzesPassed = xpCalc.distinctQuizzesPassed;
 
-    // 2. Fetch completed lessons
-    const { data: lessonProg } = await supabase
-      .from("student_lesson_progress")
-      .select("*")
-      .eq("student_id", studentId);
-
-    if (lessonProg) {
+    if (lessonProg.length > 0) {
       lessonsCompleted = lessonProg.filter(
         (lp) => lp.status === "completed" || lp.progress_percentage >= 100
       ).length;
+    } else {
+      lessonsCompleted = xpCalc.lessonsCompletedCount;
     }
 
-    // 3. Fetch quiz attempts
-    const { data: attempts } = await supabase
-      .from("quiz_attempts")
-      .select("*")
-      .eq("student_id", studentId);
-
-    if (attempts && attempts.length > 0) {
-      const passedAttempts = attempts.filter(
-        (a) => a.status === "passed" || Number(a.percentage) >= 70
-      );
-      quizzesPassed = passedAttempts.length;
-
-      // Add quiz XP (100 XP per passed quiz)
-      totalXp += quizzesPassed * 100;
-
+    if (attempts.length > 0) {
       const totalPct = attempts.reduce((acc, curr) => acc + Number(curr.percentage || 0), 0);
       accuracyRate = Math.round(totalPct / attempts.length);
     }
+
+    // Calculate Real Calendar Streak
+    const activityTimestamps = [
+      ...attempts.map((a) => a.completed_at || a.started_at),
+      ...lessonProg.map((l) => l.last_accessed || l.updated_at),
+    ];
+    streakDays = calculateStudentStreak(activityTimestamps);
   } catch (err) {
     console.error("fetchStudentStats error:", err);
   }
@@ -222,11 +377,11 @@ export async function fetchStudentStats(
     full_name: studentName,
     section,
     avatar,
-    totalXp: Math.max(totalXp, 100), // Base welcome XP
+    totalXp,
     lessonsCompleted,
     quizzesPassed,
-    streakDays: Math.max(1, quizzesPassed + 1),
-    accuracyRate: accuracyRate || 85,
+    streakDays,
+    accuracyRate: accuracyRate || 0,
   };
 }
 
@@ -237,7 +392,10 @@ export async function fetchStudentStats(
 /**
  * Fetch published lessons for a student section (including target_section = 'all')
  */
-export async function fetchLessonsForStudent(section = "Grade 3-A"): Promise<Lesson[]> {
+export async function fetchLessonsForStudent(
+  section = "Grade 3-A",
+  teacherId?: string | null
+): Promise<Lesson[]> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -251,10 +409,39 @@ export async function fetchLessonsForStudent(section = "Grade 3-A"): Promise<Les
       return [];
     }
 
-    // Filter: Developer core (all) OR matching section
-    return data.filter(
-      (l) => !l.target_section || l.target_section === "all" || l.target_section === section
-    ) as Lesson[];
+    const allLessons = data as Lesson[];
+
+    // 1. Core default lessons (badge_id <= 5 and no teacher_id)
+    const coreLessons = allLessons.filter((l) => l.badge_id <= 5 && !l.teacher_id);
+
+    // 2. Custom teacher lessons
+    const customLessons = allLessons.filter((l) => {
+      if (!l.teacher_id && l.badge_id <= 5) return false;
+
+      // If student has no teacher assigned or is unassigned, do not show
+      if (!teacherId || !section || section === "Unassigned") return false;
+
+      // Must belong to this student's teacher
+      if (l.teacher_id && l.teacher_id !== teacherId) return false;
+
+      // Must match section
+      if (
+        l.target_section === "all_my_sections" ||
+        l.target_section === "all" ||
+        l.target_section === section ||
+        (l.target_section &&
+          l.target_section
+            .split(",")
+            .map((s: string) => s.trim())
+            .includes(section))
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+
+    return [...coreLessons, ...customLessons];
   } catch (err) {
     console.error("fetchLessonsForStudent exception:", err);
     return [];
@@ -439,6 +626,7 @@ export interface StageCurriculumDetail {
     difficulty_level: string;
     lesson_description: string;
     pages: LessonPage[];
+    vocabulary?: any[];
     quiz?: {
       quiz_id: number;
       quiz_title: string;
@@ -512,9 +700,20 @@ export async function fetchStageCurriculumDetails(badgeId: number): Promise<Stag
       }
     }
 
+    // 4. Fetch vocabulary words
+    let vocabData: any[] = [];
+    if (lessonIds.length > 0) {
+      const { data: words } = await supabase
+        .from("vocabulary_words")
+        .select("*")
+        .in("lesson_id", lessonIds);
+      vocabData = words || [];
+    }
+
     const enrichedLessons = lessons.map((l) => {
       const lPages = pagesData.filter((p) => p.lesson_id === l.lesson_id);
       const lQuiz = quizzesData.find((q) => q.lesson_id === l.lesson_id);
+      const lVocab = vocabData.filter((v) => v.lesson_id === l.lesson_id);
       let lQuestionsWithChoices: any[] = [];
       if (lQuiz) {
         const lQuestions = questionsData.filter((q) => q.quiz_id === lQuiz.quiz_id);
@@ -531,6 +730,7 @@ export async function fetchStageCurriculumDetails(badgeId: number): Promise<Stag
         difficulty_level: l.difficulty_level,
         lesson_description: l.lesson_description,
         pages: lPages,
+        vocabulary: lVocab,
         quiz: lQuiz ? { ...lQuiz, questions: lQuestionsWithChoices } : undefined,
       };
     });
@@ -783,6 +983,9 @@ export interface TeacherReportRow {
   quizzesPassed: string;
   status: "Mastering" | "On Track" | "Needs Review";
   lastActive: string;
+  totalXp?: number;
+  streakDays?: number;
+  isAllStagesCompleted?: boolean;
 }
 
 export async function fetchClassRosterReports(
@@ -810,6 +1013,7 @@ export async function fetchClassRosterReports(
     // 3. Fetch all badges for reference
     const { data: badges } = await supabase.from("badges").select("*").order("badge_order");
     const badgeMap = new Map((badges || []).map((b) => [b.badge_id, b.badge_name]));
+    const badgeXpMap = new Map((badges || []).map((b) => [b.badge_id, b.xp_reward || 100]));
 
     // 4. Fetch badge progress and quiz attempts
     const studentIds = profiles.map((p) => p.id);
@@ -829,20 +1033,27 @@ export async function fetchClassRosterReports(
       const badgeName = badgeMap.get(latestBadgeId) || "Stage 1: Reading Star";
 
       const totalAttempts = studentAttempts.length;
-      const passedQuizzes = studentAttempts.filter((a) => a.status === "passed" || a.percentage >= 70).length;
+      const xpCalc = calculateStudentXp(studentBadges, studentAttempts, badgeXpMap);
+      const passedQuizzes = xpCalc.distinctQuizzesPassed;
       const quizzesPassedStr = `${passedQuizzes}/${Math.max(totalAttempts, 1)}`;
 
       let avgScore = 0;
       if (totalAttempts > 0) {
         const totalPct = studentAttempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0);
         avgScore = Math.round(totalPct / totalAttempts);
-      } else if (studentBadges.some(b => b.status === "completed")) {
+      } else if (studentBadges.some((b) => b.status === "completed")) {
         avgScore = 100;
       }
 
       let status = "Needs Attention";
       if (avgScore >= 80) status = "Mastering";
       else if (avgScore >= 60) status = "Developing";
+
+      const activityTimestamps = studentAttempts.map((a) => a.completed_at || a.started_at);
+      const streakDays = calculateStudentStreak(activityTimestamps);
+      const isAllStagesCompleted = studentBadges.some(
+        (b) => Number(b.badge_id) === 5 && b.status === "completed"
+      );
 
       return {
         studentId: p.id,
@@ -855,6 +1066,9 @@ export async function fetchClassRosterReports(
         status: status as "Mastering" | "On Track" | "Needs Review",
         lastActive: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "Active recently",
         gender: "Female",
+        totalXp: xpCalc.totalXp,
+        streakDays,
+        isAllStagesCompleted,
       };
     });
   } catch (err) {
@@ -989,7 +1203,7 @@ export async function fetchClassroomLeaderboard(
         .in("student_id", studentIds),
       supabase
         .from("quiz_attempts")
-        .select("student_id, score, percentage, status, completed_at")
+        .select("student_id, score, percentage, status, completed_at, started_at")
         .in("student_id", studentIds),
     ]);
 
@@ -997,42 +1211,38 @@ export async function fetchClassroomLeaderboard(
     const badgeNameMap = new Map((badges || []).map((b) => [b.badge_id, b.badge_name]));
 
     const entries: Array<Omit<LeaderboardEntry, "rank"> & { rankScore: number }> = profiles.map((p) => {
-      // 1. Badge XP
       const studentBadges = (badgeProg || []).filter((bp) => bp.student_id === p.id);
-      let earnedBadgeXp = 0;
-      let latestBadgeName = "Stage 1: Reading Star";
+      const studentAttempts = (quizAttempts || []).filter((qa) => qa.student_id === p.id);
 
+      // Latest earned badge name
+      let latestBadgeName = "Stage 1: Reading Star";
       for (const bp of studentBadges) {
         if (bp.status === "completed") {
-          earnedBadgeXp += badgeXpMap.get(bp.badge_id) || 100;
           const name = badgeNameMap.get(bp.badge_id);
           if (name) latestBadgeName = name;
         }
       }
 
-      // 2. Quiz Metrics
-      const studentAttempts = (quizAttempts || []).filter((qa) => qa.student_id === p.id);
-      let earnedQuizXp = 0;
-      let totalScorePct = 0;
-      let passedQuizzes = 0;
+      // Calculate Strict XP
+      const xpCalc = calculateStudentXp(studentBadges, studentAttempts, badgeXpMap);
+      const totalXp = xpCalc.totalXp;
+      const passedQuizzes = xpCalc.distinctQuizzesPassed;
 
+      let totalScorePct = 0;
       for (const qa of studentAttempts) {
-        if (qa.status === "passed" || qa.percentage >= 70) {
-          passedQuizzes++;
-          earnedQuizXp += (qa.score || 10) * 10;
-        }
         totalScorePct += qa.percentage || 0;
       }
 
       const comprehensionPct =
         studentAttempts.length > 0
           ? Math.round(totalScorePct / studentAttempts.length)
-          : earnedBadgeXp > 0
+          : studentBadges.some((b) => b.status === "completed")
           ? 100
           : 0;
 
-      const totalXp = Math.max(earnedBadgeXp + earnedQuizXp, earnedBadgeXp > 0 ? 100 : 0);
-      const streakDays = Math.max(1, Math.min(30, studentBadges.length * 2 + passedQuizzes));
+      // Real Streak calculation
+      const activityTimestamps = studentAttempts.map((a) => a.completed_at || a.started_at);
+      const streakDays = calculateStudentStreak(activityTimestamps);
 
       // Rank Tier mapping
       let rankTier: RankTier = "story_starter";

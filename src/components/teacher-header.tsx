@@ -19,6 +19,13 @@ import {
   Sparkles,
   ArrowRight,
   Smile,
+  Settings,
+  Volume2,
+  User,
+  Lock,
+  HelpCircle,
+  Info,
+  LogOut,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -475,31 +482,67 @@ export function TeacherHeader() {
               Signed in as <strong>{currentUser.fullName}</strong>
             </DropdownMenuLabel>
 
+            {/* ── Settings Sub-Navigation Suite ─────────────────────────── */}
             <DropdownMenuItem
-              onClick={() => setShowAvatarPicker(true)}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+              onClick={() => router.push("/teacher/settings")}
+              className="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 cursor-pointer"
             >
-              <Smile className="w-3.5 h-3.5 text-amber-500" />
-              <span>Change Faculty Avatar ({currentUser.avatar || "👩‍🏫"})</span>
+              <div className="flex items-center gap-2">
+                <Settings className="w-3.5 h-3.5 text-blue-600" />
+                <span>All Faculty Settings</span>
+              </div>
+              <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-200">
+                Open
+              </span>
             </DropdownMenuItem>
 
             <DropdownMenuItem
-              onClick={() => router.push("/teacher")}
-              className="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold cursor-pointer bg-blue-50 text-blue-700"
+              onClick={() => router.push("/teacher/settings?tab=voice")}
+              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>Faculty &amp; Evaluator Hub</span>
-              </div>
-              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+              <Volume2 className="w-3.5 h-3.5 text-amber-500" />
+              <span>AI Voice Narrator Engine</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => router.push("/teacher/settings?tab=account")}
+              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              <User className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Faculty Account Profile</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => router.push("/teacher/settings?tab=privacy")}
+              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              <Lock className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Privacy &amp; Security</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => router.push("/teacher/settings?tab=help")}
+              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-purple-500" />
+              <span>Help &amp; Support Guide</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => router.push("/teacher/settings?tab=about")}
+              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              <Info className="w-3.5 h-3.5 text-slate-500" />
+              <span>About ReadSmart</span>
             </DropdownMenuItem>
 
             <DropdownMenuSeparator className="my-1.5" />
             <DropdownMenuItem
               onClick={handleSignOut}
-              className="px-2.5 py-2 text-xs text-rose-600 font-bold cursor-pointer hover:bg-rose-50 rounded-xl"
+              className="flex items-center gap-2 px-2.5 py-2 text-xs text-rose-600 font-bold cursor-pointer hover:bg-rose-50 rounded-xl"
             >
-              Sign Out
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span>Sign Out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

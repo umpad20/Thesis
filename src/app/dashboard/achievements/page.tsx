@@ -11,10 +11,12 @@ import {
   Ribbon,
   Medal,
   Award,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGraphic, getBadgeCategoryLabel } from "@/components/badge-graphic";
+import { CertificateModal } from "@/components/certificate-modal";
 import {
   fetchBadgesFromSupabase,
   fetchStudentBadgeProgress,
@@ -27,15 +29,16 @@ import type { Badge, StudentBadgeProgress } from "@/lib/types";
 export default function AchievementsPage() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [badgeProgress, setBadgeProgress] = useState<StudentBadgeProgress[]>([]);
+  const [showCertificate, setShowCertificate] = useState(false);
   const [stats, setStats] = useState<LiveStudentStats>({
     full_name: "Pupil",
     section: "Grade 3-A",
     avatar: "🦊",
-    totalXp: 100,
+    totalXp: 0,
     lessonsCompleted: 0,
     quizzesPassed: 0,
-    streakDays: 1,
-    accuracyRate: 85,
+    streakDays: 0,
+    accuracyRate: 0,
   });
 
   useEffect(() => {
@@ -68,6 +71,10 @@ export default function AchievementsPage() {
   const nextMilestoneXp = stats.totalXp < 500 ? 500 : stats.totalXp < 1000 ? 1000 : 2000;
   const progressToNext = Math.min(100, Math.round((stats.totalXp / nextMilestoneXp) * 100));
 
+  const isStage5Passed = badgeProgress.some(
+    (p) => Number(p.badge_id) === 5 && p.status === "completed"
+  );
+
   return (
     <div className="space-y-6">
       {/* 1. Header & Navigation Trail */}
@@ -88,13 +95,24 @@ export default function AchievementsPage() {
           </p>
         </div>
 
-        <Button
-          size="sm"
-          className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200"
-        >
-          <Download className="w-3.5 h-3.5 mr-1.5" />
-          Download Certificate
-        </Button>
+        {isStage5Passed ? (
+          <Button
+            onClick={() => setShowCertificate(true)}
+            size="sm"
+            className="h-10 px-5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer anim-pop-bounce"
+          >
+            <Trophy className="w-4 h-4 fill-slate-950" />
+            <span>Star Reader Certificate 📜</span>
+          </Button>
+        ) : (
+          <div
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-slate-400 text-xs font-bold"
+            title="Complete Stage 5 final quiz to unlock your official Star Reader Certificate"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            <span>Certificate Locked (Pass Stage 5)</span>
+          </div>
+        )}
       </div>
 
       {/* 2. XP & Rank Widget */}
@@ -173,6 +191,7 @@ export default function AchievementsPage() {
                     <BadgeGraphic
                       type={badge.badge_type}
                       medalType={badge.medal_type}
+                      badgeIconUrl={badge.badge_icon_url}
                       size="sm"
                       status={isCompleted ? "completed" : isInProgress ? "in_progress" : "locked"}
                       showStatusBadge
@@ -248,6 +267,7 @@ export default function AchievementsPage() {
                     <BadgeGraphic
                       type={badge.badge_type}
                       medalType={badge.medal_type}
+                      badgeIconUrl={badge.badge_icon_url}
                       size="sm"
                       status={isCompleted ? "completed" : isInProgress ? "in_progress" : "locked"}
                       showStatusBadge
@@ -324,6 +344,7 @@ export default function AchievementsPage() {
                     <BadgeGraphic
                       type={badge.badge_type}
                       medalType={badge.medal_type}
+                      badgeIconUrl={badge.badge_icon_url}
                       size="sm"
                       status={isCompleted ? "completed" : isInProgress ? "in_progress" : "locked"}
                       showStatusBadge
@@ -359,6 +380,15 @@ export default function AchievementsPage() {
           })}
         </div>
       </div>
+
+      {/* Star Reader Certificate Modal */}
+      <CertificateModal
+        isOpen={showCertificate}
+        onClose={() => setShowCertificate(false)}
+        studentName={stats.full_name || "Pupil"}
+        section={stats.section || "Grade 3-A"}
+        autoPlayAudio={true}
+      />
     </div>
   );
 }

@@ -5,8 +5,9 @@ import { Lock, Check } from "lucide-react";
 import type { BadgeType, MedalType } from "@/lib/types";
 
 export interface BadgeGraphicProps {
-  type: BadgeType;
+  type?: BadgeType;
   medalType?: MedalType;
+  badgeIconUrl?: string | null;
   status?: "locked" | "in_progress" | "completed";
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
@@ -22,8 +23,9 @@ const sizeMap = {
 };
 
 export function BadgeGraphic({
-  type,
+  type = "star",
   medalType,
+  badgeIconUrl,
   status = "completed",
   size = "md",
   className = "",
@@ -34,7 +36,50 @@ export function BadgeGraphic({
   const isInProgress = status === "in_progress";
   const isCompleted = status === "completed";
 
-  // Determine badge category key
+  // Check if custom badge icon or image is provided (excluding legacy core /badges/ path)
+  const isCustomIcon = Boolean(badgeIconUrl) && !badgeIconUrl?.startsWith("/badges/");
+  if (isCustomIcon && badgeIconUrl) {
+    const isEmoji = badgeIconUrl.startsWith("emoji:");
+    const emojiChar = isEmoji ? badgeIconUrl.replace("emoji:", "") : null;
+
+    return (
+      <div className={`relative inline-flex items-center justify-center select-none ${box} ${className}`}>
+        <div
+          className={`w-full h-full flex items-center justify-center transition-all duration-300 ${
+            isLocked ? "grayscale opacity-50 contrast-75" : isInProgress ? "filter drop-shadow-sm" : "filter drop-shadow-md"
+          }`}
+        >
+          {isEmoji ? (
+            <div className="w-full h-full rounded-2xl bg-gradient-to-br from-amber-100 via-amber-50 to-indigo-100 border-2 border-amber-300 flex items-center justify-center shadow-xs">
+              <span className="text-3xl sm:text-4xl">{emojiChar}</span>
+            </div>
+          ) : (
+            <img
+              src={badgeIconUrl}
+              alt="Custom Badge"
+              className="w-full h-full object-contain rounded-2xl border-2 border-amber-300/80 bg-white/90 p-1 shadow-sm"
+            />
+          )}
+        </div>
+
+        {showStatusBadge && (
+          <div className="absolute -bottom-1 -right-1 z-10">
+            {isLocked ? (
+              <div className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center shadow-xs">
+                <Lock className="w-3 h-3" />
+              </div>
+            ) : isCompleted ? (
+              <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                <Check className="w-3 h-3 stroke-[3]" />
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Determine badge category key for standard vector graphics
   const badgeKey =
     type === "medal"
       ? medalType === "bronze"

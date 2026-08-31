@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { calculateStudentXp, calculateStudentStreak } from "@/utils/supabase-queries";
 
 export async function GET(request: Request) {
   try {
@@ -59,15 +60,16 @@ export async function GET(request: Request) {
     const badgesList = badgesRes.data || [];
     const totalLessonsCount = lessonsRes.data?.length || 15;
     const badgeMap = new Map(badgesList.map((b) => [b.badge_id, b.badge_name]));
+    const badgeXpMap = new Map(badgesList.map((b) => [b.badge_id, b.xp_reward || 100]));
 
     // 4. Compute real metrics for each student
     const students = studentProfiles.map((p, idx) => {
       const studentProgress = progressList.filter((pr) => pr.student_id === p.id);
       const studentAttempts = attemptList.filter((at) => at.student_id === p.id);
 
-      const passedAttempts = studentAttempts.filter(
-        (at) => at.status === "passed" || Number(at.percentage) >= 70
-      );
+      const xpCalc = calculateStudentXp(studentProgress, studentAttempts, badgeXpMap);
+      const studentXp = xpCalc.totalXp;
+      const passedCount = xpCalc.distinctQuizzesPassed;
 
       const avgScore =
         studentAttempts.length > 0
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
         else status = "Needs Practice";
       }
 
-      // Format last active date
+      // Format last active date and streak
       let lastActive = "Enrolled";
       if (studentAttempts.length > 0) {
         const latestAttempt = studentAttempts.sort(
@@ -104,6 +106,13 @@ export async function GET(request: Request) {
         }
       }
 
+      const activityTimestamps = studentAttempts.map((a) => a.completed_at || a.started_at);
+      const studentStreak = calculateStudentStreak(activityTimestamps);
+
+      const isAllStagesCompleted = studentProgress.some(
+        (pr) => Number(pr.badge_id) === 5 && pr.status === "completed"
+      );
+
       return {
         id: p.id ? `STU-${p.id.slice(0, 4).toUpperCase()}` : `STU-${idx + 100}`,
         supabaseUserId: p.id,
@@ -114,11 +123,14 @@ export async function GET(request: Request) {
         currentBadge: activeBadgeName,
         comprehension: avgScore > 0 ? `${avgScore.toFixed(1)}%` : "0.0%",
         accuracyRaw: avgScore,
-        quizzesPassed: `${passedAttempts.length} / ${totalLessonsCount}`,
+        quizzesPassed: `${passedCount} / ${totalLessonsCount}`,
         status,
         readingSpeed: avgScore > 0 ? `${Math.round(85 + (avgScore / 100) * 20)} WPM` : "—",
         lastActive,
         avatar: p.avatar || "👧",
+        totalXp: studentXp,
+        streakDays: studentStreak,
+        isAllStagesCompleted,
       };
     });
 

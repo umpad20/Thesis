@@ -66,14 +66,37 @@ function LessonReaderContent() {
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
 
   useEffect(() => {
-    const user = getCurrentUser();
-
     async function loadLessons() {
       setLoading(true);
+      const user = getCurrentUser();
+
+      // Sync fresh profile from Supabase to ensure teacherId is available
+      if (user?.id) {
+        try {
+          const { createClient } = await import("@/utils/supabase/client");
+          const supabase = createClient();
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (prof) {
+            user.section = prof.section || user.section || "Unassigned";
+            user.teacherId = prof.teacher_id;
+            user.fullName = prof.full_name || user.fullName;
+            const { setCurrentUserSession } = await import("@/utils/auth-helpers");
+            setCurrentUserSession(user);
+          }
+        } catch {
+          // ignore sync errors
+        }
+      }
+
       const studentSection = user?.section || "Grade 3-A";
+      const teacherId = user?.teacherId || null;
       const [liveBadges, lessons, liveProgress] = await Promise.all([
-        fetchBadgesFromSupabase(studentSection),
-        fetchLessonsForStudent(studentSection),
+        fetchBadgesFromSupabase(studentSection, teacherId),
+        fetchLessonsForStudent(studentSection, teacherId),
         user?.id ? fetchStudentBadgeProgress(user.id) : Promise.resolve([]),
       ]);
 
@@ -198,14 +221,33 @@ function LessonReaderContent() {
     }, 180);
   };
 
-  // Check stage milestone locking
+  // Check stage milestone locking (Custom teacher quests are ALWAYS unlocked)
   const isLessonLocked = useMemo(() => {
-    if (!activeLesson.badge_id || activeLesson.badge_id === 1) return false;
-    const prevBadgeId = activeLesson.badge_id - 1;
-    const prevProg = badgeProgress.find((p) => p.badge_id === prevBadgeId);
+    if (!activeLesson.badge_id) return false;
+
+    // Find the badge associated with this lesson
+    const currentBadge = badges.find((b) => b.badge_id === activeLesson.badge_id);
+
+    // Custom teacher quests are NEVER locked behind default DepEd curriculum stages!
+    if (currentBadge?.teacher_id || activeLesson.teacher_id) {
+      return false;
+    }
+
+    // Default DepEd Stage 1 is always unlocked
+    if (currentBadge?.badge_order === 1 || activeLesson.badge_id === 1) {
+      return false;
+    }
+
+    // For default DepEd badges 2..5, check previous DepEd stage (order - 1)
+    const prevBadge = badges.find(
+      (b) => !b.teacher_id && b.badge_order === (currentBadge?.badge_order || 2) - 1
+    );
+    if (!prevBadge) return false;
+
+    const prevProg = badgeProgress.find((p) => p.badge_id === prevBadge.badge_id);
     if (!prevProg) return true;
     return prevProg.status !== "completed" && (prevProg.completion_percentage || 0) < 100;
-  }, [activeLesson.badge_id, badgeProgress]);
+  }, [activeLesson.badge_id, activeLesson.teacher_id, badges, badgeProgress]);
 
   if (loading) {
     return <LessonReaderSkeleton />;
@@ -248,60 +290,38 @@ function LessonReaderContent() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
-      {/* ── 1. Top Navigation & Story Progress Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-0.5">
-            <button
-              type="button"
-              onClick={() => setShowExitModal(true)}
-              className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 transition-colors group cursor-pointer"
-            >
-              <Map className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
-              <span className="underline decoration-blue-200 underline-offset-2">Storybook Map</span>
-            </button>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <button
-              type="button"
-              onClick={() => setShowExitModal(true)}
-              className="text-slate-600 hover:text-slate-900 font-bold transition-colors cursor-pointer"
-            >
-              {assignedBadge?.badge_name || "Stage"}
-            </button>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span className="text-slate-500 font-medium">{activeLesson.lesson_title}</span>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-              {activeLesson.lesson_title}
-            </h1>
-            <span
-              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                activeLesson.difficulty_level === "easy"
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : activeLesson.difficulty_level === "medium"
-                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                  : "bg-purple-50 text-purple-700 border-purple-200"
-              }`}
-            >
-              {activeLesson.difficulty_level.toUpperCase()}
-            </span>
-          </div>
+      {/* ── 1. Clean, Compact Top Header ── */}
+      <div className="flex items-center justify-between gap-3 bg-white/90 backdrop-blur-md px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Left: Story Title + Difficulty Badge */}
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
+            {activeLesson.lesson_title}
+          </h1>
+          <span
+            className={`text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full border flex-shrink-0 uppercase tracking-wider ${
+              activeLesson.difficulty_level === "easy"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : activeLesson.difficulty_level === "medium"
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-purple-50 text-purple-700 border-purple-200"
+            }`}
+          >
+            {activeLesson.difficulty_level || "MEDIUM"}
+          </span>
         </div>
 
-        {/* Progress Pill + Exit Map Button */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-1.5 text-xs font-black text-slate-700">
-              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+        {/* Right: Sentence Progress + Clean Exit Button */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 flex-shrink-0">
+          <div className="flex flex-col items-end gap-0.5 sm:gap-1">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700">
+              <span className="hidden sm:inline">Sentence</span>
               <span>
-                Sentence {currentSlideIndex + 1} of {totalSlides}
+                {currentSlideIndex + 1}/{totalSlides}
               </span>
-              <span className="text-slate-400 font-medium">({progressPercent}%)</span>
+              <span className="text-blue-600 font-black">({progressPercent}%)</span>
             </div>
             {/* Progress Bar */}
-            <div className="w-32 sm:w-40 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="w-16 sm:w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -313,10 +333,11 @@ function LessonReaderContent() {
             variant="outline"
             size="sm"
             onClick={() => setShowExitModal(true)}
-            className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs h-9 px-3 cursor-pointer"
+            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-9 px-2.5 sm:px-3 cursor-pointer flex items-center gap-1 transition-all"
+            title="Exit to Storybook Map"
           >
-            <Map className="w-3.5 h-3.5 mr-1 text-amber-600" />
-            <span>Map</span>
+            <X className="w-3.5 h-3.5" />
+            <span>Exit</span>
           </Button>
         </div>
       </div>
@@ -350,6 +371,7 @@ function LessonReaderContent() {
                     <BadgeGraphic
                       type={assignedBadge.badge_type}
                       medalType={assignedBadge.badge_type === "medal" ? assignedBadge.medal_type : undefined}
+                      badgeIconUrl={assignedBadge.badge_icon_url}
                       size="xs"
                       status="completed"
                     />
@@ -463,7 +485,7 @@ function LessonReaderContent() {
                   <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                 </Button>
               ) : (
-                <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}`}>
+                <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}&badgeId=${activeLesson.badge_id}`}>
                   <Button className="h-11 px-6 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce">
                     <Sparkles className="w-4 h-4" />
                     <span>Finish & Take Quiz</span>

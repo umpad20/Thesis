@@ -15,6 +15,13 @@ import {
   X,
   LogOut,
   Smile,
+  Settings,
+  Volume2,
+  User,
+  Lock,
+  HelpCircle,
+  Info,
+  Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,10 +51,10 @@ const AVATAR_OPTIONS = ["🦊", "🦁", "🐼", "🐨", "🦉", "🚀", "⭐", "
 
 const DEFAULT_STUDENT: UserProfile = {
   id: "00000000-0000-0000-0000-000000000001",
-  email: "student.maria@pvces.edu.ph",
+  email: "student@pvces.edu.ph",
   fullName: "Student",
   role: "student",
-  section: "Grade 3-A",
+  section: "Unassigned",
   avatar: "🦊",
 };
 
@@ -74,14 +81,39 @@ export function DashboardHeader() {
   useEffect(() => {
     async function loadUserData() {
       const user = getCurrentUser() || DEFAULT_STUDENT;
-      setCurrentUser(user);
 
-      const section = user.section || "Grade 3-A";
+      // Sync fresh profile directly from Supabase if logged in
+      if (user.id && user.id !== DEFAULT_STUDENT.id) {
+        try {
+          const { createClient } = await import("@/utils/supabase/client");
+          const supabase = createClient();
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (prof) {
+            user.section = prof.section || "Unassigned";
+            user.teacherId = prof.teacher_id;
+            user.avatar = prof.avatar || user.avatar;
+            user.fullName = prof.full_name || user.fullName;
+            const { setCurrentUserSession } = await import("@/utils/auth-helpers");
+            setCurrentUserSession(user);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      setCurrentUser({ ...user });
+
+      const section = user.section || "Unassigned";
+      const teacherId = user.teacherId || null;
       const [liveStats, liveLessons, liveVocab, liveBadges] = await Promise.all([
         fetchStudentStats(user.id, user.fullName, section, user.avatar || "🦊"),
-        fetchLessonsForStudent(section),
+        fetchLessonsForStudent(section, teacherId),
         fetchAllVocabularyWords(),
-        fetchBadgesFromSupabase(section),
+        fetchBadgesFromSupabase(section, teacherId),
       ]);
 
       setStats(liveStats);
@@ -178,8 +210,8 @@ export function DashboardHeader() {
     matchingLessons.length > 0 || matchingVocab.length > 0 || matchingBadges.length > 0;
 
   // Real-time computed XP and Streak
-  const liveXp = stats?.totalXp ?? 250;
-  const liveStreak = stats?.streakDays ?? 1;
+  const liveXp = stats?.totalXp ?? 0;
+  const liveStreak = stats?.streakDays ?? 0;
 
   // Dynamically constructed notifications based on live user progress
   const notificationsList = [
@@ -370,7 +402,7 @@ export function DashboardHeader() {
 
         {/* ── 2. Right: Live Stats, Notification Popover & Profile Dropdown ── */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* Live Streak & XP Badge Pill */}
+          {/* Live Streak & XP Badge Pill - Desktop/Tablet */}
           <div className="hidden sm:flex items-center gap-2 bg-slate-50/90 border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs">
             <Link
               href="/dashboard"
@@ -388,6 +420,19 @@ export function DashboardHeader() {
             >
               <Award className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
               <span>{liveXp} XP</span>
+            </Link>
+          </div>
+
+          {/* Compact Mobile Pill for Phones (< 640px) */}
+          <div className="flex sm:hidden items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-lg px-2 py-1 text-[11px] font-bold">
+            <Link href="/dashboard" className="flex items-center gap-0.5 text-blue-600" title="Daily Streak">
+              <Flame className="w-3 h-3 fill-blue-500 text-blue-500" />
+              <span>{liveStreak}d</span>
+            </Link>
+            <span className="text-slate-300">·</span>
+            <Link href="/dashboard/badges" className="flex items-center gap-0.5 text-amber-600" title="Total XP">
+              <Award className="w-3 h-3 fill-amber-500 text-amber-500" />
+              <span>{liveXp}</span>
             </Link>
           </div>
 
@@ -443,7 +488,7 @@ export function DashboardHeader() {
                   {currentUser.fullName}
                 </span>
                 <span className="text-[10px] font-semibold text-blue-600 block">
-                  {currentUser.section || "Grade 3-A"} · Student
+                  {currentUser.section || "Unassigned"} · Student
                 </span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
@@ -460,7 +505,7 @@ export function DashboardHeader() {
                     {currentUser.fullName}
                   </span>
                   <span className="text-[10px] font-bold text-blue-600 block">
-                    {currentUser.section || "Grade 3-A"} · Student
+                    {currentUser.section || "Unassigned"} · Student
                   </span>
                   <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-500">
                     <span>🔥 {liveStreak}d Streak</span>
@@ -470,30 +515,58 @@ export function DashboardHeader() {
                 </div>
               </div>
 
-              {/* Avatar Selector Trigger */}
+              {/* ── Settings Sub-Navigation Suite ─────────────────────────── */}
               <DropdownMenuItem
-                onClick={() => setShowAvatarPicker(true)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                onClick={() => router.push("/dashboard/settings")}
+                className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 cursor-pointer"
               >
-                <Smile className="w-4 h-4 text-amber-500" />
-                <span>Change Mascot / Avatar</span>
-              </DropdownMenuItem>
-
-              {/* Quick Navigation Items */}
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/badges")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                <Map className="w-4 h-4 text-blue-600" />
-                <span>Living Storybook Pathway</span>
+                <div className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-blue-600" />
+                  <span>All Settings Hub</span>
+                </div>
+                <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded-md border border-blue-200">
+                  Open
+                </span>
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={() => router.push("/dashboard/vocabulary")}
+                onClick={() => router.push("/dashboard/settings?tab=voice")}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
               >
-                <Bookmark className="w-4 h-4 text-emerald-600" />
-                <span>Vocabulary Vault</span>
+                <Volume2 className="w-4 h-4 text-amber-500" />
+                <span>AI Voice &amp; Narrator</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings?tab=account")}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <User className="w-4 h-4 text-indigo-500" />
+                <span>Account &amp; Mascot Profile</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings?tab=privacy")}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <Lock className="w-4 h-4 text-emerald-500" />
+                <span>Privacy &amp; Security</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings?tab=help")}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <HelpCircle className="w-4 h-4 text-purple-500" />
+                <span>Help &amp; Support Guide</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings?tab=about")}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <Info className="w-4 h-4 text-slate-500" />
+                <span>About ReadSmart</span>
               </DropdownMenuItem>
 
               <DropdownMenuSeparator className="my-1" />

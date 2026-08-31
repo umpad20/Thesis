@@ -7,6 +7,7 @@ import {
   fetchStudentBadgeProgress,
   fetchLessonsForStudent,
   fetchStudentLessonProgress,
+  fetchStudentStats,
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { StorybookMapSkeleton } from "@/components/page-skeletons";
@@ -19,6 +20,8 @@ export default function BadgesPage() {
   const [lessonProgress, setLessonProgress] = useState<
     Record<number, { status: "completed" | "in_progress" | "locked"; highest_score: number }>
   >({});
+  const [totalXp, setTotalXp] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userSection, setUserSection] = useState("Grade 3-A");
 
@@ -26,24 +29,28 @@ export default function BadgesPage() {
     async function loadData() {
       setLoading(true);
       const user = getCurrentUser();
-      const studentSection = user?.section || "Grade 3-A";
+      const studentSection = user?.section || "Unassigned";
+      const teacherId = user?.teacherId || null;
       setUserSection(studentSection);
 
       const [liveBadges, liveLessons] = await Promise.all([
-        fetchBadgesFromSupabase(studentSection),
-        fetchLessonsForStudent(studentSection),
+        fetchBadgesFromSupabase(studentSection, teacherId),
+        fetchLessonsForStudent(studentSection, teacherId),
       ]);
 
       setBadges(liveBadges);
       setAllLessons(liveLessons);
 
       if (user?.id) {
-        const [liveProg, liveLessonProg] = await Promise.all([
+        const [liveProg, liveLessonProg, liveStats] = await Promise.all([
           fetchStudentBadgeProgress(user.id),
           fetchStudentLessonProgress(user.id),
+          fetchStudentStats(user.id, user.fullName || "Pupil", studentSection, user.avatar || "🦊"),
         ]);
         setBadgeProgress(liveProg);
         setLessonProgress(liveLessonProg);
+        setTotalXp(liveStats.totalXp);
+        setStreakDays(liveStats.streakDays);
       }
       setLoading(false);
     }
@@ -62,8 +69,8 @@ export default function BadgesPage() {
       badgeProgress={badgeProgress}
       lessonProgress={lessonProgress}
       currentUserSection={userSection}
-      totalXp={350}
-      streakDays={5}
+      totalXp={totalXp}
+      streakDays={streakDays}
     />
   );
 }

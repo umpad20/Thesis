@@ -81,6 +81,9 @@ export interface EnrolledStudent {
   lastActive: string;
   email?: string;
   avatar?: string;
+  totalXp?: number;
+  streakDays?: number;
+  isAllStagesCompleted?: boolean;
 }
 
 export interface SentenceVisualCue {

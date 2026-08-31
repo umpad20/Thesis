@@ -25,14 +25,7 @@ export async function GET(request: Request) {
 
     let sections = (data || []).map((row) => row.section_name);
 
-    // If teacher has no registered sections yet, default to Grade 3-A
     if (sections.length === 0) {
-      if (teacherId) {
-        await supabase.from("teacher_sections").insert({
-          section_name: "Grade 3-A",
-          teacher_id: teacherId,
-        });
-      }
       sections = ["Grade 3-A"];
     }
 

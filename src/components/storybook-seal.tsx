@@ -7,8 +7,9 @@ import type { BadgeType, MedalType } from "@/lib/types";
 export interface StorybookSealProps {
   stageNumber: number;
   name: string;
-  type: BadgeType;
+  type?: BadgeType;
   medalType?: MedalType;
+  badgeIconUrl?: string | null;
   status: "locked" | "in_progress" | "completed";
   isSelected: boolean;
   onClick: () => void;
@@ -18,8 +19,9 @@ export interface StorybookSealProps {
 export function StorybookSeal({
   stageNumber,
   name,
-  type,
+  type = "star",
   medalType,
+  badgeIconUrl,
   status,
   isSelected,
   onClick,
@@ -85,6 +87,9 @@ export function StorybookSeal({
   const theme = getSealTheme();
   const IconComponent = theme.icon;
 
+  const isCoreBadge = stageNumber <= 5;
+  const hasCustomTeacherIcon = !isCoreBadge && Boolean(badgeIconUrl) && !badgeIconUrl?.startsWith("/badges/");
+
   return (
     <button
       type="button"
@@ -142,6 +147,21 @@ export function StorybookSeal({
               <Lock className="w-5 h-5 text-slate-500 drop-shadow-xs" />
               <span className="text-[9px] font-bold text-slate-500 mt-0.5">
                 Stage {stageNumber}
+              </span>
+            </div>
+          ) : hasCustomTeacherIcon && badgeIconUrl ? (
+            <div className="flex flex-col items-center justify-center">
+              {badgeIconUrl.startsWith("emoji:") ? (
+                <span className="text-2xl drop-shadow-sm">{badgeIconUrl.replace("emoji:", "")}</span>
+              ) : (
+                <img
+                  src={badgeIconUrl}
+                  alt={name}
+                  className="w-7 h-7 object-contain rounded-full bg-white/90 p-0.5 shadow-2xs"
+                />
+              )}
+              <span className="text-[8px] font-black text-white tracking-wider uppercase drop-shadow-xs truncate max-w-[50px]">
+                Quest
               </span>
             </div>
           ) : (

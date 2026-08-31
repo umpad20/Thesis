@@ -49,11 +49,12 @@ export default function VocabularyPage() {
       setLoading(true);
       const user = getCurrentUser();
       const studentSection = user?.section || "Grade 3-A";
+      const teacherId = user?.teacherId || null;
 
       const [allWords, allLessons, allBadges] = await Promise.all([
         fetchAllVocabularyWords(),
-        fetchLessonsForStudent(studentSection),
-        fetchBadgesFromSupabase(studentSection),
+        fetchLessonsForStudent(studentSection, teacherId),
+        fetchBadgesFromSupabase(studentSection, teacherId),
       ]);
 
       setWords(allWords);
@@ -85,6 +86,14 @@ export default function VocabularyPage() {
       return true;
     }
 
+    const currentLesson = lessons.find((l) => l.lesson_id === lessonId);
+    const relatedBadge = badges.find((b) => b.badge_id === currentLesson?.badge_id);
+
+    // Custom teacher quests are ALWAYS unlocked for students
+    if (currentLesson?.teacher_id || relatedBadge?.teacher_id) {
+      return true;
+    }
+
     // Check if previous lesson was completed
     const prevProg = lessonProgress[lessonId - 1];
     if (prevProg?.status === "completed") {
@@ -92,11 +101,10 @@ export default function VocabularyPage() {
     }
 
     // First story of a chapter is unlocked if the prior stage badge is completed
-    const currentLesson = lessons.find((l) => l.lesson_id === lessonId);
     if (currentLesson && currentLesson.lesson_order === 1) {
-      const priorBadgeOrder = (currentLesson.badge_id || 1) - 1;
-      if (priorBadgeOrder <= 0) return true;
-      const priorBadgeProg = badgeProgress.find((p) => p.badge_id === priorBadgeOrder);
+      const priorBadge = badges.find((b) => !b.teacher_id && b.badge_order === (relatedBadge?.badge_order || 2) - 1);
+      if (!priorBadge) return true;
+      const priorBadgeProg = badgeProgress.find((p) => p.badge_id === priorBadge.badge_id);
       if (priorBadgeProg?.status === "completed" || (priorBadgeProg?.completion_percentage || 0) >= 100) {
         return true;
       }

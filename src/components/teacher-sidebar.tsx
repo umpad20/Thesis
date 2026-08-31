@@ -59,13 +59,12 @@ export function TeacherSidebar() {
       badge: "5 Stages",
     },
     { name: "Reports", href: "/teacher/reports", icon: BarChart3, badge: "CSV" },
-    { name: "Settings", href: "/teacher/settings", icon: Settings },
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200/80 flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-hidden z-40">
+    <aside className="w-64 min-w-64 max-w-64 bg-white border-r border-slate-200/80 hidden md:flex flex-col flex-shrink-0 h-full overflow-hidden z-40 select-none justify-between">
       {/* Brand Header */}
-      <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100">
+      <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
         <Link href="/teacher" className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-sm">
             <ShieldCheck className="w-5 h-5 text-blue-400" />
@@ -79,13 +78,6 @@ export function TeacherSidebar() {
             </span>
           </div>
         </Link>
-        <button
-          type="button"
-          aria-label="Toggle Navigation"
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors"
-        >
-          <Layers className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Navigation Sections */}
@@ -139,15 +131,15 @@ export function TeacherSidebar() {
         </div>
       </div>
 
-      {/* Footer / Account Exit */}
-      <div className="p-3 border-t border-slate-100">
+      {/* Footer / Account Exit — Anchored strictly at bottom */}
+      <div className="mt-auto p-3 border-t border-slate-100 flex-shrink-0 bg-white">
         <button
           type="button"
           onClick={async () => {
             await signOutUser();
             window.location.replace("/api/auth/signout");
           }}
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors text-left"
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors text-left cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <LogOut className="w-4 h-4" />

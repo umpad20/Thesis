@@ -272,7 +272,7 @@ export async function authenticateSignIn(
       email: cleanEmail,
       fullName: profile?.full_name || authData.user.user_metadata?.full_name || cleanEmail.split("@")[0],
       role: (profile?.role || authData.user.user_metadata?.role || "student") as "student" | "teacher",
-      section: profile?.section || authData.user.user_metadata?.section || (profile?.role === "teacher" ? "Grade 3 Faculty" : "Grade 3-A"),
+      section: profile?.section || authData.user.user_metadata?.section || (profile?.role === "teacher" ? "Grade 3 Faculty" : "Unassigned"),
       teacherId: profile?.teacher_id || authData.user.user_metadata?.teacher_id,
       avatar: profile?.avatar || authData.user.user_metadata?.avatar || (profile?.role === "teacher" ? "👩‍🏫" : "🦊"),
     };
@@ -315,7 +315,7 @@ export async function authenticateSignUp(params: {
         data: {
           full_name: params.fullName.trim(),
           role: params.role,
-          section: params.section || (params.role === "teacher" ? "Grade 3 Faculty" : "Grade 3-A"),
+          section: params.section || (params.role === "teacher" ? "Grade 3 Faculty" : "Unassigned"),
           avatar: params.role === "teacher" ? "👩‍🏫" : "🦊",
         },
       },
@@ -344,7 +344,7 @@ export async function authenticateSignUp(params: {
       email: cleanEmail,
       full_name: params.fullName.trim(),
       role: params.role,
-      section: params.section || (params.role === "teacher" ? "Grade 3 Faculty" : "Grade 3-A"),
+      section: params.section || (params.role === "teacher" ? "Grade 3 Faculty" : "Unassigned"),
       avatar: params.role === "teacher" ? "👩‍🏫" : "🦊",
     });
 

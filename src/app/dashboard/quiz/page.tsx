@@ -19,20 +19,25 @@ import {
   Award,
   Unlock,
   ShieldCheck,
+  X,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGraphic } from "@/components/badge-graphic";
+import { CertificateModal } from "@/components/certificate-modal";
 import {
   fetchQuizForLesson,
   fetchStageFinalQuiz,
   fetchBadgesFromSupabase,
+  fetchLessonsForStudent,
+  fetchStudentLessonProgress,
   type QuizWithQuestions,
   submitQuizAttempt,
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { soundEffects } from "@/utils/sound-effects";
-import type { Badge, BadgeType, MedalType, QuestionChoice } from "@/lib/types";
+import type { Badge, BadgeType, MedalType, QuestionChoice, Lesson } from "@/lib/types";
 
 function QuizContent() {
   const searchParams = useSearchParams();
@@ -45,7 +50,14 @@ function QuizContent() {
 
   const [quizData, setQuizData] = useState<QuizWithQuestions | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [allLessons, setAllLessons] = useState<Lesson[]>([]);
+  const [lessonProgress, setLessonProgress] = useState<
+    Record<number, { status: "completed" | "in_progress" | "locked"; highest_score: number }>
+  >({});
   const [loading, setLoading] = useState(true);
+  const [stageLockedReason, setStageLockedReason] = useState<string | null>(null);
+  const [firstUnfinishedLessonId, setFirstUnfinishedLessonId] = useState<number | null>(null);
+  const [isAlreadyPassed, setIsAlreadyPassed] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedChoiceId, setSelectedChoiceId] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -53,6 +65,9 @@ function QuizContent() {
   const [showHint, setShowHint] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [studentFullName, setStudentFullName] = useState("Student");
+  const [studentSection, setStudentSection] = useState("Grade 3-A");
   const [feedbackType, setFeedbackType] = useState<"correct" | "wrong" | null>(null);
   const [recordedAnswers, setRecordedAnswers] = useState<
     Array<{ questionId: number; choiceId: number; isCorrect: boolean }>
@@ -61,17 +76,107 @@ function QuizContent() {
   useEffect(() => {
     async function loadQuiz() {
       setLoading(true);
-      const user = getCurrentUser();
-      const studentSection = user?.section || "Grade 3-A";
 
-      const [liveBadges, loadedQuiz] = await Promise.all([
-        fetchBadgesFromSupabase(studentSection),
+      // Reset all quiz interaction state for a fresh start
+      setCurrentIndex(0);
+      setSelectedChoiceId(null);
+      setIsSubmitted(false);
+      setScore(0);
+      setShowHint(false);
+      setQuizFinished(false);
+      setShowExitConfirm(false);
+      setFeedbackType(null);
+      setRecordedAnswers([]);
+      setStageLockedReason(null);
+      setFirstUnfinishedLessonId(null);
+      setIsAlreadyPassed(false);
+
+      const user = getCurrentUser();
+
+      // Sync fresh profile from Supabase to ensure teacherId is available
+      if (user?.id) {
+        try {
+          const { createClient } = await import("@/utils/supabase/client");
+          const supabase = createClient();
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (prof) {
+            user.section = prof.section || user.section || "Unassigned";
+            user.teacherId = prof.teacher_id;
+            user.fullName = prof.full_name || user.fullName;
+            const { setCurrentUserSession } = await import("@/utils/auth-helpers");
+            setCurrentUserSession(user);
+          }
+        } catch {
+          // ignore sync errors
+        }
+      }
+
+      const studentSec = user?.section || "Grade 3-A";
+      const teacherId = user?.teacherId || null;
+      setStudentFullName(user?.fullName || "Student");
+      setStudentSection(studentSec);
+
+      const [liveBadges, loadedQuiz, liveLessons, liveLessonProg] = await Promise.all([
+        fetchBadgesFromSupabase(studentSec, teacherId),
         isStageFinal && badgeId
           ? fetchStageFinalQuiz(badgeId)
           : lessonId
           ? fetchQuizForLesson(lessonId)
           : fetchQuizForLesson(1),
+        fetchLessonsForStudent(studentSec, teacherId),
+        user?.id
+          ? fetchStudentLessonProgress(user.id)
+          : Promise.resolve(
+              {} as Record<
+                number,
+                { status: "completed" | "in_progress" | "locked"; highest_score: number }
+              >
+            ),
       ]);
+
+      setAllLessons(liveLessons);
+      setLessonProgress(liveLessonProg);
+
+      // Determine if student has already passed this quiz prior to this session
+      if (isStageFinal && badgeId && user?.id) {
+        try {
+          const { createClient } = await import("@/utils/supabase/client");
+          const supabase = createClient();
+          const { data: bProg } = await supabase
+            .from("student_badge_progress")
+            .select("status")
+            .eq("student_id", user.id)
+            .eq("badge_id", badgeId)
+            .maybeSingle();
+          setIsAlreadyPassed(bProg?.status === "completed");
+        } catch {
+          setIsAlreadyPassed(false);
+        }
+      } else if (lessonId) {
+        setIsAlreadyPassed(liveLessonProg[lessonId]?.status === "completed");
+      }
+
+      // If this is a Stage Final Quiz, verify that all stories in this badge/chapter are completed
+      if (isStageFinal && badgeId) {
+        const chapterLessons = liveLessons.filter((l) => l.badge_id === badgeId);
+        if (chapterLessons.length === 0) {
+          setStageLockedReason("No story lessons have been published for this quest yet.");
+        } else {
+          const unfinished = chapterLessons.find(
+            (l) => liveLessonProg[l.lesson_id]?.status !== "completed"
+          );
+          if (unfinished) {
+            setStageLockedReason(
+              `Please complete all chapter stories first! You still need to finish "${unfinished.lesson_title}".`
+            );
+            setFirstUnfinishedLessonId(unfinished.lesson_id);
+          }
+        }
+      }
 
       setBadges(liveBadges);
       setQuizData(loadedQuiz);
@@ -86,15 +191,25 @@ function QuizContent() {
   const totalQuestions = questions.length;
   const maxScore = Math.max(totalQuestions * (currentQuestion?.points || 10), 10);
 
-  const currentBadge = badges.find((b) => b.badge_id === badgeId) || {
-    badge_id: badgeId,
-    badge_name: `Stage ${badgeId} Badge`,
+  const effectiveBadgeId = rawBadgeId
+    ? Number(rawBadgeId)
+    : quizData?.badge_id || 1;
+
+  const currentBadge: Badge = badges.find((b) => b.badge_id === effectiveBadgeId) || {
+    badge_id: effectiveBadgeId,
+    badge_name: quizData?.quiz_title?.includes("Comprehension Check")
+      ? quizData.quiz_title.replace(" Comprehension Check", "")
+      : `Stage ${effectiveBadgeId} Badge`,
     badge_type: "star" as const,
-    medal_type: undefined,
-    badge_order: badgeId,
+    medal_type: null,
+    badge_icon_url: null,
+    badge_order: effectiveBadgeId,
+    description: "Reading Milestone Badge",
+    required_passing_score: 70,
+    xp_reward: 250,
   };
 
-  const nextBadgeId = badgeId < 5 ? badgeId + 1 : null;
+  const nextBadgeId = effectiveBadgeId < 5 ? effectiveBadgeId + 1 : null;
   const nextBadge: Badge | null = nextBadgeId
     ? badges.find((b) => b.badge_id === nextBadgeId) || {
         badge_id: nextBadgeId,
@@ -180,7 +295,12 @@ function QuizContent() {
       }
 
       if (isPassed) {
-        soundEffects.playVictory();
+        if (isStageFinal && (badgeId === 5 || currentBadge?.badge_order === 5)) {
+          soundEffects.playGrandGraduationFanfare();
+          setShowCertificate(true);
+        } else {
+          soundEffects.playVictory();
+        }
       }
 
       setQuizFinished(true);
@@ -203,6 +323,44 @@ function QuizContent() {
       <div className="max-w-2xl mx-auto py-16 text-center space-y-3">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-slate-500 font-medium">Opening comprehension assessment...</p>
+      </div>
+    );
+  }
+
+  if (isStageFinal && stageLockedReason) {
+    return (
+      <div className="max-w-xl mx-auto py-12 text-center dashboard-card p-8 sm:p-10 space-y-5">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+          <Award className="w-7 h-7" />
+        </div>
+        <div>
+          <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-200">
+            Assessment Locked
+          </span>
+          <h2 className="text-xl font-black text-slate-900 mt-2">
+            {currentBadge.badge_name} Final Quiz Locked
+          </h2>
+          <p className="text-xs text-slate-600 max-w-md mx-auto mt-1 leading-relaxed">
+            {stageLockedReason}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {firstUnfinishedLessonId ? (
+            <Link href={`/dashboard/lessons?lessonId=${firstUnfinishedLessonId}`}>
+              <Button className="h-10 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs cursor-pointer">
+                <BookOpen className="w-4 h-4 mr-1.5" />
+                Read Story Chapter
+              </Button>
+            </Link>
+          ) : null}
+          <Link href="/dashboard/badges">
+            <Button variant="outline" className="h-10 px-5 rounded-xl border-slate-200 font-bold text-xs cursor-pointer">
+              <Map className="w-4 h-4 mr-1.5" />
+              Go to Story Realm
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -271,6 +429,7 @@ function QuizContent() {
                 <BadgeGraphic
                   type={currentBadge.badge_type}
                   medalType={currentBadge.medal_type}
+                  badgeIconUrl={currentBadge.badge_icon_url}
                   size="lg"
                   status="completed"
                 />
@@ -287,12 +446,15 @@ function QuizContent() {
 
               <div className="mt-3 pt-2 border-t border-amber-200/80 w-full flex items-center justify-center gap-1 text-xs font-black text-amber-700">
                 <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                <span>+250 XP Awarded</span>
+                <span>
+                  +{isAlreadyPassed ? 10 : (currentBadge.xp_reward || 250)} XP{" "}
+                  {isAlreadyPassed ? "(Practice Review)" : "Awarded"}
+                </span>
               </div>
             </div>
 
-            {/* 2. Newly Unlocked Next Badge Card */}
-            {nextBadge && (
+            {/* 2. Newly Unlocked Next Badge Card OR Grand Star Reader Graduation Card */}
+            {nextBadge ? (
               <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 via-white to-indigo-50/60 border-2 border-blue-400 ring-4 ring-blue-400/20 shadow-lg flex flex-col items-center justify-between text-center relative overflow-hidden group anim-pop-bounce">
                 <div className="absolute top-2 right-2">
                   <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs animate-pulse">
@@ -305,6 +467,7 @@ function QuizContent() {
                   <BadgeGraphic
                     type={nextBadge.badge_type}
                     medalType={nextBadge.medal_type}
+                    badgeIconUrl={nextBadge.badge_icon_url}
                     size="lg"
                     status="completed"
                   />
@@ -323,6 +486,40 @@ function QuizContent() {
                   Ready to Read Story {nextFirstLessonId}
                 </div>
               </div>
+            ) : (
+              <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-200/60 border-2 border-amber-400 ring-4 ring-amber-300/30 shadow-lg flex flex-col items-center justify-between text-center relative overflow-hidden group anim-pop-bounce">
+                <div className="absolute top-2 right-2">
+                  <span className="bg-amber-600 text-white text-[9px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs animate-pulse">
+                    <Trophy className="w-3 h-3" />
+                    <span>STAR READER!</span>
+                  </span>
+                </div>
+
+                <div className="my-2 group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 p-1 shadow-md flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                      <Trophy className="w-8 h-8 fill-amber-400 text-amber-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
+                    All 5 Stages Completed!
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 mt-0.5">
+                    Star Reader Award
+                  </h3>
+                </div>
+
+                <Button
+                  onClick={() => setShowCertificate(true)}
+                  className="mt-3 w-full h-9 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>View Certificate 📜</span>
+                </Button>
+              </div>
             )}
           </div>
 
@@ -333,7 +530,7 @@ function QuizContent() {
                 href={`/dashboard/lessons?lessonId=${nextFirstLessonId}`}
                 className="w-full sm:w-auto"
               >
-                <Button className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2.5 transition-all">
+                <Button className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer">
                   <BookOpen className="w-5 h-5" />
                   <span>Continue Reading Next Chapter 📖</span>
                   <ArrowRight className="w-5 h-5" />
@@ -341,10 +538,20 @@ function QuizContent() {
               </Link>
             )}
 
+            {!nextBadge && (
+              <Button
+                onClick={() => setShowCertificate(true)}
+                className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+              >
+                <Trophy className="w-5 h-5 fill-slate-950 text-slate-950" />
+                <span>Open Star Reader Certificate 📜</span>
+              </Button>
+            )}
+
             <Link href="/dashboard/badges" className="w-full sm:w-auto">
               <Button
                 variant="outline"
-                className="w-full sm:w-auto h-12 px-6 rounded-2xl border-amber-300 text-slate-800 bg-white hover:bg-amber-50/60 font-bold text-xs shadow-xs"
+                className="w-full sm:w-auto h-12 px-6 rounded-2xl border-amber-300 text-slate-800 bg-white hover:bg-amber-50/60 font-bold text-xs shadow-xs cursor-pointer"
               >
                 <Map className="w-4 h-4 mr-2 text-amber-600" />
                 <span>View Living Storybook</span>
@@ -352,6 +559,15 @@ function QuizContent() {
             </Link>
           </div>
         </div>
+
+        {/* Certificate Modal */}
+        <CertificateModal
+          isOpen={showCertificate}
+          onClose={() => setShowCertificate(false)}
+          studentName={studentFullName}
+          section={studentSection}
+          autoPlayAudio={false}
+        />
       </div>
     );
   }
@@ -360,10 +576,44 @@ function QuizContent() {
   // B. REGULAR STORY QUIZ OR RETENTION SCREEN
   // ══════════════════════════════════════════════════════════════════════════
   if (quizFinished) {
-    const isLastLessonOfStage = lessonId ? lessonId % 3 === 0 : false;
-    const currentStageBadgeId = quizData?.badge_id || (lessonId ? Math.ceil(lessonId / 3) : badgeId);
-    const currentStageBadge = badges.find((b) => b.badge_id === currentStageBadgeId) || currentBadge;
-    const nextLessonId = lessonId && !isLastLessonOfStage ? lessonId + 1 : null;
+    const currentLesson = allLessons.find((l) => l.lesson_id === lessonId);
+    const currentStageBadgeId =
+      currentLesson?.badge_id ||
+      quizData?.badge_id ||
+      (rawBadgeId
+        ? Number(rawBadgeId)
+        : lessonId && lessonId <= 15
+        ? Math.ceil(lessonId / 3)
+        : badgeId);
+    const currentStageBadge =
+      badges.find((b) => b.badge_id === currentStageBadgeId) || currentBadge;
+
+    const chapterLessons = allLessons.filter(
+      (l) => l.badge_id === currentStageBadgeId
+    );
+    const currentLessonIdx = chapterLessons.findIndex(
+      (l) => l.lesson_id === lessonId
+    );
+    const nextChapterLesson =
+      currentLessonIdx >= 0 && currentLessonIdx < chapterLessons.length - 1
+        ? chapterLessons[currentLessonIdx + 1]
+        : null;
+
+    const isLastLessonOfStage =
+      chapterLessons.length > 0
+        ? currentLessonIdx === chapterLessons.length - 1 ||
+          chapterLessons.every(
+            (l) =>
+              l.lesson_id === lessonId ||
+              lessonProgress[l.lesson_id]?.status === "completed"
+          )
+        : lessonId
+        ? lessonId % 3 === 0
+        : true;
+
+    const nextLessonId =
+      nextChapterLesson?.lesson_id ||
+      (lessonId && !isLastLessonOfStage ? lessonId + 1 : null);
 
     return (
       <div className="max-w-2xl mx-auto space-y-6 py-6 anim-pop-bounce">
@@ -394,7 +644,7 @@ function QuizContent() {
             >
               {isPassed
                 ? isLastLessonOfStage
-                  ? "🌟 ALL 3 STORIES COMPLETED — FINAL QUIZ UNLOCKED! 🌟"
+                  ? "🌟 ALL CHAPTER STORIES COMPLETED — FINAL QUIZ UNLOCKED! 🌟"
                   : "✨ STORY COMPREHENSION PASSED! ✨"
                 : "KEEP PRACTICING (RETAINED)"}
             </span>
@@ -408,7 +658,7 @@ function QuizContent() {
             <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
               {isPassed
                 ? isLastLessonOfStage
-                  ? `Incredible achievement! You have mastered all 3 stories in Stage ${currentStageBadgeId} (${currentStageBadge.badge_name}). You must now pass the Stage Final Mastery Assessment to earn your seal and unlock the next stage!`
+                  ? `Incredible achievement! You have mastered all stories in ${currentStageBadge.badge_name}. You must now pass the Stage Final Mastery Assessment to earn your seal and complete this chapter!`
                   : "Great job! You passed the reading comprehension assessment and unlocked the next story in this chapter!"
                 : `You scored ${percentage}%. You need ≥${passingScore}% to pass and advance. Review the story passage and retry!`}
             </p>
@@ -436,7 +686,14 @@ function QuizContent() {
               </span>
               <span className="text-xl font-black text-amber-900 flex items-center justify-center gap-1">
                 <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                <span>+{isPassed ? 50 : 10} XP</span>
+                <span>+{isPassed ? (isAlreadyPassed ? 5 : 50) : 0} XP</span>
+              </span>
+              <span className="text-[9px] text-amber-700 font-semibold block mt-0.5">
+                {isPassed
+                  ? isAlreadyPassed
+                    ? "Practice Review"
+                    : "Milestone Pass"
+                  : "Target Not Reached"}
               </span>
             </div>
           </div>
@@ -592,14 +849,14 @@ function QuizContent() {
               <Button
                 variant="outline"
                 onClick={() => setShowExitConfirm(false)}
-                className="flex-1 h-11 rounded-xl text-xs font-bold border-slate-200"
+                className="flex-1 h-11 rounded-xl text-xs font-bold border-slate-200 cursor-pointer"
               >
                 Stay in Quiz
               </Button>
 
               <Link href="/dashboard/badges" className="flex-1">
                 <Button
-                  className="w-full h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+                  className="w-full h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
                 >
                   Exit to Storybook
                 </Button>
@@ -609,75 +866,56 @@ function QuizContent() {
         </div>
       )}
 
-      {/* ── 2. Header & Navigation Trail ───────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <span className="text-blue-600 font-bold flex items-center gap-1">
-              <Map className="w-3.5 h-3.5" />
-              <span>Living Storybook Evaluation</span>
+      {/* ── 2. Clean, Compact Top Header ── */}
+      <div className="flex items-center justify-between gap-3 bg-white/90 backdrop-blur-md px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Left: Title + Final Stage Badge */}
+        <div className="flex items-center gap-2 min-w-0">
+          <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
+            {quizData.quiz_title}
+          </h1>
+          {isStageFinal ? (
+            <span className="bg-amber-100 text-amber-800 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-300 flex-shrink-0">
+              STAGE FINAL
             </span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-700 font-bold">{currentBadge.badge_name}</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-500 font-medium">
-              {isStageFinal ? "Stage Final Assessment" : "Story Quiz"}
+          ) : (
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex-shrink-0 hidden xs:inline">
+              Pass ≥{passingScore}%
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-              {quizData.quiz_title}
-            </h1>
-            {isStageFinal && (
-              <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-300">
-                FINAL ASSESSMENT
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-500 font-medium">
-            Passing Threshold: ≥{passingScore}% · {currentQuestion?.points || 10} Points per question
-          </p>
+          )}
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => soundEffects.speakText("Audio and voice encouragement are active!", 1.1, 1.0)}
-            className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs"
-            title="Test Voice Audio"
-          >
-            <Volume2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
-            <span>Sound & Voice Active</span>
-          </Button>
+        {/* Right: Question Progress + Clean Exit Button */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 flex-shrink-0">
+          <div className="flex flex-col items-end gap-0.5 sm:gap-1">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700">
+              <span className="hidden sm:inline">Question</span>
+              <span>
+                {currentIndex + 1}/{totalQuestions}
+              </span>
+              <span className="text-blue-600 font-black">
+                ({Math.round(((currentIndex + 1) / totalQuestions) * 100)}%)
+              </span>
+            </div>
+            {/* Progress Bar */}
+            <div className="w-16 sm:w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+                style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
+              />
+            </div>
+          </div>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowExitConfirm(true)}
-            className="rounded-xl border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs"
+            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-9 px-2.5 sm:px-3 cursor-pointer flex items-center gap-1 transition-all"
+            title="Exit to Storybook"
           >
-            <Map className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-            <span>Exit to Storybook</span>
+            <X className="w-3.5 h-3.5" />
+            <span>Exit</span>
           </Button>
         </div>
-      </div>
-
-      {/* ── 3. Step Progress Bar ───────────────────────────────────────── */}
-      <div className="dashboard-card p-4">
-        <div className="flex items-center justify-between text-xs font-bold mb-2">
-          <span className="text-slate-500">
-            Question {currentIndex + 1} of {totalQuestions}
-          </span>
-          <span className="text-blue-600 font-black">
-            {Math.round(((currentIndex + 1) / totalQuestions) * 100)}% Answered
-          </span>
-        </div>
-        <Progress
-          value={((currentIndex + 1) / totalQuestions) * 100}
-          className="h-2.5 bg-slate-100 rounded-full"
-        />
       </div>
 
       {/* ── 4. Question & Choice Cards ─────────────────────────────────── */}
@@ -850,7 +1088,14 @@ export default function QuizPage() {
         </div>
       }
     >
-      <QuizContent />
+      <QuizContentKeyWrapper />
     </Suspense>
   );
+}
+
+/** Wrapper that reads searchParams and passes a key to force full remount */
+function QuizContentKeyWrapper() {
+  const searchParams = useSearchParams();
+  const quizKey = `${searchParams.get("lessonId") || "none"}-${searchParams.get("badgeId") || "none"}-${searchParams.get("type") || "lesson"}`;
+  return <QuizContent key={quizKey} />;
 }

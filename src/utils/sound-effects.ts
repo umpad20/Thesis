@@ -284,6 +284,128 @@ class SoundSynthesizer {
   }
 
   /**
+   * Synthesize realistic crowd clapping / applause bursts
+   */
+  playApplause(durationSeconds = 3.5) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      // Generate multiple randomized handclap bursts
+      const clapCount = Math.floor(durationSeconds * 12);
+      const now = ctx.currentTime;
+
+      for (let i = 0; i < clapCount; i++) {
+        const clapTime = now + (i / 12) + (Math.random() * 0.06 - 0.03);
+        const bufferSize = Math.floor(ctx.sampleRate * 0.08);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let j = 0; j < bufferSize; j++) {
+          data[j] = (Math.random() * 2 - 1) * Math.exp(-j / (ctx.sampleRate * 0.015));
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 1000 + Math.random() * 500;
+        filter.Q.value = 1.2;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.12 + Math.random() * 0.08, clapTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, clapTime + 0.08);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        noise.start(clapTime);
+        noise.stop(clapTime + 0.09);
+      }
+    } catch (err) {
+      console.warn("Applause synthesis error:", err);
+    }
+  }
+
+  /**
+   * Grand Graduation Fanfare with multi-octave arpeggios, synthesized crowd clapping, and teacher voice
+   */
+  playGrandGraduationFanfare() {
+    const ctx = this.getContext();
+    if (ctx) {
+      try {
+        const now = ctx.currentTime;
+        // Festive uplifting victory trumpet arpeggio: C5 -> E5 -> G5 -> C6 -> E6 -> G6 -> C7
+        const melody = [
+          { freq: 523.25, time: 0.0, dur: 0.25 },
+          { freq: 659.25, time: 0.15, dur: 0.25 },
+          { freq: 783.99, time: 0.3, dur: 0.3 },
+          { freq: 1046.5, time: 0.5, dur: 0.45 },
+          { freq: 1318.51, time: 0.75, dur: 0.45 },
+          { freq: 1567.98, time: 1.0, dur: 0.6 },
+          { freq: 2093.0, time: 1.3, dur: 1.5 },
+        ];
+
+        melody.forEach(({ freq, time, dur }) => {
+          const startTime = now + time;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.28, startTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + dur + 0.05);
+        });
+
+        // Layered rich harmony chords at resolution
+        const finalChord = [523.25, 659.25, 783.99, 1046.5];
+        finalChord.forEach((freq) => {
+          const startTime = now + 1.3;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.2, startTime + 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.8);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 1.85);
+        });
+      } catch (err) {
+        console.warn("Graduation fanfare error:", err);
+      }
+    }
+
+    // Trigger crowd applause alongside the fanfare
+    this.playApplause(4.0);
+
+    // Warm spoken teacher congratulations
+    setTimeout(() => {
+      this.speakText(
+        "Congratulations! You have completed all five reading stages and earned the Star Reader Award!",
+        1.05,
+        0.9
+      );
+    }, 1200);
+  }
+
+  /**
    * Soft page turn sound effect for storybook page transitions
    */
   playPageTurn() {

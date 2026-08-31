@@ -1,0 +1,18 @@
+{
+  "name": "ReadSmart — Gamified Reading Comprehension",
+  "short_name": "ReadSmart",
+  "description": "A multimedia mastery-based reading comprehension platform for Pedro Victorina Calo Elementary School.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#2563EB",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/globe.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -16,8 +16,11 @@ import {
   Eye,
   EyeOff,
   Filter,
+  Trophy,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CertificateModal } from "@/components/certificate-modal";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +46,7 @@ export default function TeacherStudentsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [selectedCertificateStudent, setSelectedCertificateStudent] = useState<EnrolledStudent | null>(null);
 
   // Enrollment Modal State
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -353,8 +357,7 @@ export default function TeacherStudentsPage() {
           <TableRosterSkeleton />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
+            <table className="w-full text-left text-xs">              <thead>
                 <tr className="border-b border-slate-100 text-slate-400 font-bold">
                   <th className="pb-3">Pupil Name &amp; ID</th>
                   <th className="pb-3">Enrolled Section</th>
@@ -363,78 +366,117 @@ export default function TeacherStudentsPage() {
                   <th className="pb-3">Reading Speed</th>
                   <th className="pb-3">Quizzes Cleared</th>
                   <th className="pb-3">Intervention Status</th>
+                  <th className="pb-3 text-center">Star Reader Award</th>
                   <th className="pb-3 text-right">Last Session</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                    <td colSpan={9} className="py-8 text-center text-slate-400">
                       No students found in this section. Click <strong>&quot;Enroll New Student&quot;</strong> to add one.
                     </td>
                   </tr>
                 ) : (
-                  filteredStudents.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-bold text-slate-900">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-lg">{s.avatar || (s.gender === "Female" ? "👧" : "👦")}</span>
-                          <div>
-                            <div className="text-slate-900">{s.name}</div>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              {s.id} · {s.gender}
-                            </span>
+                  filteredStudents.map((s) => {
+                    const isCompletedAllStages = Boolean(s.isAllStagesCompleted);
+
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 font-bold text-slate-900">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-lg">{s.avatar || (s.gender === "Female" ? "👧" : "👦")}</span>
+                            <div>
+                              <div className="text-slate-900">{s.name}</div>
+                              <span className="text-[10px] text-slate-400 font-normal">
+                                {s.id} · {s.gender}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-3.5">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                          {s.section}
-                        </span>
-                      </td>
+                        <td className="py-3.5">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            {s.section}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 font-semibold text-slate-800">
-                        {s.currentBadge}
-                      </td>
+                        <td className="py-3.5 font-semibold text-slate-800">
+                          <div>{s.currentBadge}</div>
+                          {isCompletedAllStages && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs mt-1">
+                              🎓 All 5 Stages Completed
+                            </span>
+                          )}
+                        </td>
 
-                      <td className="py-3.5 font-bold text-slate-900">
-                        {s.comprehension}
-                      </td>
+                        <td className="py-3.5 font-bold text-slate-900">
+                          {s.comprehension}
+                        </td>
 
-                      <td className="py-3.5 text-slate-600">
-                        {s.readingSpeed}
-                      </td>
+                        <td className="py-3.5 text-slate-600">
+                          {s.readingSpeed}
+                        </td>
 
-                      <td className="py-3.5 text-slate-600">
-                        {s.quizzesPassed}
-                      </td>
+                        <td className="py-3.5 text-slate-600">
+                          {s.quizzesPassed}
+                        </td>
 
-                      <td className="py-3.5">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            s.status === "Mastering"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : s.status === "On Track"
-                              ? "bg-blue-50 text-blue-700 border border-blue-200"
-                              : "bg-rose-50 text-rose-700 border border-rose-200"
-                          }`}
-                        >
-                          {s.status}
-                        </span>
-                      </td>
+                        <td className="py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              s.status === "Mastering"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : s.status === "On Track"
+                                ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                : "bg-rose-50 text-rose-700 border border-rose-200"
+                            }`}
+                          >
+                            {s.status}
+                          </span>
+                        </td>
 
-                      <td className="py-3.5 text-right text-slate-400">
-                        {s.lastActive}
-                      </td>
-                    </tr>
-                  ))
+                        <td className="py-3.5 text-center">
+                          {isCompletedAllStages ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedCertificateStudent(s)}
+                              className="h-7 px-2.5 rounded-lg border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-bold text-[10px] shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                              title="View and Print Official Star Reader Certificate"
+                            >
+                              <Trophy className="w-3 h-3 fill-amber-500 text-amber-600" />
+                              <span>View Award 📜</span>
+                            </Button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>In Progress</span>
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 text-right text-slate-400">
+                          {s.lastActive}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Star Reader Certificate Modal for Teachers */}
+      <CertificateModal
+        isOpen={!!selectedCertificateStudent}
+        onClose={() => setSelectedCertificateStudent(null)}
+        studentName={selectedCertificateStudent?.name || "Student"}
+        section={selectedCertificateStudent?.section || "Grade 3-A"}
+        autoPlayAudio={false}
+      />
 
       {/* 5. Enroll Student Modal */}
       <Dialog open={isEnrollModalOpen} onOpenChange={setIsEnrollModalOpen}>

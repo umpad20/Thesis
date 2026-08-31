@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="hallGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffedd5" />
+      <stop offset="70%" stop-color="#fed7aa" />
+      <stop offset="100%" stop-color="#fdba74" />
+    </linearGradient>
+  </defs>
+
+  <!-- School Hallway & Windows -->
+  <rect width="800" height="420" fill="url(#hallGrad)" />
+  <rect x="0" y="420" width="800" height="180" fill="#f8fafc" stroke="#e2e8f0" stroke-width="4" />
+  
+  <!-- Hallway Floor Tiles -->
+  <path d="M0,480 L800,480 M0,540 L800,540 M200,420 L150,600 M400,420 L380,600 M600,420 L620,600" stroke="#e2e8f0" stroke-width="2" />
+
+  <!-- Sunny Windows -->
+  <g transform="translate(100, 80)">
+    <rect width="180" height="240" rx="16" fill="#e0f2fe" stroke="#38bdf8" stroke-width="6" />
+    <line x1="90" y1="0" x2="90" y2="240" stroke="#38bdf8" stroke-width="4" />
+    <line x1="0" y1="120" x2="180" y2="120" stroke="#38bdf8" stroke-width="4" />
+  </g>
+  <g transform="translate(520, 80)">
+    <rect width="180" height="240" rx="16" fill="#e0f2fe" stroke="#38bdf8" stroke-width="6" />
+    <line x1="90" y1="0" x2="90" y2="240" stroke="#38bdf8" stroke-width="4" />
+    <line x1="0" y1="120" x2="180" y2="120" stroke="#38bdf8" stroke-width="4" />
+  </g>
+
+  <!-- Big Heart Symbol of Friendship Above -->
+  <text x="400" y="160" text-anchor="middle" font-size="48">💖</text>
+
+  <!-- ── CHARACTER 1: Anna Walking (Yellow Star Shirt, Blue Skirt, Pigtails) ── -->
+  <g transform="translate(290, 270)">
+    <rect x="25" y="80" width="48" height="52" rx="10" fill="#facc15" stroke="#ca8a04" stroke-width="3" />
+    <text x="49" y="110" text-anchor="middle" font-size="16" fill="#1e3a8a">⭐</text>
+    <path d="M20,132 L78,132 L86,170 L12,170 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="3" />
+    <!-- Walking Legs -->
+    <rect x="28" y="170" width="12" height="35" fill="#fed7aa" rx="4" transform="rotate(-10 28 170)" />
+    <rect x="58" y="170" width="12" height="35" fill="#fed7aa" rx="4" transform="rotate(15 58 170)" />
+    <ellipse cx="24" cy="210" rx="14" ry="7" fill="#ef4444" />
+    <ellipse cx="68" cy="210" rx="14" ry="7" fill="#ef4444" />
+    <!-- Head & Pigtails -->
+    <circle cx="10" cy="40" r="15" fill="#78350f" />
+    <circle cx="88" cy="40" r="15" fill="#78350f" />
+    <circle cx="10" cy="35" r="7" fill="#f43f5e" />
+    <circle cx="88" cy="35" r="7" fill="#f43f5e" />
+    <circle cx="49" cy="45" r="30" fill="#fed7aa" stroke="#ea580c" stroke-width="2" />
+    <path d="M19,40 Q49,16 79,40 Q49,30 19,40 Z" fill="#78350f" />
+    <!-- Happy Face -->
+    <circle cx="38" cy="45" r="4" fill="#0f172a" />
+    <circle cx="60" cy="45" r="4" fill="#0f172a" />
+    <circle cx="30" cy="52" r="4" fill="#fca5a5" />
+    <circle cx="68" cy="52" r="4" fill="#fca5a5" />
+    <path d="M42,55 Q49,64 56,55" stroke="#0f172a" stroke-width="3" fill="none" stroke-linecap="round" />
+  </g>
+
+  <!-- ── CHARACTER 2: Mia Walking (Peach Shirt, Blue Jeans, Rainbow Bag) ── -->
+  <g transform="translate(420, 270)">
+    <!-- Rainbow Backpack -->
+    <rect x="70" y="82" width="20" height="42" rx="8" fill="#f43f5e" />
+    <rect x="73" y="88" width="16" height="8" fill="#facc15" />
+    <rect x="73" y="98" width="16" height="8" fill="#38bdf8" />
+    <!-- Peach Shirt -->
+    <rect x="25" y="80" width="48" height="52" rx="10" fill="#fb923c" stroke="#ea580c" stroke-width="3" />
+    <!-- Walking Blue Jeans -->
+    <rect x="26" y="132" width="20" height="68" fill="#3b82f6" stroke="#1d4ed8" stroke-width="3" rx="4" transform="rotate(10 26 132)" />
+    <rect x="52" y="132" width="20" height="68" fill="#3b82f6" stroke="#1d4ed8" stroke-width="3" rx="4" transform="rotate(-15 52 132)" />
+    <ellipse cx="38" cy="208" rx="14" ry="7" fill="#78350f" />
+    <ellipse cx="50" cy="208" rx="14" ry="7" fill="#78350f" />
+    <!-- Head & Brown Hair -->
+    <circle cx="49" cy="45" r="30" fill="#fed7aa" stroke="#ea580c" stroke-width="2" />
+    <path d="M16,42 Q49,12 82,42 Q84,72 73,78 Q49,45 25,78 Z" fill="#78350f" />
+    <!-- Joyful Face with Blushing Cheeks -->
+    <circle cx="38" cy="45" r="4" fill="#0f172a" />
+    <circle cx="60" cy="45" r="4" fill="#0f172a" />
+    <circle cx="30" cy="52" r="5" fill="#fca5a5" />
+    <circle cx="68" cy="52" r="5" fill="#fca5a5" />
+    <path d="M42,55 Q49,65 56,55" stroke="#0f172a" stroke-width="3" fill="none" stroke-linecap="round" />
+  </g>
+</svg>

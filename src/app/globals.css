@@ -88,10 +88,36 @@
 @layer base {
   * {
     @apply border-border outline-ring/40;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    overflow-x: hidden;
+    scroll-behavior: smooth;
   }
   body {
     @apply bg-white text-foreground;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+  button, a {
+    touch-action: manipulation;
+  }
+}
+
+/* Mobile Safe Area Inset Helpers */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0.5rem);
+}
+
+/* Touch-optimized horizontal scrolling table / card row */
+.mobile-scroll-row {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 /* Crisp all-white cards & widgets */

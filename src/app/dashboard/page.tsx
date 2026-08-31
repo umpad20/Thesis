@@ -15,7 +15,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { BadgeGraphic, getBadgeCategoryLabel } from "@/components/badge-graphic";
+import { CertificateModal } from "@/components/certificate-modal";
 import {
   fetchBadgesFromSupabase,
   fetchStudentBadgeProgress,
@@ -23,24 +25,26 @@ import {
   fetchLessonsForStudent,
   type LiveStudentStats,
 } from "@/utils/supabase-queries";
-import { getCurrentUser, UserProfile } from "@/utils/auth-helpers";
+import { getCurrentUser, setCurrentUserSession, UserProfile } from "@/utils/auth-helpers";
+import { createClient } from "@/utils/supabase/client";
 import { DashboardHomeSkeleton } from "@/components/page-skeletons";
 import type { Badge, StudentBadgeProgress, Lesson } from "@/lib/types";
 
 export default function StudentDashboard() {
-  const [currentUser] = useState<UserProfile | null>(() => getCurrentUser());
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getCurrentUser());
   const [loading, setLoading] = useState(true);
+  const [showCertificate, setShowCertificate] = useState(false);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [badgeProgress, setBadgeProgress] = useState<StudentBadgeProgress[]>([]);
   const [stats, setStats] = useState<LiveStudentStats>({
     full_name: "Pupil",
-    section: "Grade 3-A",
+    section: "Unassigned",
     avatar: "🦊",
-    totalXp: 100,
+    totalXp: 0,
     lessonsCompleted: 0,
     quizzesPassed: 0,
-    streakDays: 1,
-    accuracyRate: 85,
+    streakDays: 0,
+    accuracyRate: 0,
   });
   const [activeStory, setActiveStory] = useState<Lesson | null>(null);
 
@@ -49,13 +53,38 @@ export default function StudentDashboard() {
 
     async function loadLiveData() {
       setLoading(true);
+      const user = getCurrentUser();
+
+      // Sync fresh profile directly from Supabase if logged in
+      if (user?.id) {
+        try {
+          const supabase = createClient();
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+          if (prof) {
+            user.section = prof.section || "Unassigned";
+            user.teacherId = prof.teacher_id;
+            user.avatar = prof.avatar || user.avatar;
+            user.fullName = prof.full_name || user.fullName;
+            setCurrentUserSession(user);
+            setCurrentUser({ ...user });
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       const studentId = user?.id || "";
       const studentName = user?.fullName || "Pupil";
-      const studentSection = user?.section || "Grade 3-A";
+      const studentSection = user?.section || "Unassigned";
       const studentAvatar = user?.avatar || "🦊";
+      const teacherId = user?.teacherId || null;
 
-      // 1. Fetch real badges from Supabase (scoped to student's enrolled section)
-      const liveBadges = await fetchBadgesFromSupabase(studentSection);
+      // 1. Fetch real badges from Supabase (strictly scoped to teacher and section)
+      const liveBadges = await fetchBadgesFromSupabase(studentSection, teacherId);
       setBadges(liveBadges);
 
       // 2. Fetch real badge progress for student
@@ -74,7 +103,7 @@ export default function StudentDashboard() {
       setStats(liveStats);
 
       // 4. Fetch available lessons for continuing
-      const studentLessons = await fetchLessonsForStudent(studentSection);
+      const studentLessons = await fetchLessonsForStudent(studentSection, teacherId);
       if (studentLessons.length > 0) {
         setActiveStory(studentLessons[0]);
       }
@@ -93,6 +122,10 @@ export default function StudentDashboard() {
 
   const currentBadge =
     badges.find((b) => b.badge_id === currentBadgeProgress.badge_id) || badges[0];
+
+  const isStage5Passed = badgeProgress.some(
+    (p) => Number(p.badge_id) === 5 && p.status === "completed"
+  );
 
   if (loading) {
     return <DashboardHomeSkeleton />;
@@ -115,9 +148,6 @@ export default function StudentDashboard() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
             Good morning, {firstName}! 👋
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Enrolled in <span className="text-blue-700 font-bold">{currentUser?.section || stats.section}</span> · You&apos;re currently earning the <span className="text-blue-700 font-bold">{currentBadge?.badge_name || "Reading Star"}</span>!
-          </p>
         </div>
 
         {/* Streak Counter */}
@@ -140,7 +170,6 @@ export default function StudentDashboard() {
             <span className="text-xl font-black text-slate-900">{stats.totalXp}</span>
             <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">⭐ XP</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Active Level Progress</p>
         </div>
 
         <div className="dashboard-card p-4">
@@ -151,7 +180,6 @@ export default function StudentDashboard() {
             <span className="text-xl font-black text-slate-900">{stats.lessonsCompleted}</span>
             <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">📖 Stories</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Stories completed in database</p>
         </div>
 
         <div className="dashboard-card p-4">
@@ -189,6 +217,7 @@ export default function StudentDashboard() {
               <BadgeGraphic
                 type={currentBadge.badge_type}
                 medalType={currentBadge.medal_type}
+                badgeIconUrl={currentBadge.badge_icon_url}
                 size="md"
                 status="in_progress"
                 showStatusBadge
@@ -269,6 +298,7 @@ export default function StudentDashboard() {
                 <BadgeGraphic
                   type={badge.badge_type}
                   medalType={badge.medal_type}
+                  badgeIconUrl={badge.badge_icon_url}
                   size="sm"
                   status={isCompleted ? "completed" : isActive ? "in_progress" : "locked"}
                 />
@@ -299,6 +329,26 @@ export default function StudentDashboard() {
           })}
         </div>
       </div>
+
+      {/* 4.5. Star Reader Certificate (Only when Stage 5 final is passed) */}
+      {isStage5Passed && (
+        <div className="dashboard-card p-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 shadow-md border-2 border-amber-300 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏆</span>
+            <div>
+              <h4 className="text-sm font-black text-slate-950">Star Reader Award Earned!</h4>
+              <span className="text-[10px] font-bold text-amber-950/70">All 5 Stages Completed</span>
+            </div>
+          </div>
+          <Button
+            onClick={() => setShowCertificate(true)}
+            className="h-9 px-4 rounded-xl bg-slate-950 hover:bg-slate-800 text-white font-black text-xs shadow-md flex items-center gap-2 cursor-pointer flex-shrink-0"
+          >
+            <Trophy className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <span>View Certificate</span>
+          </Button>
+        </div>
+      )}
 
       {/* 5. Quick Access Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -335,6 +385,15 @@ export default function StudentDashboard() {
           <p className="text-xs text-slate-500">View all earned Star, Ribbon, and Medal badges and your reading certificate.</p>
         </Link>
       </div>
+
+      {/* Star Reader Certificate Modal */}
+      <CertificateModal
+        isOpen={showCertificate}
+        onClose={() => setShowCertificate(false)}
+        studentName={currentUser?.fullName || stats.full_name || "Pupil"}
+        section={currentUser?.section || stats.section || "Grade 3-A"}
+        autoPlayAudio={true}
+      />
     </div>
   );
 }

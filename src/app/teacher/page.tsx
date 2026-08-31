@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { BadgeGraphic } from "@/components/badge-graphic";
 import {
   fetchClassRosterReports,
   fetchAllLessons,
@@ -36,12 +37,13 @@ import {
 } from "@/utils/supabase-queries";
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
 import { TeacherDashboardSkeleton } from "@/components/page-skeletons";
-import type { InterventionRadarSummary, InterventionPupil, LeaderboardEntry } from "@/lib/types";
+import type { InterventionRadarSummary, InterventionPupil, LeaderboardEntry, Badge } from "@/lib/types";
 
 export default function TeacherDashboard() {
   const [reports, setReports] = useState<TeacherReportRow[]>([]);
   const [lessonsCount, setLessonsCount] = useState(0);
   const [badgesCount, setBadgesCount] = useState(5);
+  const [badgesList, setBadgesList] = useState<Badge[]>([]);
   const [sections, setSections] = useState<string[]>(["Grade 3-A"]);
   const [selectedSection, setSelectedSection] = useState("all");
   const [distribution, setDistribution] = useState<MasteryStageDistribution>({
@@ -87,6 +89,7 @@ export default function TeacherDashboard() {
       setReports(roster);
       setLessonsCount(lessons.length);
       setBadgesCount(badges.length);
+      setBadgesList(badges);
       if (Array.isArray(liveSections) && liveSections.length > 0) {
         setSections(liveSections);
       }
@@ -127,24 +130,8 @@ export default function TeacherDashboard() {
     return p.riskLevel === radarFilter;
   });
 
-  // Effective champions list (falls back to active reports if leaderboard is empty)
-  const displayChampions: LeaderboardEntry[] =
-    leaderboard.length > 0
-      ? leaderboard
-      : reports.map((r, idx) => ({
-          rank: idx + 1,
-          studentId: r.studentId,
-          studentName: r.name,
-          avatar: r.gender === "Female" ? "👧" : "👦",
-          section: r.section,
-          totalXp: (Number.parseFloat(r.comprehensionPct) || 100) > 0 ? 350 : 100,
-          comprehensionPct: Math.round(Number.parseFloat(r.comprehensionPct) || 100),
-          quizzesPassed: Number.parseInt(r.quizzesPassed.split("/")[0]) || 4,
-          streakDays: 5,
-          rankTier: "rising_reader",
-          rankTierLabel: "🎗️ Rising Reader",
-          currentBadgeName: r.currentBadge,
-        }));
+  // Effective champions list strictly driven by live database leaderboard
+  const displayChampions: LeaderboardEntry[] = leaderboard;
 
   return (
     <div className="space-y-6">
@@ -535,7 +522,73 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* ── 6. Live Pupil Performance Snapshot Table ──────────────────── */}
+      {/* ── 6. Active Curriculum & Stage Badges Showcase ──────────────── */}
+      <div className="dashboard-card p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-500" />
+              <span>Active Curriculum Stages &amp; Classroom Quests ({badgesList.length})</span>
+            </h3>
+            <p className="text-xs text-slate-500">
+              5 Protected Core DepEd Stages + Teacher-Created Classroom Quests.
+            </p>
+          </div>
+          <Link
+            href="/teacher/badges"
+            className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>Manage All Badges →</span>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {badgesList.map((b) => {
+            const isCore = b.badge_id <= 5;
+            return (
+              <Link
+                key={b.badge_id}
+                href={isCore ? "/teacher/badges" : `/teacher/badges/create?editBadgeId=${b.badge_id}`}
+                className={`p-3 rounded-2xl border transition-all hover:scale-102 flex flex-col items-center text-center justify-between gap-2 cursor-pointer ${
+                  isCore
+                    ? "bg-slate-50/70 border-slate-200 hover:bg-slate-100/80"
+                    : "bg-indigo-50/40 border-indigo-200 hover:bg-indigo-50 shadow-xs"
+                }`}
+              >
+                <div className="w-full flex items-center justify-between">
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                    isCore ? "bg-amber-100 text-amber-800" : "bg-indigo-100 text-indigo-800"
+                  }`}>
+                    {isCore ? `Core ${b.badge_order || b.badge_id}` : "Teacher"}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    +{b.xp_reward} XP
+                  </span>
+                </div>
+
+                <BadgeGraphic
+                  badgeIconUrl={b.badge_icon_url}
+                  type={b.badge_type}
+                  medalType={b.badge_type === "medal" ? b.medal_type : undefined}
+                  size="sm"
+                  status="completed"
+                />
+
+                <div className="w-full">
+                  <h4 className="text-xs font-black text-slate-900 truncate">
+                    {b.badge_name}
+                  </h4>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    Pass ≥{b.required_passing_score}%
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── 7. Live Pupil Performance Snapshot Table ──────────────────── */}
       <div className="dashboard-card p-6">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
           <div>

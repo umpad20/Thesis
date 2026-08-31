@@ -6,8 +6,11 @@ import {
   Download,
   ChevronRight,
   Users,
+  Trophy,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CertificateModal } from "@/components/certificate-modal";
 import { TeacherDashboardSkeleton } from "@/components/page-skeletons";
 import { fetchClassRosterReports, type TeacherReportRow } from "@/utils/supabase-queries";
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
@@ -17,6 +20,7 @@ export default function TeacherReportsPage() {
   const [selectedSection, setSelectedSection] = useState("all");
   const [sections, setSections] = useState<string[]>(["Grade 3-A"]);
   const [loading, setLoading] = useState(true);
+  const [selectedCertificateStudent, setSelectedCertificateStudent] = useState<TeacherReportRow | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -218,42 +222,82 @@ export default function TeacherReportsPage() {
                   <th className="pb-3">Comprehension %</th>
                   <th className="pb-3">Fluency (WPM)</th>
                   <th className="pb-3">Quizzes Cleared</th>
+                  <th className="pb-3 text-center">Star Reader Award</th>
                   <th className="pb-3 text-right">Intervention</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {reports.map((s) => (
-                  <tr key={s.studentId} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 font-bold text-slate-900">
-                      <div>{s.name}</div>
-                      <span className="text-[10px] text-slate-400 font-normal">{s.studentId}</span>
-                    </td>
-                    <td className="py-3 text-slate-500">{s.gender}</td>
-                    <td className="py-3 text-slate-600">{s.section}</td>
-                    <td className="py-3 text-slate-700 font-semibold">{s.currentBadge}</td>
-                    <td className="py-3 font-bold text-slate-900">{s.comprehensionPct}</td>
-                    <td className="py-3 text-slate-600">{s.readingSpeed}</td>
-                    <td className="py-3 text-slate-600">{s.quizzesPassed}</td>
-                    <td className="py-3 text-right">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          s.status === "Mastering"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : s.status === "On Track"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-rose-50 text-rose-700"
-                        }`}
-                      >
-                        {s.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {reports.map((s) => {
+                  const isCompletedAllStages = Boolean(s.isAllStagesCompleted);
+
+                  return (
+                    <tr key={s.studentId} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 font-bold text-slate-900">
+                        <div>{s.name}</div>
+                        <span className="text-[10px] text-slate-400 font-normal">{s.studentId}</span>
+                      </td>
+                      <td className="py-3 text-slate-500">{s.gender}</td>
+                      <td className="py-3 text-slate-600">{s.section}</td>
+                      <td className="py-3 text-slate-700 font-semibold">
+                        <div>{s.currentBadge}</div>
+                        {isCompletedAllStages && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs mt-0.5">
+                            ⭐ Star Reader (5/5)
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 font-bold text-slate-900">{s.comprehensionPct}</td>
+                      <td className="py-3 text-slate-600">{s.readingSpeed}</td>
+                      <td className="py-3 text-slate-600">{s.quizzesPassed}</td>
+                      <td className="py-3 text-center">
+                        {isCompletedAllStages ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedCertificateStudent(s)}
+                            className="h-6 px-2 rounded-lg border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-bold text-[9px] shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                            title="View and Print Star Reader Certificate"
+                          >
+                            <Trophy className="w-2.5 h-2.5 fill-amber-500 text-amber-600" />
+                            <span>Award 📜</span>
+                          </Button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-slate-400 bg-slate-100 border border-slate-200">
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>In Progress</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            s.status === "Mastering"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : s.status === "On Track"
+                              ? "bg-blue-50 text-blue-700"
+                              : "bg-rose-50 text-rose-700"
+                          }`}
+                        >
+                          {s.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Star Reader Certificate Modal for Reports */}
+      <CertificateModal
+        isOpen={!!selectedCertificateStudent}
+        onClose={() => setSelectedCertificateStudent(null)}
+        studentName={selectedCertificateStudent?.name || "Student"}
+        section={selectedCertificateStudent?.section || "Grade 3-A"}
+        autoPlayAudio={false}
+      />
     </div>
   );
 }
