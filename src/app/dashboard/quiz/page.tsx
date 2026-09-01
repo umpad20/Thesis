@@ -790,19 +790,19 @@ function QuizContent() {
   // C. ACTIVE QUESTION EVALUATION VIEW
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="max-w-3xl mx-auto space-y-6 relative">
+    <div className="max-w-3xl mx-auto space-y-4 relative pb-16">
       {/* ── 1. Floating Top Celebratory Popup on Answer ─────────────────── */}
       {feedbackType === "correct" && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none anim-pop-bounce">
-          <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white px-7 py-4 rounded-3xl shadow-2xl border-2 border-white flex items-center gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-white text-emerald-600 flex items-center justify-center font-black text-lg shadow-sm animate-bounce">
+          <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white text-emerald-600 flex items-center justify-center font-black text-base shadow-xs animate-bounce">
               ⭐
             </div>
             <div>
-              <span className="text-xs font-black tracking-wider block uppercase text-emerald-100">
+              <span className="text-[11px] font-black tracking-wider block uppercase text-emerald-100">
                 Awesome! That&apos;s Right! ✨
               </span>
-              <span className="text-base font-black text-white">
+              <span className="text-sm font-black text-white">
                 +{currentQuestion?.points || 10} XP Earned!
               </span>
             </div>
@@ -812,12 +812,12 @@ function QuizContent() {
 
       {feedbackType === "wrong" && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none anim-shake-wiggle">
-          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white px-7 py-4 rounded-3xl shadow-2xl border-2 border-white flex items-center gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-white text-amber-600 flex items-center justify-center font-black text-lg shadow-sm">
+          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white text-amber-600 flex items-center justify-center font-black text-base shadow-xs">
               💪
             </div>
             <div>
-              <span className="text-xs font-black tracking-wider block uppercase text-amber-100">
+              <span className="text-[11px] font-black tracking-wider block uppercase text-amber-100">
                 Nice try! Keep it up! 💡
               </span>
               <span className="text-sm font-black text-white">
@@ -867,7 +867,7 @@ function QuizContent() {
       )}
 
       {/* ── 2. Clean, Compact Top Header ── */}
-      <div className="flex items-center justify-between gap-3 bg-white/90 backdrop-blur-md px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+      <div className="flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-xs">
         {/* Left: Title + Final Stage Badge */}
         <div className="flex items-center gap-2 min-w-0">
           <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
@@ -920,7 +920,7 @@ function QuizContent() {
 
       {/* ── 4. Question & Choice Cards ─────────────────────────────────── */}
       <div
-        className={`dashboard-card p-6 md:p-8 space-y-6 border-2 border-amber-100 bg-[#fffdfa] transition-all duration-300 ${
+        className={`dashboard-card p-5 sm:p-7 space-y-4 sm:space-y-5 border-2 border-amber-100 bg-[#fffdfa] transition-all duration-300 ${
           feedbackType === "correct"
             ? "ring-2 ring-emerald-400/50"
             : feedbackType === "wrong"
@@ -928,12 +928,12 @@ function QuizContent() {
             : ""
         }`}
       >
-        <div className="pb-4 border-b border-amber-200/60 flex items-start justify-between gap-4">
+        <div className="pb-3 border-b border-amber-200/60 flex items-start justify-between gap-4">
           <div className="space-y-1">
             <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest block">
               {isStageFinal ? "Stage Mastery Question" : "Comprehension Question"} {currentIndex + 1}
             </span>
-            <h2 className="text-base md:text-lg font-black text-slate-900 leading-snug">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
               {currentQuestion.question_text}
             </h2>
           </div>
@@ -944,7 +944,7 @@ function QuizContent() {
         </div>
 
         {/* Answer Choice Grid */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {choices.map((choice, idx) => {
             const letter = String.fromCharCode(65 + idx);
             const isSelected = selectedChoiceId === choice.choice_id;
@@ -971,15 +971,15 @@ function QuizContent() {
               <div
                 key={choice.choice_id}
                 onClick={() => handleSelect(choice.choice_id)}
-                className={`p-4 sm:p-5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${cardStyles}`}
+                className={`p-3.5 sm:p-4 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${cardStyles}`}
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-3">
                   <span
-                    className={`w-8 h-8 rounded-xl text-xs font-black flex items-center justify-center border transition-all ${indicatorStyles}`}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-black flex items-center justify-center border transition-all ${indicatorStyles}`}
                   >
                     {letter}
                   </span>
-                  <span className="text-sm font-semibold text-slate-800">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-800">
                     {choice.choice_text}
                   </span>
                 </div>

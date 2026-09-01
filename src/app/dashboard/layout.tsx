@@ -19,8 +19,8 @@ export default function DashboardLayout({
   // for a strict, distraction-free, full-screen reading and evaluation environment.
   if (isImmersiveMode) {
     return (
-      <div className="min-h-screen bg-[#faf8f5] flex flex-col antialiased">
-        <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-5xl w-full mx-auto">
+      <div className="min-h-screen bg-[#faf8f5] flex flex-col antialiased overflow-y-auto">
+        <main className="flex-1 p-2 sm:p-4 md:p-6 max-w-5xl w-full mx-auto flex flex-col justify-start">
           {children}
         </main>
       </div>

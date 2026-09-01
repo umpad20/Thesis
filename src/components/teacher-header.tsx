@@ -27,14 +27,6 @@ import {
   Info,
   LogOut,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BadgeGraphic } from "@/components/badge-graphic";
@@ -80,6 +72,11 @@ export function TeacherHeader() {
   // Notification State
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
+  const notifsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Profile Dropdown State
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileContainerRef = useRef<HTMLDivElement>(null);
 
   // Mascot Picker Modal
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -129,6 +126,7 @@ export function TeacherHeader() {
       if (e.key === "Escape") {
         setIsSearchOpen(false);
         setIsNotifsOpen(false);
+        setIsProfileOpen(false);
       }
     };
 
@@ -138,6 +136,18 @@ export function TeacherHeader() {
         !searchContainerRef.current.contains(e.target as Node)
       ) {
         setIsSearchOpen(false);
+      }
+      if (
+        notifsContainerRef.current &&
+        !notifsContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsNotifsOpen(false);
+      }
+      if (
+        profileContainerRef.current &&
+        !profileContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsProfileOpen(false);
       }
     };
 
@@ -263,7 +273,7 @@ export function TeacherHeader() {
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
+                className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -385,20 +395,19 @@ export function TeacherHeader() {
 
       {/* ── Right: Notification Center & Faculty Profile ── */}
       <div className="flex items-center gap-2.5 sm:gap-3">
-
         {/* Reports Button */}
         <Button
           variant="outline"
           size="sm"
           onClick={() => router.push("/teacher/reports")}
-          className="hidden md:flex h-9 px-3 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 items-center gap-1.5"
+          className="hidden md:flex h-9 px-3 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 items-center gap-1.5 cursor-pointer"
         >
           <Download className="w-3.5 h-3.5 text-slate-400" />
           <span>Reports</span>
         </Button>
 
         {/* Notification Bell Dropdown */}
-        <div className="relative">
+        <div ref={notifsContainerRef} className="relative">
           <button
             type="button"
             onClick={() => {
@@ -406,7 +415,7 @@ export function TeacherHeader() {
               setHasUnread(false);
             }}
             aria-label="View Notifications"
-            className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors"
+            className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
           >
             <Bell className="w-4 h-4" />
             {hasUnread && (
@@ -424,7 +433,7 @@ export function TeacherHeader() {
                 <button
                   type="button"
                   onClick={() => setIsNotifsOpen(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -459,10 +468,14 @@ export function TeacherHeader() {
 
         <div className="w-px h-6 bg-slate-200 mx-0.5" />
 
-        {/* Profile Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2.5 p-1 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-left outline-none">
-            <Avatar className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800">
+        {/* ── Functional Faculty Profile Dropdown ───────────────────────── */}
+        <div ref={profileContainerRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200 transition-all text-left outline-none cursor-pointer select-none"
+          >
+            <Avatar className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0">
               <AvatarFallback className="bg-slate-900 text-white font-bold text-xs rounded-lg flex items-center justify-center">
                 {currentUser.avatar ? currentUser.avatar : getInitials(currentUser.fullName)}
               </AvatarFallback>
@@ -475,77 +488,147 @@ export function TeacherHeader() {
                 {currentUser.section || "Grade 3 Faculty"} · Faculty
               </span>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-60 p-2 rounded-2xl shadow-xl border border-slate-100">
-            <DropdownMenuLabel className="px-2 py-1.5 text-xs text-slate-400 font-medium">
-              Signed in as <strong>{currentUser.fullName}</strong>
-            </DropdownMenuLabel>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-400 ml-0.5 transition-transform duration-200 ${
+                isProfileOpen ? "rotate-180 text-blue-600" : ""
+              }`}
+            />
+          </button>
 
-            {/* ── Settings Sub-Navigation Suite ─────────────────────────── */}
-            <DropdownMenuItem
-              onClick={() => router.push("/teacher/settings")}
-              className="flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Settings className="w-3.5 h-3.5 text-blue-600" />
-                <span>All Faculty Settings</span>
+          {/* Profile Dropdown Popup Menu */}
+          {isProfileOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
+              {/* Header Info */}
+              <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
+                <span className="text-2xl p-1 bg-white rounded-xl shadow-2xs">
+                  {currentUser.avatar || "👩‍🏫"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs font-black text-slate-900 block truncate">
+                    {currentUser.fullName}
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-600 block">
+                    {currentUser.section || "Grade 3 Faculty"} · Faculty
+                  </span>
+                  <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                    {currentUser.email}
+                  </span>
+                </div>
               </div>
-              <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-200">
-                Open
-              </span>
-            </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onClick={() => router.push("/teacher/settings?tab=voice")}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <Volume2 className="w-3.5 h-3.5 text-amber-500" />
-              <span>AI Voice Narrator Engine</span>
-            </DropdownMenuItem>
+              {/* All Faculty Settings Hub */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  router.push("/teacher/settings");
+                }}
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Settings className="w-3.5 h-3.5 text-blue-600" />
+                  <span>All Faculty Settings</span>
+                </div>
+                <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-200">
+                  Open
+                </span>
+              </button>
 
-            <DropdownMenuItem
-              onClick={() => router.push("/teacher/settings?tab=account")}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <User className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Faculty Account Profile</span>
-            </DropdownMenuItem>
+              {/* AI Voice Engine Settings */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  router.push("/teacher/settings?tab=voice");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
+                <Volume2 className="w-3.5 h-3.5 text-amber-500" />
+                <span>AI Voice Narrator Engine</span>
+              </button>
 
-            <DropdownMenuItem
-              onClick={() => router.push("/teacher/settings?tab=privacy")}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <Lock className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Privacy &amp; Security</span>
-            </DropdownMenuItem>
+              {/* Faculty Profile Account */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  router.push("/teacher/settings?tab=account");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
+                <User className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Faculty Account Profile</span>
+              </button>
 
-            <DropdownMenuItem
-              onClick={() => router.push("/teacher/settings?tab=help")}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-purple-500" />
-              <span>Help &amp; Support Guide</span>
-            </DropdownMenuItem>
+              {/* Change Mascot / Avatar */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  setShowAvatarPicker(true);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
+                <Smile className="w-3.5 h-3.5 text-pink-500" />
+                <span>Change Faculty Mascot</span>
+              </button>
 
-            <DropdownMenuItem
-              onClick={() => router.push("/teacher/settings?tab=about")}
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <Info className="w-3.5 h-3.5 text-slate-500" />
-              <span>About ReadSmart</span>
-            </DropdownMenuItem>
+              {/* Enrolled Students */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  router.push("/teacher/students");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
+                <Users className="w-3.5 h-3.5 text-teal-600" />
+                <span>Enrolled Pupils &amp; Sections</span>
+              </button>
 
-            <DropdownMenuSeparator className="my-1.5" />
-            <DropdownMenuItem
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-2.5 py-2 text-xs text-rose-600 font-bold cursor-pointer hover:bg-rose-50 rounded-xl"
-            >
-              <LogOut className="w-3.5 h-3.5 text-rose-600" />
-              <span>Sign Out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {/* Privacy & Security */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  router.push("/teacher/settings?tab=privacy");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
+                <Lock className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Privacy &amp; Security</span>
+              </button>
+
+              {/* Help & Support Guide */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  router.push("/teacher/settings?tab=help");
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-purple-500" />
+                <span>Help &amp; Support Guide</span>
+              </button>
+
+              <div className="h-px bg-slate-100 my-1" />
+
+              {/* Sign Out */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsProfileOpen(false);
+                  handleSignOut();
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-colors cursor-pointer text-left"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Mascot / Avatar Picker Modal ──────────────────────────────── */}
@@ -557,7 +640,7 @@ export function TeacherHeader() {
               <button
                 type="button"
                 onClick={() => setShowAvatarPicker(false)}
-                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+                className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -573,7 +656,7 @@ export function TeacherHeader() {
                   key={emoji}
                   type="button"
                   onClick={() => handleSelectAvatar(emoji)}
-                  className={`text-2xl p-3 rounded-2xl border-2 transition-all hover:scale-110 ${
+                  className={`text-2xl p-3 rounded-2xl border-2 transition-all hover:scale-110 cursor-pointer ${
                     currentUser.avatar === emoji
                       ? "border-blue-600 bg-blue-50/80 shadow-md shadow-blue-500/20"
                       : "border-slate-200 hover:border-slate-300 bg-slate-50/60"

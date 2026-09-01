@@ -23,13 +23,6 @@ import {
   Info,
   Sparkles,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,12 +63,19 @@ export function DashboardHeader() {
   const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Avatar Customizer Modal State
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // Notification State
+  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(true);
+  const notifsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Profile Dropdown State
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileContainerRef = useRef<HTMLDivElement>(null);
 
   // Load User & Live Stats
   useEffect(() => {
@@ -152,10 +152,38 @@ export function DashboardHeader() {
       }
       if (e.key === "Escape") {
         setIsSearchOpen(false);
+        setIsNotifsOpen(false);
+        setIsProfileOpen(false);
       }
     };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsSearchOpen(false);
+      }
+      if (
+        notifsContainerRef.current &&
+        !notifsContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsNotifsOpen(false);
+      }
+      if (
+        profileContainerRef.current &&
+        !profileContainerRef.current.contains(e.target as Node)
+      ) {
+        setIsProfileOpen(false);
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -180,7 +208,10 @@ export function DashboardHeader() {
       .toUpperCase();
   };
 
-  // Search Results Matching
+  const liveStreak = stats?.streakDays ?? 0;
+  const liveXp = stats?.totalXp ?? 0;
+
+  // Filter Search Results
   const cleanQuery = searchQuery.trim().toLowerCase();
   const matchingLessons = cleanQuery
     ? lessons.filter(
@@ -209,276 +240,252 @@ export function DashboardHeader() {
   const hasSearchResults =
     matchingLessons.length > 0 || matchingVocab.length > 0 || matchingBadges.length > 0;
 
-  // Real-time computed XP and Streak
-  const liveXp = stats?.totalXp ?? 0;
-  const liveStreak = stats?.streakDays ?? 0;
-
-  // Dynamically constructed notifications based on live user progress
-  const notificationsList = [
+  const notifications = [
     {
       id: 1,
-      title: "Stage 1 Star Milestone",
-      message: "You have unlocked the Chapter 1 final assessment seal!",
-      time: "Recent",
-      type: "achievement",
+      title: "New Chapter Unlocked! 🌟",
+      message: "Stage 1: Friendship in Bloom is ready for reading.",
+      time: "Just now",
+      type: "lesson",
     },
     {
       id: 2,
-      title: "Vocabulary Discovery",
-      message: `${vocabulary.length > 0 ? vocabulary.length : 16} words are available in your Vocabulary Vault.`,
-      time: "Active",
-      type: "info",
+      title: "Streak Maintained! 🔥",
+      message: `You're on a ${liveStreak}-day learning adventure.`,
+      time: "Today",
+      type: "streak",
     },
     {
       id: 3,
-      title: "Daily Reading Streak",
-      message: `You're on a ${liveStreak}-day learning streak! Keep reading to earn streak badges.`,
-      time: "Today",
-      type: "streak",
+      title: "Badge Showcase Open 🏆",
+      message: "Check your Living Storybook achievements map.",
+      time: "Yesterday",
+      type: "badge",
     },
   ];
 
   return (
     <>
-      <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 antialiased">
-        {/* ── 1. Global Live Search Bar ───────────────────────────────── */}
-        <div className="flex items-center gap-4 flex-1 max-w-md relative">
+      <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        {/* ── 1. Global Instant Live Search Bar (⌘K) ────────────────── */}
+        <div ref={searchContainerRef} className="relative flex-1 max-w-md">
           <div className="relative w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Search stories, vocabulary, quizzes..."
+              placeholder="Search stories, vocabulary words, badges..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl pl-9 pr-12 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
+              className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl pl-9 pr-12 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
             />
-            {searchQuery ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setIsSearchOpen(false);
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 bg-white border border-slate-200 pointer-events-none hidden sm:block">
-                ⌘K
-              </div>
-            )}
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 bg-white border border-slate-200 pointer-events-none">
+              ⌘K
+            </div>
           </div>
 
-          {/* Search Results Dropdown Overlay */}
+          {/* Live Search Results Dropdown */}
           {isSearchOpen && cleanQuery && (
-            <div className="absolute top-12 left-0 right-0 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 p-3 z-50 max-h-96 overflow-y-auto space-y-3 anim-pop-bounce">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 max-h-96 overflow-y-auto anim-pop-bounce">
+              <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Live Search Results ({cleanQuery})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {!hasSearchResults ? (
-                <div className="p-4 text-center text-xs text-slate-400 font-medium">
-                  No matching stories or vocabulary words for &ldquo;{searchQuery}&rdquo;
+                <div className="p-8 text-center text-xs text-slate-400 space-y-1">
+                  <Search className="w-6 h-6 text-slate-300 mx-auto mb-1" />
+                  <p className="font-bold text-slate-600">No matching items found</p>
+                  <p className="text-[11px]">Try typing story keywords, vocabulary terms, or stage names.</p>
                 </div>
               ) : (
-                <>
-                  {/* Matching Stories */}
+                <div className="p-2 space-y-3 divide-y divide-slate-100">
+                  {/* Lessons Matches */}
                   {matchingLessons.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-1.5">
-                        📖 Chapter Stories
+                    <div className="pt-2 first:pt-0">
+                      <span className="text-[10px] font-bold text-blue-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        <span>Stories &amp; Lessons ({matchingLessons.length})</span>
                       </span>
-                      <div className="space-y-1">
-                        {matchingLessons.slice(0, 3).map((lesson) => (
-                          <div
-                            key={lesson.lesson_id}
-                            onClick={() => {
-                              setIsSearchOpen(false);
-                              setSearchQuery("");
-                              router.push(`/dashboard/lessons?lessonId=${lesson.lesson_id}`);
-                            }}
-                            className="p-2.5 rounded-xl hover:bg-blue-50/70 transition-colors cursor-pointer flex items-center justify-between group"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <BookOpen className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                              <div>
-                                <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 block">
-                                  {lesson.lesson_title}
-                                </span>
-                                <span className="text-[10px] text-slate-400 line-clamp-1">
-                                  {lesson.lesson_description}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                              Read
-                            </span>
+                      {matchingLessons.slice(0, 4).map((l) => (
+                        <div
+                          key={l.lesson_id}
+                          onClick={() => {
+                            setIsSearchOpen(false);
+                            router.push(`/dashboard/lessons?id=${l.lesson_id}`);
+                          }}
+                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-slate-900 leading-tight">{l.lesson_title}</p>
+                            <span className="text-[10px] text-slate-400 line-clamp-1">{l.lesson_description}</span>
                           </div>
-                        ))}
-                      </div>
+                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                            Read →
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* Matching Vocabulary */}
+                  {/* Vocabulary Matches */}
                   {matchingVocab.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-1.5">
-                        🔤 Vocabulary Terms
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold text-purple-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                        <Bookmark className="w-3 h-3" />
+                        <span>Vocabulary Words ({matchingVocab.length})</span>
                       </span>
-                      <div className="space-y-1">
-                        {matchingVocab.slice(0, 4).map((vocab) => (
-                          <div
-                            key={vocab.word_id}
-                            onClick={() => {
-                              setIsSearchOpen(false);
-                              setSearchQuery("");
-                              router.push("/dashboard/vocabulary");
-                            }}
-                            className="p-2.5 rounded-xl hover:bg-amber-50/70 transition-colors cursor-pointer flex items-center justify-between group"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <Bookmark className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                              <div>
-                                <span className="text-xs font-bold text-slate-900 group-hover:text-amber-700 block">
-                                  {vocab.word}
-                                </span>
-                                <span className="text-[10px] text-slate-500 line-clamp-1">
-                                  {vocab.definition}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
-                              Vault
-                            </span>
+                      {matchingVocab.slice(0, 4).map((v) => (
+                        <div
+                          key={v.word_id}
+                          onClick={() => {
+                            setIsSearchOpen(false);
+                            router.push("/dashboard/vocabulary");
+                          }}
+                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">{v.word}</p>
+                            <span className="text-[10px] text-slate-400 line-clamp-1">{v.definition}</span>
                           </div>
-                        ))}
-                      </div>
+                          <span className="text-[9px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                            Vocab →
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* Matching Badges */}
+                  {/* Badges Matches */}
                   {matchingBadges.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-1.5">
-                        🏆 Chapters & Stages
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold text-amber-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
+                        <Award className="w-3 h-3" />
+                        <span>Badges &amp; Accolades ({matchingBadges.length})</span>
                       </span>
-                      <div className="space-y-1">
-                        {matchingBadges.map((badge) => (
-                          <div
-                            key={badge.badge_id}
-                            onClick={() => {
-                              setIsSearchOpen(false);
-                              setSearchQuery("");
-                              router.push("/dashboard/badges");
-                            }}
-                            className="p-2.5 rounded-xl hover:bg-emerald-50/70 transition-colors cursor-pointer flex items-center justify-between group"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <Award className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                              <div>
-                                <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 block">
-                                  {badge.badge_name}
-                                </span>
-                                <span className="text-[10px] text-slate-400">
-                                  Stage {badge.badge_order} · {badge.xp_reward} XP Reward
-                                </span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                              Storybook
-                            </span>
+                      {matchingBadges.slice(0, 3).map((b) => (
+                        <div
+                          key={b.badge_id}
+                          onClick={() => {
+                            setIsSearchOpen(false);
+                            router.push("/dashboard/badges");
+                          }}
+                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
+                        >
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">{b.badge_name}</p>
+                            <span className="text-[10px] text-slate-400">{b.description}</span>
                           </div>
-                        ))}
-                      </div>
+                          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                            +{b.xp_reward} XP
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           )}
         </div>
 
-        {/* ── 2. Right: Live Stats, Notification Popover & Profile Dropdown ── */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* Live Streak & XP Badge Pill - Desktop/Tablet */}
-          <div className="hidden sm:flex items-center gap-2 bg-slate-50/90 border border-slate-200/90 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-1 text-blue-600 hover:text-blue-700 transition-colors"
-              title="Daily Reading Streak"
-            >
-              <Flame className="w-3.5 h-3.5 fill-blue-500 text-blue-500 animate-pulse" />
-              <span>{liveStreak} Day Streak</span>
-            </Link>
-            <div className="w-px h-3 bg-slate-200" />
-            <Link
-              href="/dashboard/badges"
-              className="flex items-center gap-1 text-amber-600 hover:text-amber-700 transition-colors"
-              title="Total XP Earned from Lessons & Quizzes"
-            >
-              <Award className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span>{liveXp} XP</span>
-            </Link>
+        {/* ── 2. Live Stats & Avatar Profile Actions ───────────────────── */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Flame Reading Streak Pill */}
+          <div
+            title="Your daily active reading streak"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 text-amber-700 shadow-2xs transition-all hover:scale-102"
+          >
+            <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
+            <span className="text-xs font-black tracking-tight">{liveStreak}d Streak</span>
           </div>
 
-          {/* Compact Mobile Pill for Phones (< 640px) */}
-          <div className="flex sm:hidden items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-lg px-2 py-1 text-[11px] font-bold">
-            <Link href="/dashboard" className="flex items-center gap-0.5 text-blue-600" title="Daily Streak">
-              <Flame className="w-3 h-3 fill-blue-500 text-blue-500" />
-              <span>{liveStreak}d</span>
-            </Link>
-            <span className="text-slate-300">·</span>
-            <Link href="/dashboard/badges" className="flex items-center gap-0.5 text-amber-600" title="Total XP">
-              <Award className="w-3 h-3 fill-amber-500 text-amber-500" />
-              <span>{liveXp}</span>
-            </Link>
+          {/* XP Reward Points Pill */}
+          <div
+            title="Total reading experience points earned"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 text-blue-700 shadow-2xs transition-all hover:scale-102"
+          >
+            <Award className="w-4 h-4 text-blue-600" />
+            <span className="text-xs font-black tracking-tight">{liveXp} XP</span>
           </div>
 
-          {/* Interactive Notification Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              onClick={() => setUnreadNotifs(false)}
-              aria-label="View Notifications"
-              className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors outline-none cursor-pointer"
+          {/* Notification Bell Dropdown */}
+          <div ref={notifsContainerRef} className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setIsNotifsOpen(!isNotifsOpen);
+                setUnreadNotifs(false);
+              }}
+              aria-label="View notifications"
+              className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
             >
               <Bell className="w-4 h-4" />
               {unreadNotifs && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white animate-pulse" />
               )}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 p-3 rounded-2xl shadow-xl border-2 border-slate-100 space-y-2">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <span className="text-xs font-black text-slate-900">Notifications & Updates</span>
-                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                  ReadSmart Live
-                </span>
-              </div>
-              <div className="space-y-1.5">
-                {notificationsList.map((notif) => (
-                  <DropdownMenuItem
-                    key={notif.id}
-                    className="p-2.5 rounded-xl bg-slate-50/80 hover:bg-blue-50/50 transition-colors text-left space-y-0.5 cursor-pointer block"
-                    onClick={() => router.push("/dashboard/badges")}
+            </button>
+
+            {isNotifsOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 anim-pop-bounce">
+                <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                  <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <Bell className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Storybook Activity Center</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsNotifsOpen(false)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800">{notif.title}</span>
-                      <span className="text-[9px] text-slate-400 font-medium">{notif.time}</span>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="p-2 space-y-1 max-h-72 overflow-y-auto">
+                  {notifications.map((notif) => (
+                    <div
+                      key={notif.id}
+                      onClick={() => {
+                        setIsNotifsOpen(false);
+                        router.push("/dashboard/badges");
+                      }}
+                      className="p-2.5 rounded-xl bg-slate-50/80 hover:bg-blue-50/50 transition-colors text-left space-y-0.5 cursor-pointer block"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">{notif.title}</span>
+                        <span className="text-[9px] text-slate-400 font-medium">{notif.time}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">{notif.message}</p>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-snug">{notif.message}</p>
-                  </DropdownMenuItem>
-                ))}
+                  ))}
+                </div>
               </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          </div>
 
           <div className="w-px h-6 bg-slate-200 mx-0.5" />
 
-          {/* ── 3. Interactive Profile & Avatar Customizer Dropdown ─────── */}
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-left outline-none">
-              <Avatar className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs border border-blue-200">
+          {/* ── 3. Functional Profile & Avatar Customizer Dropdown ─────── */}
+          <div ref={profileContainerRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200 transition-all text-left outline-none cursor-pointer select-none"
+            >
+              <Avatar className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs border border-blue-200 flex-shrink-0">
                 <AvatarFallback className="bg-transparent text-white font-black text-sm">
                   {currentUser.avatar || getInitials(currentUser.fullName)}
                 </AvatarFallback>
@@ -491,96 +498,136 @@ export function DashboardHeader() {
                   {currentUser.section || "Unassigned"} · Student
                 </span>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-0.5" />
-            </DropdownMenuTrigger>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-400 ml-0.5 transition-transform duration-200 ${
+                  isProfileOpen ? "rotate-180 text-blue-600" : ""
+                }`}
+              />
+            </button>
 
-            <DropdownMenuContent align="end" className="w-64 p-2 rounded-2xl shadow-xl border-2 border-slate-100 space-y-1">
-              {/* Profile Card Header */}
-              <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
-                <span className="text-2xl p-1 bg-white rounded-xl shadow-2xs">
-                  {currentUser.avatar || "🦊"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <span className="text-xs font-black text-slate-900 block truncate">
-                    {currentUser.fullName}
+            {/* Profile Dropdown Popup Menu */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
+                {/* Profile Card Header */}
+                <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
+                  <span className="text-2xl p-1 bg-white rounded-xl shadow-2xs">
+                    {currentUser.avatar || "🦊"}
                   </span>
-                  <span className="text-[10px] font-bold text-blue-600 block">
-                    {currentUser.section || "Unassigned"} · Student
-                  </span>
-                  <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-500">
-                    <span>🔥 {liveStreak}d Streak</span>
-                    <span>·</span>
-                    <span>🎖️ {liveXp} XP</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-black text-slate-900 block truncate">
+                      {currentUser.fullName}
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-600 block">
+                      {currentUser.section || "Unassigned"} · Student
+                    </span>
+                    <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-500">
+                      <span>🔥 {liveStreak}d Streak</span>
+                      <span>·</span>
+                      <span>🎖️ {liveXp} XP</span>
+                    </div>
                   </div>
                 </div>
+
+                {/* All Settings Hub */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    router.push("/dashboard/settings");
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Settings className="w-4 h-4 text-blue-600" />
+                    <span>All Settings Hub</span>
+                  </div>
+                  <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded-md border border-blue-200">
+                    Open
+                  </span>
+                </button>
+
+                {/* Change Avatar Mascot */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    setShowAvatarPicker(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                >
+                  <Smile className="w-4 h-4 text-amber-500" />
+                  <span>Change Mascot Avatar</span>
+                </button>
+
+                {/* AI Voice & Narrator */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    router.push("/dashboard/settings?tab=voice");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                >
+                  <Volume2 className="w-4 h-4 text-purple-500" />
+                  <span>AI Voice &amp; Narrator</span>
+                </button>
+
+                {/* Account & Profile */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    router.push("/dashboard/settings?tab=account");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                >
+                  <User className="w-4 h-4 text-indigo-500" />
+                  <span>Account &amp; Mascot Profile</span>
+                </button>
+
+                {/* Privacy & Security */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    router.push("/dashboard/settings?tab=privacy");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                >
+                  <Lock className="w-4 h-4 text-emerald-500" />
+                  <span>Privacy &amp; Security</span>
+                </button>
+
+                {/* Help & Support Guide */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    router.push("/dashboard/settings?tab=help");
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                >
+                  <HelpCircle className="w-4 h-4 text-purple-500" />
+                  <span>Help &amp; Support Guide</span>
+                </button>
+
+                <div className="h-px bg-slate-100 my-1" />
+
+                {/* Sign Out Action */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    handleSignOut();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
+                >
+                  <LogOut className="w-4 h-4 text-rose-600" />
+                  <span>Sign Out</span>
+                </button>
               </div>
-
-              {/* ── Settings Sub-Navigation Suite ─────────────────────────── */}
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings")}
-                className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Settings className="w-4 h-4 text-blue-600" />
-                  <span>All Settings Hub</span>
-                </div>
-                <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded-md border border-blue-200">
-                  Open
-                </span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings?tab=voice")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                <Volume2 className="w-4 h-4 text-amber-500" />
-                <span>AI Voice &amp; Narrator</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings?tab=account")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                <User className="w-4 h-4 text-indigo-500" />
-                <span>Account &amp; Mascot Profile</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings?tab=privacy")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                <Lock className="w-4 h-4 text-emerald-500" />
-                <span>Privacy &amp; Security</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings?tab=help")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                <HelpCircle className="w-4 h-4 text-purple-500" />
-                <span>Help &amp; Support Guide</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings?tab=about")}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                <Info className="w-4 h-4 text-slate-500" />
-                <span>About ReadSmart</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator className="my-1" />
-
-              {/* Sign Out Action */}
-              <DropdownMenuItem
-                onClick={handleSignOut}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 text-rose-600" />
-                <span>Sign Out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          </div>
         </div>
       </header>
 
@@ -602,7 +649,7 @@ export function DashboardHeader() {
                   key={emoji}
                   type="button"
                   onClick={() => handleSelectAvatar(emoji)}
-                  className={`w-11 h-11 rounded-xl text-2xl flex items-center justify-center transition-all ${
+                  className={`w-11 h-11 rounded-xl text-2xl flex items-center justify-center transition-all cursor-pointer ${
                     currentUser.avatar === emoji
                       ? "bg-blue-600 text-white ring-2 ring-blue-400 scale-110 shadow-sm"
                       : "bg-white hover:bg-blue-50 border border-slate-200 hover:scale-105"
@@ -616,7 +663,7 @@ export function DashboardHeader() {
             <Button
               variant="outline"
               onClick={() => setShowAvatarPicker(false)}
-              className="w-full h-10 rounded-xl text-xs font-bold border-slate-200"
+              className="w-full h-10 rounded-xl text-xs font-bold border-slate-200 cursor-pointer"
             >
               Cancel
             </Button>

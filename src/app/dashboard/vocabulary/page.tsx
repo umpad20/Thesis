@@ -156,42 +156,15 @@ export default function VocabularyPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* ── 1. Header & Reading Discovery Metrics ──────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/dashboard" className="hover:text-slate-600">
-              Dashboard
-            </Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-blue-600 font-bold">Vocabulary Vault</span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-            Magical Vocabulary Vault
+      {/* ── 1. Clean Minimal Header ───────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            Vocabulary Vault
           </h1>
-          <p className="text-xs text-slate-500 font-medium max-w-lg">
-            Discover and master key storybook terms. Each unlocked story expands your glossary with phonetics, definitions, and realistic voice pronunciation!
-          </p>
-        </div>
-
-        {/* Discovery Counter Badge */}
-        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50 border-2 border-blue-200/80 rounded-2xl p-3.5 flex items-center gap-3.5 shadow-xs">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-              Discovered in Stories
-            </span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-black text-slate-900">
-                {unlockedCount} / {totalCount}
-              </span>
-              <span className="text-[11px] font-bold text-blue-600">
-                ({Math.round((unlockedCount / (totalCount || 1)) * 100)}% Unlocked)
-              </span>
-            </div>
-          </div>
+          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            {unlockedCount} / {totalCount} Words Unlocked
+          </span>
         </div>
       </div>
 

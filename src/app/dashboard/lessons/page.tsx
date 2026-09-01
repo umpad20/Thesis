@@ -289,11 +289,11 @@ function LessonReaderContent() {
   }
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
+    <div className="h-full max-h-full flex flex-col justify-between max-w-7xl mx-auto w-full gap-2 sm:gap-3 py-1">
       {/* ── 1. Clean, Compact Top Header ── */}
-      <div className="flex items-center justify-between gap-3 bg-white/90 backdrop-blur-md px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+      <div className="flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-slate-200/80 shadow-xs shrink-0">
         {/* Left: Story Title + Difficulty Badge */}
-        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
             {activeLesson.lesson_title}
           </h1>
@@ -311,9 +311,9 @@ function LessonReaderContent() {
         </div>
 
         {/* Right: Sentence Progress + Clean Exit Button */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 flex-shrink-0">
-          <div className="flex flex-col items-end gap-0.5 sm:gap-1">
-            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700">
+        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
               <span className="hidden sm:inline">Sentence</span>
               <span>
                 {currentSlideIndex + 1}/{totalSlides}
@@ -321,7 +321,7 @@ function LessonReaderContent() {
               <span className="text-blue-600 font-black">({progressPercent}%)</span>
             </div>
             {/* Progress Bar */}
-            <div className="w-16 sm:w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="w-20 sm:w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -333,7 +333,7 @@ function LessonReaderContent() {
             variant="outline"
             size="sm"
             onClick={() => setShowExitModal(true)}
-            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-9 px-2.5 sm:px-3 cursor-pointer flex items-center gap-1 transition-all"
+            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-8.5 px-3 cursor-pointer flex items-center gap-1 transition-all"
             title="Exit to Storybook Map"
           >
             <X className="w-3.5 h-3.5" />
@@ -342,8 +342,8 @@ function LessonReaderContent() {
         </div>
       </div>
 
-      {/* ── 2. Authentic 2-Page Open Storybook Spread (Clean 1-Sentence Per Page) ── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-2.5 sm:p-5 rounded-3xl shadow-2xl border-4 border-amber-300/40 relative overflow-hidden book-perspective">
+      {/* ── 2. Authentic 2-Page Open Storybook Spread (Immersive Viewport-Fitted Experience) ── */}
+      <div className="flex-1 min-h-0 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-2 sm:p-3.5 lg:p-4 rounded-3xl shadow-2xl border-4 border-amber-300/40 relative overflow-hidden flex flex-col">
         {/* Book Corner Accents */}
         <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-amber-300/60 rounded-tl-sm pointer-events-none" />
         <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-amber-300/60 rounded-tr-sm pointer-events-none" />
@@ -351,7 +351,7 @@ function LessonReaderContent() {
         <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-300/60 rounded-br-sm pointer-events-none" />
 
         {/* 2-Page Paper Spread Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-[#fffefb] border border-amber-200/90 shadow-inner relative min-h-[460px] sm:min-h-[520px]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-[#fffefb] border border-amber-200/90 shadow-inner relative flex-1 min-h-0">
           {/* Central Book Spine Crease Shadow */}
           <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-gradient-to-r from-amber-900/10 via-amber-950/20 to-amber-900/10 pointer-events-none z-20 hidden lg:block shadow-inner" />
 
@@ -359,50 +359,48 @@ function LessonReaderContent() {
               LEFT PAGE: Sentence Scene Illustration Plate
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all ${
+            className={`p-4 sm:p-6 lg:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all h-full min-h-0 ${
               pageFlipDirection === "backward" ? "leaf-flip-backward" : ""
             }`}
           >
-            <div>
-              {/* Left Page Top Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-amber-200/60 mb-4">
-                {assignedBadge ? (
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50/80 px-2.5 py-1 rounded-xl border border-amber-200/80">
-                    <BadgeGraphic
-                      type={assignedBadge.badge_type}
-                      medalType={assignedBadge.badge_type === "medal" ? assignedBadge.medal_type : undefined}
-                      badgeIconUrl={assignedBadge.badge_icon_url}
-                      size="xs"
-                      status="completed"
-                    />
-                    <span className="text-[11px]">{assignedBadge.badge_name}</span>
-                  </div>
-                ) : (
-                  <span className="text-xs font-bold text-amber-800">Chapter Story</span>
-                )}
+            {/* Left Page Top Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-amber-200/60 shrink-0">
+              {assignedBadge ? (
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50/80 px-2.5 py-0.5 rounded-lg border border-amber-200/80">
+                  <BadgeGraphic
+                    type={assignedBadge.badge_type}
+                    medalType={assignedBadge.badge_type === "medal" ? assignedBadge.medal_type : undefined}
+                    badgeIconUrl={assignedBadge.badge_icon_url}
+                    size="xs"
+                    status="completed"
+                  />
+                  <span className="text-xs font-bold">{assignedBadge.badge_name}</span>
+                </div>
+              ) : (
+                <span className="text-xs font-bold text-amber-800">Chapter Story</span>
+              )}
 
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Page {currentSlide.pageNumber}
-                </span>
-              </div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Page {currentSlide.pageNumber}
+              </span>
+            </div>
 
-              {/* Clean Framed Story Illustration Photo (No Overlaid Badges) */}
-              <div className="relative w-full h-56 sm:h-72 md:h-80 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/90 shadow-md group">
-                <img
-                  src={currentSlide.sceneImageUrl}
-                  alt={currentSlide.sceneTitle}
-                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
-                />
-              </div>
+            {/* Clean Framed Story Illustration Photo (Flexibly Scaled to Fill Remaining Height) */}
+            <div className="relative w-full flex-1 min-h-0 my-2.5 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/90 shadow-md flex items-center justify-center group">
+              <img
+                src={currentSlide.sceneImageUrl}
+                alt={currentSlide.sceneTitle}
+                className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
+              />
             </div>
 
             {/* Left Page Footer: Voice Audio Narration Controller */}
-            <div className="mt-4 pt-4 border-t border-amber-200/60 flex items-center justify-between">
+            <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={speakCurrentSentence}
-                className={`h-9 px-4 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                className={`h-8.5 px-3.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
                   isPlayingAudio
                     ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 animate-pulse"
                     : "bg-white text-slate-700 border-amber-200/90 hover:bg-amber-50"
@@ -421,7 +419,7 @@ function LessonReaderContent() {
                 )}
               </Button>
 
-              <span className="text-[11px] font-bold text-slate-400">
+              <span className="text-xs font-bold text-slate-400">
                 Scene {currentSlideIndex + 1}
               </span>
             </div>
@@ -431,46 +429,44 @@ function LessonReaderContent() {
               RIGHT PAGE: Single Clean Sentence Reading & Page Stepper
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-6 sm:p-8 flex flex-col justify-between bg-[#fffefb] relative transition-all ${
+            className={`p-4 sm:p-6 lg:p-7 flex flex-col justify-between bg-[#fffefb] relative transition-all h-full min-h-0 ${
               pageFlipDirection === "forward" ? "leaf-flip-forward" : ""
             }`}
           >
             {/* Right Page Header */}
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-amber-200/60 mb-6">
-                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Reading Story</span>
-                </span>
+            <div className="flex items-center justify-between pb-2 border-b border-amber-200/60 shrink-0">
+              <span className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-amber-600" />
+                <span>Reading Story</span>
+              </span>
 
-                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
-                  Sentence {currentSlideIndex + 1} of {totalSlides}
-                </span>
-              </div>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
+                Sentence {currentSlideIndex + 1} of {totalSlides}
+              </span>
+            </div>
 
-              {/* Single Elegant Sentence Card */}
-              <div className="p-6 sm:p-8 rounded-3xl bg-amber-50/40 border-2 border-amber-200/70 shadow-xs space-y-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  📖 Tap underlined words for phonics & definitions:
-                </span>
+            {/* Single Elegant Sentence Card (Flexibly Centered) */}
+            <div className="flex-1 min-h-0 my-2.5 p-4 sm:p-6 lg:p-8 rounded-2xl bg-amber-50/40 border-2 border-amber-200/70 shadow-xs flex flex-col justify-center space-y-3 overflow-y-auto">
+              <span className="text-[10px] sm:text-[11px] font-bold text-amber-800/80 uppercase tracking-wider block">
+                📖 Tap underlined words for phonics & definitions:
+              </span>
 
-                <p className="text-lg sm:text-xl md:text-2xl font-serif text-slate-900 leading-relaxed sm:leading-loose font-medium">
-                  <VocabularyHighlightedText
-                    text={currentSlide.sentenceText}
-                    vocabularyList={vocabulary}
-                  />
-                </p>
-              </div>
+              <p className="text-lg sm:text-xl md:text-2xl lg:text-[28px] font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium">
+                <VocabularyHighlightedText
+                  text={currentSlide.sentenceText}
+                  vocabularyList={vocabulary}
+                />
+              </p>
             </div>
 
             {/* Right Page Footer: Previous & Next Page Turn Actions */}
-            <div className="mt-6 pt-4 border-t border-amber-200/60 flex items-center justify-between gap-3">
+            <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-3 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleSlideChange(currentSlideIndex - 1, "backward")}
                 disabled={currentSlideIndex === 0}
-                className="h-11 px-4 rounded-xl text-xs font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40"
+                className="h-9 px-4 rounded-xl text-xs font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40 cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
                 <span>Prev Sentence</span>
@@ -479,15 +475,15 @@ function LessonReaderContent() {
               {!isLastSlide ? (
                 <Button
                   onClick={() => handleSlideChange(currentSlideIndex + 1, "forward")}
-                  className="h-11 px-6 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all"
+                  className="h-9 px-5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <span>Next Sentence</span>
                   <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                 </Button>
               ) : (
                 <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}&badgeId=${activeLesson.badge_id}`}>
-                  <Button className="h-11 px-6 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce">
-                    <Sparkles className="w-4 h-4" />
+                  <Button className="h-9 px-5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce cursor-pointer">
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>Finish & Take Quiz</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                   </Button>

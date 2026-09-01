@@ -342,82 +342,128 @@ export default function TeacherDashboard() {
         {loading ? (
           <div className="py-6 text-center text-xs text-slate-400">Evaluating classroom risk factors...</div>
         ) : displayedRadarPupils.length === 0 ? (
-          <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 text-emerald-900 flex items-center gap-3">
+          <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 text-emerald-900 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             <div className="text-xs">
               <strong>All enrolled pupils are on track!</strong> No pupils in this filter view.
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {displayedRadarPupils.slice(0, 4).map((p) => (
-              <div
-                key={p.studentId}
-                className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
-                  p.riskLevel === "critical"
-                    ? "bg-rose-50/40 border-rose-200"
-                    : p.riskLevel === "watchlist"
-                    ? "bg-amber-50/40 border-amber-200"
-                    : "bg-emerald-50/40 border-emerald-200 shadow-2xs"
-                }`}
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{p.avatar}</span>
-                      <div>
-                        <h4 className="text-xs font-black text-slate-900">{p.studentName}</h4>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          {p.section} · Score: <strong>{p.comprehensionPct}%</strong> ({p.quizzesPassed} Quizzes Passed)
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                        p.riskLevel === "critical"
-                          ? "bg-rose-600 text-white"
-                          : p.riskLevel === "watchlist"
-                          ? "bg-amber-500 text-white"
-                          : "bg-emerald-600 text-white"
-                      }`}
-                    >
-                      {p.riskLevel === "critical"
-                        ? "Needs Attention"
-                        : p.riskLevel === "watchlist"
-                        ? "Watchlist"
-                        : "Mastering & On Track"}
-                    </span>
-                  </div>
+          <div className="border border-slate-200/80 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-3.5 min-w-[160px]">Pupil</th>
+                    <th className="py-2.5 px-3.5">Status</th>
+                    <th className="py-2.5 px-3.5 text-center">Score</th>
+                    <th className="py-2.5 px-3.5 hidden md:table-cell min-w-[220px]">Algorithmic Insight &amp; Advice</th>
+                    <th className="py-2.5 px-3.5 text-right min-w-[140px]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-normal">
+                  {displayedRadarPupils.map((p) => {
+                    const isCritical = p.riskLevel === "critical";
+                    const isWatchlist = p.riskLevel === "watchlist";
 
-                  <div className="mt-2.5 p-2 bg-white/80 rounded-xl border border-slate-100 text-[11px] text-slate-700 space-y-1">
-                    <p className={`font-semibold ${p.riskLevel === "critical" ? "text-rose-900" : p.riskLevel === "watchlist" ? "text-amber-900" : "text-emerald-900"}`}>
-                      {p.riskLevel === "mastering" ? "🌟" : "⚠️"} {p.struggleReason}
-                    </p>
-                    <p className="text-[10px] text-slate-500 italic">💡 {p.recommendedAction}</p>
-                  </div>
-                </div>
+                    return (
+                      <tr
+                        key={p.studentId}
+                        className={`transition-colors ${
+                          isCritical
+                            ? "bg-rose-50/30 hover:bg-rose-50/50"
+                            : isWatchlist
+                            ? "bg-amber-50/30 hover:bg-amber-50/50"
+                            : "hover:bg-slate-50/70"
+                        }`}
+                      >
+                        {/* Pupil Avatar & Name */}
+                        <td className="py-2.5 px-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg flex-shrink-0">{p.avatar}</span>
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-900 truncate block text-xs">
+                                {p.studentName}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">
+                                {p.section}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60">
-                  <Button
-                    size="sm"
-                    onClick={() => setSelectedPupilForNote(p)}
-                    className="h-7 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] flex items-center gap-1"
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                    <span>{p.riskLevel === "mastering" ? "Send Praise" : "Send Guidance Note"}</span>
-                  </Button>
-                  <Link href="/teacher/students">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2.5 rounded-lg text-slate-700 font-bold text-[10px]"
-                    >
-                      View Record
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            ))}
+                        {/* Status Chip */}
+                        <td className="py-2.5 px-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                              isCritical
+                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                : isWatchlist
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            }`}
+                          >
+                            <span>{isCritical ? "🔴" : isWatchlist ? "🟡" : "🟢"}</span>
+                            <span>{isCritical ? "Needs Attention" : isWatchlist ? "Watchlist" : "On Track"}</span>
+                          </span>
+                        </td>
+
+                        {/* Score & Quizzes */}
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className="font-bold text-slate-900 block text-xs">
+                            {p.comprehensionPct}%
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {p.quizzesPassed} Passed
+                          </span>
+                        </td>
+
+                        {/* Insight & Recommended Action */}
+                        <td className="py-2.5 px-3.5 hidden md:table-cell">
+                          <div className="text-[11px] leading-snug">
+                            <span className={`font-semibold ${isCritical ? "text-rose-900" : isWatchlist ? "text-amber-900" : "text-emerald-900"}`}>
+                              {p.struggleReason}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block truncate">
+                              💡 {p.recommendedAction}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Quick Actions */}
+                        <td className="py-2.5 px-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              onClick={() => setSelectedPupilForNote(p)}
+                              className={`h-6 px-2 rounded-lg font-bold text-[10px] flex items-center gap-1 cursor-pointer ${
+                                isCritical
+                                  ? "bg-rose-600 hover:bg-rose-700 text-white"
+                                  : isWatchlist
+                                  ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                  : "bg-blue-600 hover:bg-blue-700 text-white"
+                              }`}
+                            >
+                              <MessageSquare className="w-2.5 h-2.5" />
+                              <span>{p.riskLevel === "mastering" ? "Praise" : "Guidance"}</span>
+                            </Button>
+                            <Link href="/teacher/students">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 px-2 rounded-lg text-slate-700 font-bold text-[10px]"
+                              >
+                                Record
+                              </Button>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
