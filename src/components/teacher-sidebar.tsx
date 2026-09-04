@@ -1,64 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  BookOpen,
-  FileCheck2,
   Map,
   BarChart3,
   ShieldCheck,
   ChevronRight,
   LogOut,
-  Layers,
-  PlusCircle,
-  Settings,
 } from "lucide-react";
-import { signOutUser, getCurrentUser } from "@/utils/auth-helpers";
-import { fetchClassRosterReports, fetchAllLessons } from "@/utils/supabase-queries";
+import { signOutUser } from "@/utils/auth-helpers";
 
 export function TeacherSidebar() {
   const pathname = usePathname();
-  const [pupilsCount, setPupilsCount] = useState<number | null>(null);
-  const [storiesCount, setStoriesCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    async function loadCounts() {
-      try {
-        const user = getCurrentUser();
-        const teacherId = user?.id;
-
-        const [roster, lessons] = await Promise.all([
-          fetchClassRosterReports("all", teacherId),
-          fetchAllLessons(),
-        ]);
-        setPupilsCount(roster.length);
-        setStoriesCount(lessons.length);
-      } catch (err) {
-        console.error("Sidebar loadCounts error:", err);
-      }
-    }
-    loadCounts();
-  }, [pathname]);
 
   const teacherNavItems = [
     { name: "Teacher Hub", href: "/teacher", icon: LayoutDashboard },
-    {
-      name: "Student Records",
-      href: "/teacher/students",
-      icon: Users,
-      badge: pupilsCount !== null ? `${pupilsCount} Pupils` : undefined,
-    },
-    {
-      name: "Curriculum & Stage Badges",
-      href: "/teacher/badges",
-      icon: Map,
-      badge: "5 Stages",
-    },
-    { name: "Reports", href: "/teacher/reports", icon: BarChart3, badge: "CSV" },
+    { name: "Student Records", href: "/teacher/students", icon: Users },
+    { name: "Curriculum & Badges", href: "/teacher/badges", icon: Map },
+    { name: "Reports", href: "/teacher/reports", icon: BarChart3 },
   ];
 
   return (
@@ -66,8 +28,8 @@ export function TeacherSidebar() {
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
         <Link href="/teacher" className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-sm">
-            <ShieldCheck className="w-5 h-5 text-blue-400" />
+          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm shadow-blue-200">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div>
             <span className="font-bold text-slate-900 text-base tracking-tight block">
@@ -85,7 +47,7 @@ export function TeacherSidebar() {
         {/* Main Section */}
         <div>
           <div className="px-3 mb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Faculty Control
+            Faculty Menu
           </div>
           <nav className="space-y-1">
             {teacherNavItems.map((item) => {
@@ -99,31 +61,18 @@ export function TeacherSidebar() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
                     isActive
-                      ? "bg-slate-900 text-white shadow-sm"
+                      ? "bg-slate-900 text-white shadow-xs"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`w-4 h-4 ${
-                        isActive ? "text-blue-400" : "text-slate-400"
-                      }`}
-                    />
-                    <span>{item.name}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        isActive
-                          ? "bg-slate-800 text-blue-300"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
+                  <Icon
+                    className={`w-4 h-4 flex-shrink-0 ${
+                      isActive ? "text-blue-400" : "text-slate-400"
+                    }`}
+                  />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}

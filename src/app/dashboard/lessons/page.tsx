@@ -289,16 +289,16 @@ function LessonReaderContent() {
   }
 
   return (
-    <div className="h-full max-h-full flex flex-col justify-between max-w-7xl mx-auto w-full gap-2 sm:gap-3 py-1">
+    <div className="h-full min-h-0 flex flex-col justify-between w-full max-w-full mx-auto gap-2 sm:gap-3 py-0.5 sm:py-1">
       {/* ── 1. Clean, Compact Top Header ── */}
-      <div className="flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl border border-slate-200/80 shadow-xs shrink-0">
+      <div className="flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-2 sm:px-6 sm:py-2.5 rounded-2xl border border-slate-200/80 shadow-xs shrink-0">
         {/* Left: Story Title + Difficulty Badge */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
+          <h1 className="text-sm sm:text-base md:text-xl font-black text-slate-900 tracking-tight truncate">
             {activeLesson.lesson_title}
           </h1>
           <span
-            className={`text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full border flex-shrink-0 uppercase tracking-wider ${
+            className={`text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full border flex-shrink-0 uppercase tracking-wider ${
               activeLesson.difficulty_level === "easy"
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                 : activeLesson.difficulty_level === "medium"
@@ -311,9 +311,9 @@ function LessonReaderContent() {
         </div>
 
         {/* Right: Sentence Progress + Clean Exit Button */}
-        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+        <div className="flex items-center gap-3 sm:gap-5 flex-shrink-0">
           <div className="flex flex-col items-end gap-0.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-700">
               <span className="hidden sm:inline">Sentence</span>
               <span>
                 {currentSlideIndex + 1}/{totalSlides}
@@ -321,7 +321,7 @@ function LessonReaderContent() {
               <span className="text-blue-600 font-black">({progressPercent}%)</span>
             </div>
             {/* Progress Bar */}
-            <div className="w-20 sm:w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="w-24 sm:w-36 md:w-44 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -333,10 +333,10 @@ function LessonReaderContent() {
             variant="outline"
             size="sm"
             onClick={() => setShowExitModal(true)}
-            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-8.5 px-3 cursor-pointer flex items-center gap-1 transition-all"
+            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs sm:text-sm font-bold text-slate-700 bg-white shadow-2xs h-8.5 sm:h-9 px-3 sm:px-4 cursor-pointer flex items-center gap-1.5 transition-all"
             title="Exit to Storybook Map"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Exit</span>
           </Button>
         </div>
@@ -359,14 +359,14 @@ function LessonReaderContent() {
               LEFT PAGE: Sentence Scene Illustration Plate
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-4 sm:p-6 lg:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all h-full min-h-0 ${
+            className={`p-4 sm:p-6 lg:p-7 xl:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all h-full min-h-0 ${
               pageFlipDirection === "backward" ? "leaf-flip-backward" : ""
             }`}
           >
             {/* Left Page Top Header */}
             <div className="flex items-center justify-between pb-2 border-b border-amber-200/60 shrink-0">
               {assignedBadge ? (
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50/80 px-2.5 py-0.5 rounded-lg border border-amber-200/80">
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200/80">
                   <BadgeGraphic
                     type={assignedBadge.badge_type}
                     medalType={assignedBadge.badge_type === "medal" ? assignedBadge.medal_type : undefined}
@@ -374,19 +374,19 @@ function LessonReaderContent() {
                     size="xs"
                     status="completed"
                   />
-                  <span className="text-xs font-bold">{assignedBadge.badge_name}</span>
+                  <span className="text-xs sm:text-sm font-bold">{assignedBadge.badge_name}</span>
                 </div>
               ) : (
-                <span className="text-xs font-bold text-amber-800">Chapter Story</span>
+                <span className="text-xs sm:text-sm font-bold text-amber-800">Chapter Story</span>
               )}
 
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider">
                 Page {currentSlide.pageNumber}
               </span>
             </div>
 
             {/* Clean Framed Story Illustration Photo (Flexibly Scaled to Fill Remaining Height) */}
-            <div className="relative w-full flex-1 min-h-0 my-2.5 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/90 shadow-md flex items-center justify-center group">
+            <div className="relative w-full flex-1 min-h-0 my-2 rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/90 shadow-md flex items-center justify-center group">
               <img
                 src={currentSlide.sceneImageUrl}
                 alt={currentSlide.sceneTitle}
@@ -400,7 +400,7 @@ function LessonReaderContent() {
                 variant="outline"
                 size="sm"
                 onClick={speakCurrentSentence}
-                className={`h-8.5 px-3.5 rounded-xl border text-xs font-bold transition-all shadow-2xs ${
+                className={`h-9 px-4 rounded-xl border text-xs sm:text-sm font-bold transition-all shadow-2xs ${
                   isPlayingAudio
                     ? "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 animate-pulse"
                     : "bg-white text-slate-700 border-amber-200/90 hover:bg-amber-50"
@@ -408,18 +408,18 @@ function LessonReaderContent() {
               >
                 {isPlayingAudio ? (
                   <>
-                    <VolumeX className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+                    <VolumeX className="w-4 h-4 mr-1.5 text-rose-600" />
                     <span>Speaking...</span>
                   </>
                 ) : (
                   <>
-                    <Volume2 className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                    <Volume2 className="w-4 h-4 mr-1.5 text-blue-600" />
                     <span>Read Aloud</span>
                   </>
                 )}
               </Button>
 
-              <span className="text-xs font-bold text-slate-400">
+              <span className="text-xs sm:text-sm font-bold text-slate-400">
                 Scene {currentSlideIndex + 1}
               </span>
             </div>
@@ -429,7 +429,7 @@ function LessonReaderContent() {
               RIGHT PAGE: Single Clean Sentence Reading & Page Stepper
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-4 sm:p-6 lg:p-7 flex flex-col justify-between bg-[#fffefb] relative transition-all h-full min-h-0 ${
+            className={`p-4 sm:p-6 lg:p-7 xl:p-8 flex flex-col justify-between bg-[#fffefb] relative transition-all h-full min-h-0 ${
               pageFlipDirection === "forward" ? "leaf-flip-forward" : ""
             }`}
           >
@@ -440,18 +440,19 @@ function LessonReaderContent() {
                 <span>Reading Story</span>
               </span>
 
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
+              <span className="text-xs sm:text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
                 Sentence {currentSlideIndex + 1} of {totalSlides}
               </span>
             </div>
 
             {/* Single Elegant Sentence Card (Flexibly Centered) */}
-            <div className="flex-1 min-h-0 my-2.5 p-4 sm:p-6 lg:p-8 rounded-2xl bg-amber-50/40 border-2 border-amber-200/70 shadow-xs flex flex-col justify-center space-y-3 overflow-y-auto">
-              <span className="text-[10px] sm:text-[11px] font-bold text-amber-800/80 uppercase tracking-wider block">
-                📖 Tap underlined words for phonics & definitions:
+            <div className="flex-1 min-h-0 my-2 p-5 sm:p-8 lg:p-10 xl:p-12 rounded-2xl bg-amber-50/40 border-2 border-amber-200/70 shadow-xs flex flex-col justify-center space-y-4 overflow-y-auto">
+              <span className="text-xs sm:text-sm font-bold text-amber-900/80 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>Tap underlined words for phonics & definitions:</span>
               </span>
 
-              <p className="text-lg sm:text-xl md:text-2xl lg:text-[28px] font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium">
+              <p className="text-xl sm:text-2xl md:text-3xl lg:text-[32px] xl:text-[36px] font-serif text-slate-900 leading-relaxed sm:leading-[1.7] xl:leading-[1.8] font-medium">
                 <VocabularyHighlightedText
                   text={currentSlide.sentenceText}
                   vocabularyList={vocabulary}
@@ -466,26 +467,26 @@ function LessonReaderContent() {
                 size="sm"
                 onClick={() => handleSlideChange(currentSlideIndex - 1, "backward")}
                 disabled={currentSlideIndex === 0}
-                className="h-9 px-4 rounded-xl text-xs font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40 cursor-pointer"
+                className="h-9 sm:h-10 px-4 sm:px-5 rounded-xl text-xs sm:text-sm font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40 cursor-pointer"
               >
-                <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
                 <span>Prev Sentence</span>
               </Button>
 
               {!isLastSlide ? (
                 <Button
                   onClick={() => handleSlideChange(currentSlideIndex + 1, "forward")}
-                  className="h-9 px-5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="h-9 sm:h-10 px-5 sm:px-6 rounded-xl text-xs sm:text-sm font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <span>Next Sentence</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
                 </Button>
               ) : (
                 <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}&badgeId=${activeLesson.badge_id}`}>
-                  <Button className="h-9 px-5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all animate-bounce cursor-pointer">
-                    <Sparkles className="w-3.5 h-3.5" />
+                  <Button className="h-9 sm:h-10 px-5 sm:px-6 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer">
+                    <Sparkles className="w-4 h-4" />
                     <span>Finish & Take Quiz</span>
-                    <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                    <ArrowRight className="w-4 h-4 ml-0.5" />
                   </Button>
                 </Link>
               )}
@@ -497,7 +498,7 @@ function LessonReaderContent() {
       {/* ── 3. Friendly Exit Confirmation Warning Modal ── */}
       {showExitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-2 border-amber-200 space-y-5 text-center relative anim-pop-bounce">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-200/80 space-y-5 text-center relative">
             <button
               onClick={() => setShowExitModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors"
@@ -505,12 +506,12 @@ function LessonReaderContent() {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-16 h-16 rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
-              <Map className="w-8 h-8" />
+            <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto shadow-xs">
+              <Map className="w-7 h-7" />
             </div>
 
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-200">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
                 Leaving Story
               </span>
               <h3 className="text-xl font-black text-slate-900 mt-2">
@@ -531,15 +532,15 @@ function LessonReaderContent() {
                   setShowExitModal(false);
                   router.push("/dashboard/badges");
                 }}
-                className="w-full sm:w-auto h-11 px-5 rounded-xl border-slate-200 text-xs font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer"
+                className="w-full sm:w-auto h-10 px-5 rounded-xl border-slate-200 text-xs font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer"
               >
                 <span>Yes, Exit to Map</span>
               </Button>
               <Button
                 onClick={() => setShowExitModal(false)}
-                className="w-full sm:w-auto h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 transition-all cursor-pointer"
+                className="w-full sm:w-auto h-10 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 transition-all cursor-pointer"
               >
-                <span>Keep Reading 📖</span>
+                <span>Keep Reading</span>
               </Button>
             </div>
           </div>

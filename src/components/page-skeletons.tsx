@@ -300,9 +300,9 @@ export function TableRosterSkeleton() {
  */
 export function LessonReaderSkeleton() {
   return (
-    <div className="space-y-4 max-w-5xl mx-auto animate-in fade-in duration-300">
+    <div className="h-full min-h-0 flex flex-col justify-between w-full max-w-full mx-auto gap-2 sm:gap-3 py-0.5 sm:py-1 animate-in fade-in duration-300">
       {/* Top Header */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between">
+      <div className="p-4 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between shrink-0">
         <div className="space-y-1.5">
           <Skeleton className="h-4 w-40 rounded-md" />
           <Skeleton className="h-6 w-56 rounded-lg" />
@@ -314,8 +314,8 @@ export function LessonReaderSkeleton() {
       </div>
 
       {/* 2-Page Book Spread */}
-      <div className="bg-slate-900 p-4 sm:p-5 rounded-3xl border-4 border-amber-200/30">
-        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-white min-h-[460px]">
+      <div className="flex-1 min-h-0 bg-slate-900 p-3 sm:p-4 rounded-3xl border-4 border-amber-200/30 flex flex-col">
+        <div className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden bg-white flex-1 min-h-0">
           {/* Left Page (Art) */}
           <div className="p-6 sm:p-8 flex flex-col justify-between border-r border-amber-200/60 bg-amber-50/20">
             <div className="space-y-4">

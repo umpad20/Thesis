@@ -237,7 +237,7 @@ export function CertificateModal({
         <div
           id="print-certificate-container"
           ref={certificateRef}
-          className="w-full flex-1 max-h-[calc(96vh-64px)] bg-gradient-to-br from-[#fffefb] via-[#fffdf7] to-[#fef8e7] rounded-3xl p-4 sm:p-6 lg:p-8 border-4 sm:border-6 md:border-8 border-amber-400 ring-4 sm:ring-8 ring-amber-200/80 shadow-2xl relative overflow-hidden flex flex-col justify-between select-none anim-pop-bounce"
+          className="w-full flex-1 max-h-[calc(96vh-64px)] bg-gradient-to-br from-[#fffefb] via-[#fffdf7] to-[#fef8e7] rounded-3xl p-4 sm:p-6 lg:p-8 border-4 sm:border-6 md:border-8 border-amber-400 ring-4 sm:ring-8 ring-amber-200/80 shadow-2xl relative overflow-hidden flex flex-col justify-between select-none animate-in zoom-in-95 duration-200"
           style={{
             backgroundImage:
               "radial-gradient(#fde68a 1px, transparent 1px), radial-gradient(#fde68a 1px, #fffdf7 1px)",

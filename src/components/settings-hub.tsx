@@ -35,8 +35,9 @@ import {
   VoicePreferences,
 } from "@/utils/voice-settings";
 import { getCurrentUser, signOutUser, updateUserAvatar, UserProfile } from "@/utils/auth-helpers";
+import { StudentAvatar, AVAILABLE_KID_AVATARS } from "@/components/student-avatar";
 
-const PUPIL_MASCOTS = ["🦊", "🐼", "🦁", "🐨", "🦉", "🐰", "🐯", "🐶", "🐱", "🦄", "🚀", "🌟"];
+const PUPIL_MASCOTS = AVAILABLE_KID_AVATARS;
 
 interface SettingsHubProps {
   portal: "student" | "teacher";
@@ -62,7 +63,7 @@ export function SettingsHub({ portal }: SettingsHubProps) {
   );
 
   // Mascot Selector
-  const [selectedAvatar, setSelectedAvatar] = useState<string>("🦊");
+  const [selectedAvatar, setSelectedAvatar] = useState<string>("/images/avatars/avatar-1.png");
   const [avatarSaved, setAvatarSaved] = useState(false);
 
   useEffect(() => {
@@ -530,9 +531,12 @@ export function SettingsHub({ portal }: SettingsHubProps) {
 
                 {/* Profile Overview Card */}
                 <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-4xl shadow-xs">
-                    {selectedAvatar}
-                  </div>
+                  <StudentAvatar
+                    avatar={selectedAvatar}
+                    name={user?.fullName || "Learner"}
+                    size="xl"
+                    className="shadow-sm ring-2 ring-white"
+                  />
                   <div>
                     <h3 className="text-sm font-black text-slate-900">{user?.fullName || "Learner"}</h3>
                     <p className="text-xs text-slate-500">{user?.email || "student@pvces.edu.ph"}</p>
@@ -546,22 +550,32 @@ export function SettingsHub({ portal }: SettingsHubProps) {
 
                 {/* Mascot Selector */}
                 <div className="space-y-3">
-                  <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                    Choose Your Mascot Avatar
-                  </label>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                    {PUPIL_MASCOTS.map((emoji) => (
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                      Choose Your Character Avatar ({PUPIL_MASCOTS.length} Illustrated Characters)
+                    </label>
+                    <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                      High Resolution
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-200/60">
+                    {PUPIL_MASCOTS.map((avatarSrc, idx) => (
                       <button
-                        key={emoji}
+                        key={avatarSrc}
                         type="button"
-                        onClick={() => handleSelectAvatar(emoji)}
-                        className={`h-14 rounded-2xl text-2xl flex items-center justify-center transition-all cursor-pointer ${
-                          selectedAvatar === emoji
-                            ? "bg-blue-600 text-white ring-4 ring-blue-200 scale-105 shadow-sm"
-                            : "bg-slate-50 hover:bg-white border border-slate-200 hover:scale-105"
+                        onClick={() => handleSelectAvatar(avatarSrc)}
+                        className={`h-16 rounded-2xl p-1.5 flex items-center justify-center transition-all cursor-pointer ${
+                          selectedAvatar === avatarSrc
+                            ? "bg-blue-600 ring-4 ring-blue-300 scale-105 shadow-sm"
+                            : "bg-white hover:bg-blue-50 border border-slate-200 hover:scale-105"
                         }`}
+                        title={`Kid Avatar ${idx + 1}`}
                       >
-                        {emoji}
+                        <StudentAvatar
+                          avatar={avatarSrc}
+                          size="md"
+                          className="border-0 shadow-none pointer-events-none"
+                        />
                       </button>
                     ))}
                   </div>

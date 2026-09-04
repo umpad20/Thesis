@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   Download,
-  ChevronRight,
   Users,
   Trophy,
   Lock,
@@ -81,18 +79,11 @@ export default function TeacherReportsPage() {
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/teacher" className="hover:text-slate-600">
-              Teacher Hub
-            </Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-900 font-bold">Reports</span>
-          </div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
             Reading Comprehension Analytics &amp; Reports
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Pedro Victorina Calo Elementary School · Live Database Performance Suite
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Cohort reading comprehension analytics &amp; data export
           </p>
         </div>
 
@@ -255,11 +246,11 @@ export default function TeacherReportsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedCertificateStudent(s)}
-                            className="h-6 px-2 rounded-lg border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-bold text-[9px] shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                            className="h-6 px-2.5 rounded-lg border-amber-200 bg-amber-50/50 hover:bg-amber-100 text-amber-900 font-semibold text-[9px] inline-flex items-center gap-1 cursor-pointer transition-colors"
                             title="View and Print Star Reader Certificate"
                           >
                             <Trophy className="w-2.5 h-2.5 fill-amber-500 text-amber-600" />
-                            <span>Award 📜</span>
+                            <span>Award</span>
                           </Button>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-slate-400 bg-slate-100 border border-slate-200">

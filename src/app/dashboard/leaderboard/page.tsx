@@ -17,6 +17,7 @@ import { fetchClassroomLeaderboard } from "@/utils/supabase-queries";
 import type { LeaderboardEntry } from "@/lib/types";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { LeaderboardSkeleton } from "@/components/page-skeletons";
+import { StudentAvatar } from "@/components/student-avatar";
 
 const TIER_CONFIG: Record<
   string,
@@ -200,7 +201,12 @@ export default function LeaderboardPage() {
               </span>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-base font-black text-white">{myRankEntry.studentName}</span>
-                <span className="text-xl">{myRankEntry.avatar}</span>
+                <StudentAvatar
+                  avatar={myRankEntry.avatar}
+                  name={myRankEntry.studentName}
+                  size="xs"
+                  className="ring-1 ring-white/50"
+                />
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 border border-white/30 text-white">
                   {myRankEntry.rankTierLabel}
                 </span>
@@ -241,7 +247,12 @@ export default function LeaderboardPage() {
               <div className="flex-1 max-w-[200px] flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
                 <div className="relative mb-2.5">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 p-1 ring-3 ring-slate-300 shadow-sm flex items-center justify-center">
-                    <span className="text-3xl sm:text-4xl">{top2.avatar}</span>
+                    <StudentAvatar
+                      avatar={top2.avatar}
+                      name={top2.studentName}
+                      size="lg"
+                      className="w-12 h-12 sm:w-14 sm:h-14 shadow-sm"
+                    />
                   </div>
                   <div className="absolute -bottom-1.5 -right-1 w-5 h-5 rounded-full bg-slate-700 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
                     2
@@ -266,7 +277,12 @@ export default function LeaderboardPage() {
                 <div className="relative mb-2.5">
                   <Crown className="w-6 h-6 text-amber-500 fill-amber-400 mx-auto mb-0.5 animate-bounce" />
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 p-1.5 ring-3 ring-amber-400 ring-offset-2 ring-offset-white shadow-lg shadow-amber-400/30 flex items-center justify-center relative">
-                    <span className="text-4xl sm:text-5xl">{top1.avatar}</span>
+                    <StudentAvatar
+                      avatar={top1.avatar}
+                      name={top1.studentName}
+                      size="xl"
+                      className="w-13 h-13 sm:w-16 sm:h-16 shadow-md"
+                    />
                   </div>
                   <div className="absolute -bottom-1.5 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
                     1
@@ -289,7 +305,12 @@ export default function LeaderboardPage() {
               <div className="flex-1 max-w-[200px] flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
                 <div className="relative mb-2.5">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 p-1 ring-3 ring-amber-300 shadow-sm flex items-center justify-center">
-                    <span className="text-3xl sm:text-4xl">{top3.avatar}</span>
+                    <StudentAvatar
+                      avatar={top3.avatar}
+                      name={top3.studentName}
+                      size="lg"
+                      className="w-12 h-12 sm:w-14 sm:h-14 shadow-sm"
+                    />
                   </div>
                   <div className="absolute -bottom-1.5 -right-1 w-5 h-5 rounded-full bg-amber-800 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
                     3
@@ -366,7 +387,12 @@ export default function LeaderboardPage() {
                 </div>
 
                 {/* Avatar */}
-                <span className="text-2xl sm:text-3xl flex-shrink-0">{entry.avatar}</span>
+                <StudentAvatar
+                  avatar={entry.avatar}
+                  name={entry.studentName}
+                  size="md"
+                  className="flex-shrink-0"
+                />
 
                 {/* Name, Tier Pill & Relative XP Bar */}
                 <div className="flex-1 min-w-0">

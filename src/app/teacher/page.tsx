@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGraphic } from "@/components/badge-graphic";
+import { StudentAvatar } from "@/components/student-avatar";
 import {
   fetchClassRosterReports,
   fetchAllLessons,
@@ -138,16 +139,11 @@ export default function TeacherDashboard() {
       {/* 1. Header & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <span>ReadSmart</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-900 font-bold">Faculty Portal</span>
-          </div>
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
             Grade 3 Classroom Reading Hub
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            Pedro Victorina Calo Elementary School · Live Database Cohort Monitoring
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Cohort monitoring & reading comprehension analytics
           </p>
         </div>
 
@@ -380,7 +376,7 @@ export default function TeacherDashboard() {
                         {/* Pupil Avatar & Name */}
                         <td className="py-2.5 px-3.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-lg flex-shrink-0">{p.avatar}</span>
+                            <StudentAvatar avatar={p.avatar} name={p.studentName} size="xs" className="flex-shrink-0" />
                             <div className="min-w-0">
                               <span className="font-bold text-slate-900 truncate block text-xs">
                                 {p.studentName}
@@ -424,8 +420,9 @@ export default function TeacherDashboard() {
                             <span className={`font-semibold ${isCritical ? "text-rose-900" : isWatchlist ? "text-amber-900" : "text-emerald-900"}`}>
                               {p.struggleReason}
                             </span>
-                            <span className="text-[10px] text-slate-500 block truncate">
-                              💡 {p.recommendedAction}
+                            <span className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
+                              <Sparkles className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                              <span className="truncate">{p.recommendedAction}</span>
                             </span>
                           </div>
                         </td>
@@ -503,7 +500,7 @@ export default function TeacherDashboard() {
                     >
                       #{entry.rank}
                     </span>
-                    <span className="text-lg">{entry.avatar}</span>
+                    <StudentAvatar avatar={entry.avatar} name={entry.studentName} size="xs" className="flex-shrink-0" />
                     <div>
                       <h4 className="font-bold text-slate-900 leading-tight">{entry.studentName}</h4>
                       <span className="text-[10px] text-slate-400">{entry.section} · {entry.rankTierLabel}</span>
@@ -724,7 +721,7 @@ export default function TeacherDashboard() {
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 anim-pop-bounce">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">{selectedPupilForNote.avatar}</span>
+                <StudentAvatar avatar={selectedPupilForNote.avatar} name={selectedPupilForNote.studentName} size="md" className="flex-shrink-0" />
                 <div>
                   <h3 className="text-sm font-black text-slate-900">
                     Guidance Note for {selectedPupilForNote.studentName}

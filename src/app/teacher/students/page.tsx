@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Search,
   Download,
-  ChevronRight,
   UserPlus,
   Layers,
   CheckCircle2,
@@ -21,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CertificateModal } from "@/components/certificate-modal";
+import { StudentAvatar } from "@/components/student-avatar";
 import {
   Dialog,
   DialogContent,
@@ -202,17 +202,10 @@ export default function TeacherStudentsPage() {
       {/* 1. Header & Quick Enrollment Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/teacher" className="hover:text-slate-600">
-              Teacher Hub
-            </Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-900 font-bold">Student Records</span>
-          </div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
             Pupil Enrollment &amp; Section Roster
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Create pupil accounts, assign them to specific class sections, and track reading mastery milestones in Supabase.
           </p>
         </div>
@@ -385,7 +378,12 @@ export default function TeacherStudentsPage() {
                       <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3.5 font-bold text-slate-900">
                           <div className="flex items-center gap-2.5">
-                            <span className="text-lg">{s.avatar || (s.gender === "Female" ? "👧" : "👦")}</span>
+                            <StudentAvatar
+                              avatar={s.avatar || (s.gender === "Female" ? "👧" : "👦")}
+                              name={s.name}
+                              size="xs"
+                              className="flex-shrink-0"
+                            />
                             <div>
                               <div className="text-slate-900">{s.name}</div>
                               <span className="text-[10px] text-slate-400 font-normal">
@@ -442,11 +440,11 @@ export default function TeacherStudentsPage() {
                               variant="outline"
                               size="sm"
                               onClick={() => setSelectedCertificateStudent(s)}
-                              className="h-7 px-2.5 rounded-lg border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-bold text-[10px] shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                              className="h-7 px-2.5 rounded-lg border-amber-200 bg-amber-50/50 hover:bg-amber-100 text-amber-900 font-semibold text-[10px] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                               title="View and Print Official Star Reader Certificate"
                             >
                               <Trophy className="w-3 h-3 fill-amber-500 text-amber-600" />
-                              <span>View Award 📜</span>
+                              <span>View Award</span>
                             </Button>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200">

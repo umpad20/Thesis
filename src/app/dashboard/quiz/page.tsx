@@ -444,7 +444,7 @@ function QuizContent() {
                 </h3>
               </div>
 
-              <div className="mt-3 pt-2 border-t border-amber-200/80 w-full flex items-center justify-center gap-1 text-xs font-black text-amber-700">
+              <div className="mt-3 pt-2 border-t border-slate-100 w-full flex items-center justify-center gap-1 text-xs font-black text-slate-700">
                 <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
                 <span>
                   +{isAlreadyPassed ? 10 : (currentBadge.xp_reward || 250)} XP{" "}
@@ -455,21 +455,20 @@ function QuizContent() {
 
             {/* 2. Newly Unlocked Next Badge Card OR Grand Star Reader Graduation Card */}
             {nextBadge ? (
-              <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-50 via-white to-indigo-50/60 border-2 border-blue-400 ring-4 ring-blue-400/20 shadow-lg flex flex-col items-center justify-between text-center relative overflow-hidden group anim-pop-bounce">
+              <div className="p-5 rounded-2xl bg-white border border-blue-200 shadow-sm flex flex-col items-center justify-between text-center relative overflow-hidden group">
                 <div className="absolute top-2 right-2">
-                  <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs animate-pulse">
+                  <span className="bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
                     <Unlock className="w-3 h-3" />
-                    <span>UNLOCKED!</span>
+                    <span>UNLOCKED</span>
                   </span>
                 </div>
 
-                <div className="my-2 group-hover:scale-110 transition-transform duration-300">
+                <div className="my-2 group-hover:scale-105 transition-transform duration-200">
                   <BadgeGraphic
                     type={nextBadge.badge_type}
                     medalType={nextBadge.medal_type}
                     badgeIconUrl={nextBadge.badge_icon_url}
                     size="lg"
-                    status="completed"
                   />
                 </div>
 
@@ -482,21 +481,21 @@ function QuizContent() {
                   </h3>
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-blue-200/80 w-full text-[11px] font-bold text-blue-600">
+                <div className="mt-3 pt-2 border-t border-blue-100 w-full text-[11px] font-bold text-blue-600">
                   Ready to Read Story {nextFirstLessonId}
                 </div>
               </div>
             ) : (
-              <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-200/60 border-2 border-amber-400 ring-4 ring-amber-300/30 shadow-lg flex flex-col items-center justify-between text-center relative overflow-hidden group anim-pop-bounce">
+              <div className="p-5 rounded-2xl bg-white border border-amber-200 shadow-sm flex flex-col items-center justify-between text-center relative overflow-hidden group">
                 <div className="absolute top-2 right-2">
-                  <span className="bg-amber-600 text-white text-[9px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs animate-pulse">
+                  <span className="bg-amber-600 text-white text-[9px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
                     <Trophy className="w-3 h-3" />
-                    <span>STAR READER!</span>
+                    <span>STAR READER</span>
                   </span>
                 </div>
 
-                <div className="my-2 group-hover:scale-110 transition-transform duration-300">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 p-1 shadow-md flex items-center justify-center">
+                <div className="my-2 group-hover:scale-105 transition-transform duration-200">
+                  <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 p-1 shadow-xs flex items-center justify-center">
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
                       <Trophy className="w-8 h-8 fill-amber-400 text-amber-600" />
                     </div>
@@ -504,36 +503,36 @@ function QuizContent() {
                 </div>
 
                 <div>
-                  <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
-                    All 5 Stages Completed!
+                  <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
+                    Curriculum Completed
                   </span>
                   <h3 className="text-base font-black text-slate-900 mt-0.5">
-                    Star Reader Award
+                    Star Reader Certified
                   </h3>
                 </div>
 
                 <Button
                   onClick={() => setShowCertificate(true)}
-                  className="mt-3 w-full h-9 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="mt-3 w-full h-9 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Award className="w-4 h-4" />
-                  <span>View Certificate 📜</span>
+                  <span>View Certificate</span>
                 </Button>
               </div>
             )}
           </div>
 
           {/* Action Navigation Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-amber-200/60">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-slate-100">
             {nextBadge && (
               <Link
                 href={`/dashboard/lessons?lessonId=${nextFirstLessonId}`}
                 className="w-full sm:w-auto"
               >
-                <Button className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer">
-                  <BookOpen className="w-5 h-5" />
-                  <span>Continue Reading Next Chapter 📖</span>
-                  <ArrowRight className="w-5 h-5" />
+                <Button className="w-full sm:w-auto h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer">
+                  <BookOpen className="w-4 h-4" />
+                  <span>Continue to Next Chapter</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
             )}
@@ -541,17 +540,17 @@ function QuizContent() {
             {!nextBadge && (
               <Button
                 onClick={() => setShowCertificate(true)}
-                className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+                className="w-full sm:w-auto h-11 px-6 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <Trophy className="w-5 h-5 fill-slate-950 text-slate-950" />
-                <span>Open Star Reader Certificate 📜</span>
+                <Award className="w-4 h-4" />
+                <span>Open Star Reader Certificate</span>
               </Button>
             )}
 
             <Link href="/dashboard/badges" className="w-full sm:w-auto">
               <Button
                 variant="outline"
-                className="w-full sm:w-auto h-12 px-6 rounded-2xl border-amber-300 text-slate-800 bg-white hover:bg-amber-50/60 font-bold text-xs shadow-xs cursor-pointer"
+                className="w-full sm:w-auto h-11 px-6 rounded-xl border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs shadow-xs cursor-pointer"
               >
                 <Map className="w-4 h-4 mr-2 text-amber-600" />
                 <span>View Living Storybook</span>
@@ -637,16 +636,16 @@ function QuizContent() {
               className={`text-xs font-black uppercase tracking-widest block mb-1.5 ${
                 isPassed
                   ? isLastLessonOfStage
-                    ? "text-purple-600 animate-pulse"
+                    ? "text-purple-600"
                     : "text-emerald-600"
                   : "text-amber-600"
               }`}
             >
               {isPassed
                 ? isLastLessonOfStage
-                  ? "🌟 ALL CHAPTER STORIES COMPLETED — FINAL QUIZ UNLOCKED! 🌟"
-                  : "✨ STORY COMPREHENSION PASSED! ✨"
-                : "KEEP PRACTICING (RETAINED)"}
+                  ? "All Chapter Stories Completed — Final Quiz Unlocked"
+                  : "Story Comprehension Passed"
+                : "Keep Practicing · Retained"}
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {isPassed
@@ -791,19 +790,19 @@ function QuizContent() {
   // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="max-w-3xl mx-auto space-y-4 relative pb-16">
-      {/* ── 1. Floating Top Celebratory Popup on Answer ─────────────────── */}
+      {/* ── 1. Floating Top Feedback Toast on Answer ─────────────────── */}
       {feedbackType === "correct" && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none anim-pop-bounce">
-          <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white text-emerald-600 flex items-center justify-center font-black text-base shadow-xs animate-bounce">
-              ⭐
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="bg-emerald-700 text-white px-5 py-2.5 rounded-xl shadow-xl border border-emerald-500/40 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-800 text-emerald-100 flex items-center justify-center font-bold shadow-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-200" />
             </div>
             <div>
-              <span className="text-[11px] font-black tracking-wider block uppercase text-emerald-100">
-                Awesome! That&apos;s Right! ✨
+              <span className="text-[11px] font-bold tracking-wider block uppercase text-emerald-200">
+                Correct Selection
               </span>
-              <span className="text-sm font-black text-white">
-                +{currentQuestion?.points || 10} XP Earned!
+              <span className="text-sm font-bold text-white">
+                +{currentQuestion?.points || 10} XP Earned
               </span>
             </div>
           </div>
@@ -811,17 +810,17 @@ function QuizContent() {
       )}
 
       {feedbackType === "wrong" && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none anim-shake-wiggle">
-          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white px-6 py-3 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white text-amber-600 flex items-center justify-center font-black text-base shadow-xs">
-              💪
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="bg-amber-700 text-white px-5 py-2.5 rounded-xl shadow-xl border border-amber-500/40 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-800 text-amber-100 flex items-center justify-center font-bold shadow-xs">
+              <HelpCircle className="w-4 h-4 text-amber-200" />
             </div>
             <div>
-              <span className="text-[11px] font-black tracking-wider block uppercase text-amber-100">
-                Nice try! Keep it up! 💡
+              <span className="text-[11px] font-bold tracking-wider block uppercase text-amber-200">
+                Incorrect Selection
               </span>
-              <span className="text-sm font-black text-white">
-                Let&apos;s review the clue below
+              <span className="text-sm font-bold text-white">
+                Review the explanation below
               </span>
             </div>
           </div>
@@ -998,22 +997,22 @@ function QuizContent() {
         {/* Feedback / Explanation Box */}
         {isSubmitted && (
           <div
-            className={`p-4 sm:p-5 rounded-2xl border text-xs leading-relaxed space-y-1.5 transition-all duration-300 ${
+            className={`p-4 sm:p-5 rounded-xl border text-xs leading-relaxed space-y-1.5 transition-all duration-200 ${
               isCorrect
-                ? "bg-emerald-50 border-emerald-200 text-emerald-950 anim-pop-bounce"
-                : "bg-amber-50 border-amber-200 text-amber-950 anim-shake-wiggle"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                : "bg-amber-50 border-amber-200 text-amber-950"
             }`}
           >
-            <div className="flex items-center gap-2 font-black text-sm">
+            <div className="flex items-center gap-2 font-bold text-sm">
               {isCorrect ? (
                 <>
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Correct! +{currentQuestion.points || 10} XP Earned ✨</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Correct! +{currentQuestion.points || 10} XP Earned</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5 text-amber-600" />
-                  <span>Good try! Let&apos;s check the clue below:</span>
+                  <HelpCircle className="w-4 h-4 text-amber-600" />
+                  <span>Review Explanation:</span>
                 </>
               )}
             </div>

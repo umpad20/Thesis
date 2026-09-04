@@ -96,10 +96,10 @@ export default function AchievementsPage() {
           <Button
             onClick={() => setShowCertificate(true)}
             size="sm"
-            className="h-9 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer anim-pop-bounce"
+            className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
           >
             <Trophy className="w-4 h-4 fill-slate-950" />
-            <span>Star Reader Certificate 📜</span>
+            <span>Star Reader Certificate</span>
           </Button>
         ) : (
           <div

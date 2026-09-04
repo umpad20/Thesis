@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ChevronRight,
   Edit,
   Plus,
   Sparkles,
@@ -193,17 +192,10 @@ export default function TeacherBadgesPage() {
       {/* ── 1. Unified Header & Create Stage Button ─────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/teacher" className="hover:text-slate-600">
-              Teacher Hub
-            </Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-800 font-bold">Curriculum &amp; Stage Badges</span>
-          </div>
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
             Reading Curriculum &amp; Stage Badges Studio
           </h1>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
             Protected core stages (1–5) and teacher-created custom quests. Each stage contains story lessons and comprehensive evaluations.
           </p>
         </div>
@@ -237,27 +229,27 @@ export default function TeacherBadgesPage() {
           <button
             type="button"
             onClick={() => setCurriculumTab("core")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               curriculumTab === "core"
-                ? "bg-white text-amber-600 shadow-xs"
+                ? "bg-white text-amber-700 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <Lock className="w-3.5 h-3.5 text-amber-500" />
-            <span>🌟 Core DepEd Stages ({coreBadgesCount})</span>
+            <span>Core DepEd Stages ({coreBadgesCount})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setCurriculumTab("teacher")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
               curriculumTab === "teacher"
-                ? "bg-white text-indigo-600 shadow-xs"
+                ? "bg-white text-indigo-700 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span>🏫 Teacher Quests ({teacherQuestsCount})</span>
+            <span>Teacher Quests ({teacherQuestsCount})</span>
           </button>
         </div>
 

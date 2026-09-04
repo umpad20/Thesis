@@ -32,6 +32,10 @@ import {
   type UserProfile,
 } from "@/utils/auth-helpers";
 import {
+  StudentAvatar,
+  AVAILABLE_KID_AVATARS,
+} from "@/components/student-avatar";
+import {
   fetchStudentStats,
   fetchLessonsForStudent,
   fetchAllVocabularyWords,
@@ -40,7 +44,7 @@ import {
 } from "@/utils/supabase-queries";
 import type { Lesson, VocabularyWord, Badge } from "@/lib/types";
 
-const AVATAR_OPTIONS = ["🦊", "🦁", "🐼", "🐨", "🦉", "🚀", "⭐", "🏆", "🐯", "🐬"];
+const AVATAR_OPTIONS = AVAILABLE_KID_AVATARS;
 
 const DEFAULT_STUDENT: UserProfile = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -48,7 +52,7 @@ const DEFAULT_STUDENT: UserProfile = {
   fullName: "Student",
   role: "student",
   section: "Unassigned",
-  avatar: "🦊",
+  avatar: "/images/avatars/avatar-1.png",
 };
 
 export function DashboardHeader() {
@@ -485,11 +489,12 @@ export function DashboardHeader() {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200 transition-all text-left outline-none cursor-pointer select-none"
             >
-              <Avatar className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs border border-blue-200 flex-shrink-0">
-                <AvatarFallback className="bg-transparent text-white font-black text-sm">
-                  {currentUser.avatar || getInitials(currentUser.fullName)}
-                </AvatarFallback>
-              </Avatar>
+              <StudentAvatar
+                avatar={currentUser.avatar}
+                name={currentUser.fullName}
+                size="sm"
+                className="shadow-xs ring-2 ring-blue-500/20"
+              />
               <div className="hidden md:block">
                 <span className="text-xs font-bold text-slate-800 block leading-tight max-w-[140px] truncate">
                   {currentUser.fullName}
@@ -510,9 +515,12 @@ export function DashboardHeader() {
               <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
                 {/* Profile Card Header */}
                 <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
-                  <span className="text-2xl p-1 bg-white rounded-xl shadow-2xs">
-                    {currentUser.avatar || "🦊"}
-                  </span>
+                  <StudentAvatar
+                    avatar={currentUser.avatar}
+                    name={currentUser.fullName}
+                    size="md"
+                    className="shadow-xs ring-2 ring-white"
+                  />
                   <div className="min-w-0 flex-1">
                     <span className="text-xs font-black text-slate-900 block truncate">
                       {currentUser.fullName}
@@ -634,28 +642,40 @@ export function DashboardHeader() {
       {/* ── 4. Mascot / Avatar Customizer Modal ───────────────────────── */}
       {showAvatarPicker && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-2 border-amber-200 text-center space-y-4 anim-pop-bounce">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-amber-200 text-center space-y-4 anim-pop-bounce">
             <div className="space-y-1">
-              <span className="text-3xl block mb-1">🦊</span>
-              <h3 className="text-lg font-black text-slate-900">Choose Your Mascot Avatar</h3>
+              <div className="flex justify-center mb-1">
+                <StudentAvatar
+                  avatar={currentUser.avatar}
+                  name={currentUser.fullName}
+                  size="xl"
+                  className="ring-4 ring-amber-300 shadow-md"
+                />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">Choose Your Character Avatar</h3>
               <p className="text-xs text-slate-500">
                 Personalize your reading companion across the Living Storybook!
               </p>
             </div>
 
-            <div className="grid grid-cols-5 gap-2.5 p-2 bg-slate-50 rounded-2xl border border-slate-200">
-              {AVATAR_OPTIONS.map((emoji) => (
+            <div className="grid grid-cols-6 gap-2 p-2.5 bg-slate-50 rounded-2xl border border-slate-200 max-h-64 overflow-y-auto">
+              {AVATAR_OPTIONS.map((avatarSrc, idx) => (
                 <button
-                  key={emoji}
+                  key={avatarSrc}
                   type="button"
-                  onClick={() => handleSelectAvatar(emoji)}
-                  className={`w-11 h-11 rounded-xl text-2xl flex items-center justify-center transition-all cursor-pointer ${
-                    currentUser.avatar === emoji
-                      ? "bg-blue-600 text-white ring-2 ring-blue-400 scale-110 shadow-sm"
+                  onClick={() => handleSelectAvatar(avatarSrc)}
+                  className={`p-1 rounded-xl transition-all cursor-pointer flex items-center justify-center ${
+                    currentUser.avatar === avatarSrc
+                      ? "bg-blue-600 ring-2 ring-blue-500 scale-105 shadow-sm"
                       : "bg-white hover:bg-blue-50 border border-slate-200 hover:scale-105"
                   }`}
+                  title={`Avatar ${idx + 1}`}
                 >
-                  {emoji}
+                  <StudentAvatar
+                    avatar={avatarSrc}
+                    size="sm"
+                    className="border-0 shadow-none pointer-events-none"
+                  />
                 </button>
               ))}
             </div>
@@ -665,7 +685,7 @@ export function DashboardHeader() {
               onClick={() => setShowAvatarPicker(false)}
               className="w-full h-10 rounded-xl text-xs font-bold border-slate-200 cursor-pointer"
             >
-              Cancel
+              Close
             </Button>
           </div>
         </div>
