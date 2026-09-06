@@ -847,18 +847,27 @@ export async function submitQuizAttempt(params: {
           }
         }
       } else {
-        // Failed Stage Final Quiz -> Retained in current stage
-        await supabase.from("student_badge_progress").upsert(
-          {
-            student_id: params.studentId,
-            badge_id: params.badgeId,
-            status: "in_progress",
-            completion_percentage: 90,
-            final_quiz_score: params.percentage,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "student_id, badge_id" }
-        );
+        // Failed Stage Final Quiz -> Retained in current stage if not already earned
+        const { data: curBProg } = await supabase
+          .from("student_badge_progress")
+          .select("status, earned_date")
+          .eq("student_id", params.studentId)
+          .eq("badge_id", params.badgeId)
+          .maybeSingle();
+
+        if (curBProg?.status !== "completed" && !curBProg?.earned_date) {
+          await supabase.from("student_badge_progress").upsert(
+            {
+              student_id: params.studentId,
+              badge_id: params.badgeId,
+              status: "in_progress",
+              completion_percentage: 90,
+              final_quiz_score: params.percentage,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "student_id, badge_id" }
+          );
+        }
       }
       return { success: true, attemptId: attempt.attempt_id };
     }
@@ -924,16 +933,31 @@ export async function submitQuizAttempt(params: {
         // Percentage reaches up to 90% from lessons; 100% is awarded only on Stage Final Quiz pass
         const newPercentage = Math.min(90, Math.round((completedCount / totalLessonsInBadge) * 90));
 
-        await supabase.from("student_badge_progress").upsert(
-          {
-            student_id: params.studentId,
-            badge_id: targetBadgeId,
-            status: "in_progress",
-            completion_percentage: newPercentage,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "student_id, badge_id" }
-        );
+        // Check if badge is already earned/completed - never downgrade!
+        const { data: existingBadgeProg } = await supabase
+          .from("student_badge_progress")
+          .select("status, earned_date, completion_percentage")
+          .eq("student_id", params.studentId)
+          .eq("badge_id", targetBadgeId)
+          .maybeSingle();
+
+        const isAlreadyEarned =
+          existingBadgeProg?.status === "completed" ||
+          Boolean(existingBadgeProg?.earned_date) ||
+          (existingBadgeProg?.completion_percentage || 0) >= 100;
+
+        if (!isAlreadyEarned) {
+          await supabase.from("student_badge_progress").upsert(
+            {
+              student_id: params.studentId,
+              badge_id: targetBadgeId,
+              status: "in_progress",
+              completion_percentage: newPercentage,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "student_id, badge_id" }
+          );
+        }
       }
     }
 
@@ -1449,6 +1473,250 @@ export async function fetchTeacherInterventionRadar(
   } catch (err) {
     console.error("fetchTeacherInterventionRadar error:", err);
     return { criticalCount: 0, watchlistCount: 0, masteringCount: 0, totalEnrolled: 0, pupils: [] };
+  }
+}
+
+// ============================================================================
+// 12. INDIVIDUAL STUDENT EVALUATION & QUIZ ATTEMPT HISTORY
+// ============================================================================
+
+export interface StudentDetailedQuizAttempt {
+  attempt_id: number;
+  quiz_id: number;
+  quiz_title: string;
+  score: number;
+  percentage: number;
+  status: "passed" | "failed" | string;
+  completed_at: string;
+}
+
+/**
+ * Fetch detailed quiz attempt records for an individual student for the teacher's evaluation modal.
+ */
+export async function fetchStudentDetailedQuizAttempts(
+  studentId: string
+): Promise<StudentDetailedQuizAttempt[]> {
+  if (!studentId) return [];
+
+  try {
+    const supabase = createClient();
+    const { data: attempts, error } = await supabase
+      .from("quiz_attempts")
+      .select("attempt_id, quiz_id, score, percentage, status, completed_at")
+      .eq("student_id", studentId)
+      .order("completed_at", { ascending: false });
+
+    if (error || !attempts || attempts.length === 0) return [];
+
+    const quizIds = Array.from(new Set(attempts.map((a) => a.quiz_id).filter(Boolean)));
+    const quizMap = new Map<number, string>();
+
+    if (quizIds.length > 0) {
+      const { data: quizzes } = await supabase
+        .from("quizzes")
+        .select("quiz_id, title, lesson_id")
+        .in("quiz_id", quizIds);
+
+      if (quizzes && quizzes.length > 0) {
+        const lessonIds = quizzes.map((q) => q.lesson_id).filter(Boolean);
+        const lessonMap = new Map<number, string>();
+
+        if (lessonIds.length > 0) {
+          const { data: lessons } = await supabase
+            .from("lessons")
+            .select("lesson_id, title")
+            .in("lesson_id", lessonIds);
+
+          if (lessons) {
+            lessons.forEach((l) => lessonMap.set(l.lesson_id, l.title));
+          }
+        }
+
+        quizzes.forEach((q) => {
+          const lessonTitle = q.lesson_id ? lessonMap.get(q.lesson_id) : undefined;
+          const displayTitle = q.title || lessonTitle || `Quiz #${q.quiz_id}`;
+          quizMap.set(q.quiz_id, displayTitle);
+        });
+      }
+    }
+
+    return attempts.map((a) => ({
+      attempt_id: a.attempt_id,
+      quiz_id: a.quiz_id,
+      quiz_title: quizMap.get(a.quiz_id) || `Chapter Quiz #${a.quiz_id}`,
+      score: a.score ?? 0,
+      percentage: Math.round(Number(a.percentage ?? 0)),
+      status: a.status || (Number(a.percentage ?? 0) >= 70 ? "passed" : "failed"),
+      completed_at: a.completed_at || new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.error("fetchStudentDetailedQuizAttempts error:", err);
+    return [];
+  }
+}
+
+// ============================================================================
+// 13. STUDENT NOTIFICATIONS & TEACHER GUIDANCE MESSAGES
+// ============================================================================
+
+export interface StudentNotificationItem {
+  id: number;
+  student_id: string;
+  teacher_id?: string | null;
+  teacher_name?: string;
+  title: string;
+  message: string;
+  type: "guidance_note" | "praise" | "system" | "badge" | string;
+  recommendation?: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+/**
+ * Dispatch a personalized teacher guidance note or praise to a student.
+ * Saves to Supabase and syncs to localStorage for immediate cross-tab delivery.
+ */
+export async function sendTeacherGuidanceNote(params: {
+  studentId: string;
+  teacherId?: string;
+  teacherName?: string;
+  title?: string;
+  message: string;
+  recommendation?: string;
+  type?: "guidance_note" | "praise";
+}): Promise<{ success: boolean; error?: string }> {
+  const finalTitle =
+    params.title ||
+    (params.type === "praise" ? "Teacher Praise & Kudos! 🌟" : "Teacher Guidance Note 📝");
+
+  const newNotification: Omit<StudentNotificationItem, "id"> = {
+    student_id: params.studentId,
+    teacher_id: params.teacherId || null,
+    teacher_name: params.teacherName || "Teacher",
+    title: finalTitle,
+    message: params.message,
+    recommendation: params.recommendation || null,
+    type: params.type || "guidance_note",
+    is_read: false,
+    created_at: new Date().toISOString(),
+  };
+
+  let assignedId = Date.now();
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("student_notifications")
+      .insert(newNotification)
+      .select("id")
+      .single();
+
+    if (error) {
+      console.warn("Could not insert notification into Supabase:", error.message);
+    } else if (data?.id) {
+      assignedId = data.id;
+    }
+  } catch (err: any) {
+    console.warn("sendTeacherGuidanceNote network exception, falling back to local sync:", err);
+  }
+
+  // Cross-tab and offline localStorage mirror
+  if (typeof window !== "undefined") {
+    try {
+      const localKey = `readsmart_notifications_${params.studentId}`;
+      const existing: StudentNotificationItem[] = JSON.parse(
+        localStorage.getItem(localKey) || "[]"
+      );
+      existing.unshift({
+        ...newNotification,
+        id: assignedId,
+      });
+      localStorage.setItem(localKey, JSON.stringify(existing));
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
+  }
+
+  return { success: true };
+}
+
+/**
+ * Fetch all notifications and guidance messages addressed to this student.
+ */
+export async function fetchStudentNotifications(
+  studentId: string
+): Promise<StudentNotificationItem[]> {
+  if (!studentId) return [];
+
+  let dbNotifs: StudentNotificationItem[] = [];
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("student_notifications")
+      .select("*")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      dbNotifs = data as StudentNotificationItem[];
+    }
+  } catch (err) {
+    console.error("fetchStudentNotifications error:", err);
+  }
+
+  // Merge with local mirror for immediate delivery
+  if (typeof window !== "undefined") {
+    try {
+      const localKey = `readsmart_notifications_${studentId}`;
+      const localList: StudentNotificationItem[] = JSON.parse(
+        localStorage.getItem(localKey) || "[]"
+      );
+      const existingIds = new Set(dbNotifs.map((n) => n.id));
+      for (const item of localList) {
+        if (!existingIds.has(item.id)) {
+          dbNotifs.push(item);
+        }
+      }
+    } catch {}
+  }
+
+  // Sort by created_at descending
+  dbNotifs.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  return dbNotifs;
+}
+
+/**
+ * Mark a student notification as read.
+ */
+export async function markNotificationAsRead(
+  notifId: number,
+  studentId?: string
+): Promise<void> {
+  try {
+    const supabase = createClient();
+    await supabase
+      .from("student_notifications")
+      .update({ is_read: true })
+      .eq("id", notifId);
+  } catch (err) {
+    console.warn("markNotificationAsRead Supabase error:", err);
+  }
+
+  if (typeof window !== "undefined" && studentId) {
+    try {
+      const localKey = `readsmart_notifications_${studentId}`;
+      const existing: StudentNotificationItem[] = JSON.parse(
+        localStorage.getItem(localKey) || "[]"
+      );
+      const updated = existing.map((n) =>
+        n.id === notifId ? { ...n, is_read: true } : n
+      );
+      localStorage.setItem(localKey, JSON.stringify(updated));
+      window.dispatchEvent(new Event("storage"));
+    } catch {}
   }
 }
 

@@ -41,15 +41,27 @@ export default function DashboardLayout({
     );
   }
 
+  const isBadgesPage = pathname === "/dashboard/badges";
+
   return (
     <div className="h-screen max-h-screen overflow-hidden bg-white flex flex-col md:flex-row antialiased">
       {/* Persistent Left Sidebar (Desktop/Tablet) — 100% full screen height */}
       <DashboardSidebar />
 
       {/* Main Content Area with inner scrollable pane */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-white">
+      <div
+        className={`flex-1 flex flex-col min-w-0 h-full bg-white ${
+          isBadgesPage ? "overflow-hidden" : "overflow-y-auto"
+        }`}
+      >
         <DashboardHeader />
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto bg-white pb-20 md:pb-8">
+        <main
+          className={
+            isBadgesPage
+              ? "flex-1 w-full max-w-none p-0 bg-white flex flex-col min-h-0 overflow-hidden"
+              : "flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto bg-white pb-20 md:pb-8"
+          }
+        >
           {children}
         </main>
       </div>

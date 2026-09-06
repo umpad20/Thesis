@@ -97,8 +97,8 @@ export async function proxy(request: NextRequest) {
     const role = profile?.role ?? user.user_metadata?.role ?? "student";
 
     if (role !== "teacher") {
-      // Logged-in student trying to access teacher area → send to student dashboard
-      return redirectTo("/dashboard");
+      // Logged-in student trying to access teacher area → send to storybook
+      return redirectTo("/dashboard/badges");
     }
   }
 
@@ -112,7 +112,7 @@ export async function proxy(request: NextRequest) {
         .maybeSingle();
 
       const role = profile?.role ?? user.user_metadata?.role ?? "student";
-      return redirectTo(role === "teacher" ? "/teacher" : "/dashboard");
+      return redirectTo(role === "teacher" ? "/teacher" : "/dashboard/badges");
     }
   }
 

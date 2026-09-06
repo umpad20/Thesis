@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGraphic } from "@/components/badge-graphic";
 import { StudentAvatar } from "@/components/student-avatar";
+import { StudentRecordModal } from "@/components/student-record-modal";
 import {
   fetchClassRosterReports,
   fetchAllLessons,
@@ -33,6 +34,7 @@ import {
   fetchMasteryStageDistribution,
   fetchTeacherInterventionRadar,
   fetchClassroomLeaderboard,
+  sendTeacherGuidanceNote,
   type TeacherReportRow,
   type MasteryStageDistribution,
 } from "@/utils/supabase-queries";
@@ -70,6 +72,10 @@ export default function TeacherDashboard() {
   const [selectedPupilForNote, setSelectedPupilForNote] = useState<InterventionPupil | null>(null);
   const [noteMessage, setNoteMessage] = useState("");
   const [noteSent, setNoteSent] = useState(false);
+  const [isSendingNote, setIsSendingNote] = useState(false);
+
+  // Student Record Modal State
+  const [selectedPupilForRecord, setSelectedPupilForRecord] = useState<InterventionPupil | null>(null);
 
   useEffect(() => {
     async function loadStats() {
@@ -113,9 +119,27 @@ export default function TeacherDashboard() {
       ? Math.round(validScores.reduce((acc, curr) => acc + curr, 0) / validScores.length)
       : 0;
 
-  const handleSendNote = (e: React.FormEvent) => {
+  const handleSendNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!noteMessage.trim()) return;
+    if (!noteMessage.trim() || !selectedPupilForNote) return;
+
+    setIsSendingNote(true);
+    const user = getCurrentUser();
+    const teacherName = user?.fullName || "Your Teacher";
+    const teacherId = user?.id || undefined;
+    const isPraise = selectedPupilForNote.riskLevel === "mastering";
+
+    await sendTeacherGuidanceNote({
+      studentId: selectedPupilForNote.studentId,
+      teacherId,
+      teacherName,
+      title: isPraise ? `Teacher Praise from ${teacherName} ⭐` : `Teacher Guidance Note from ${teacherName} 📝`,
+      message: noteMessage.trim(),
+      recommendation: selectedPupilForNote.recommendedAction,
+      type: isPraise ? "praise" : "guidance_note",
+    });
+
+    setIsSendingNote(false);
     setNoteSent(true);
     setTimeout(() => {
       setNoteSent(false);
@@ -444,20 +468,20 @@ export default function TeacherDashboard() {
                               <MessageSquare className="w-2.5 h-2.5" />
                               <span>{p.riskLevel === "mastering" ? "Praise" : "Guidance"}</span>
                             </Button>
-                            <Link href="/teacher/students">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-6 px-2 rounded-lg text-slate-700 font-bold text-[10px]"
-                              >
-                                Record
-                              </Button>
-                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedPupilForRecord(p)}
+                              className="h-6 px-2 rounded-lg text-slate-700 hover:text-blue-700 hover:border-blue-300 font-bold text-[10px] cursor-pointer"
+                              title={`View evaluation record for ${p.studentName}`}
+                            >
+                              Record
+                            </Button>
                           </div>
                         </td>
-                      </tr>
-                    );
-                  })}
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -677,6 +701,7 @@ export default function TeacherDashboard() {
                   <th className="pb-3">Comprehension</th>
                   <th className="pb-3">Quizzes Passed</th>
                   <th className="pb-3 text-right">Mastery Status</th>
+                  <th className="pb-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -706,6 +731,44 @@ export default function TeacherDashboard() {
                       >
                         {s.status}
                       </span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const matchingPupil = radar.pupils.find((p) => p.studentId === s.studentId) || {
+                            studentId: s.studentId,
+                            studentName: s.name,
+                            avatar: "🦊",
+                            section: s.section,
+                            comprehensionPct: Number.parseInt(s.comprehensionPct, 10) || 0,
+                            quizzesPassed:
+                              typeof s.quizzesPassed === "number"
+                                ? s.quizzesPassed
+                                : Number.parseInt(s.quizzesPassed, 10) || 0,
+                            failedAttemptsCount: 0,
+                            lastActiveDate: s.lastActive || new Date().toISOString(),
+                            daysInactive: 0,
+                            riskLevel:
+                              s.status === "Mastering"
+                                ? "mastering"
+                                : s.status === "On Track"
+                                ? "watchlist"
+                                : "critical",
+                            struggleReason:
+                              s.status === "Mastering"
+                                ? "Consistently excelling at comprehension benchmarks."
+                                : "Under evaluation for reading recall and phonics.",
+                            recommendedAction: "Review student reading progression and provide targeted guidance.",
+                          };
+                          setSelectedPupilForRecord(matchingPupil);
+                        }}
+                        className="h-6 px-2 rounded-lg text-slate-700 hover:text-blue-700 hover:border-blue-300 font-bold text-[10px] cursor-pointer"
+                        title={`View evaluation record for ${s.name}`}
+                      >
+                        Record
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -775,10 +838,11 @@ export default function TeacherDashboard() {
                   <Button
                     type="submit"
                     size="sm"
-                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1"
+                    disabled={isSendingNote}
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   >
                     <Send className="w-3 h-3" />
-                    <span>Send Note to Student</span>
+                    <span>{isSendingNote ? "Sending..." : "Send Note to Student"}</span>
                   </Button>
                 </div>
               </form>
@@ -786,6 +850,22 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
+
+      {/* ── 8. Individual Student Evaluation Record Modal ─────────────── */}
+      <StudentRecordModal
+        isOpen={Boolean(selectedPupilForRecord)}
+        onClose={() => setSelectedPupilForRecord(null)}
+        pupil={selectedPupilForRecord}
+        report={
+          selectedPupilForRecord
+            ? reports.find((r) => r.studentId === selectedPupilForRecord.studentId) || null
+            : null
+        }
+        onOpenGuidanceNote={(pupil) => {
+          setSelectedPupilForRecord(null);
+          setSelectedPupilForNote(pupil);
+        }}
+      />
     </div>
   );
 }

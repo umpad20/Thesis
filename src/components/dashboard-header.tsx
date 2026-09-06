@@ -4,14 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Search,
   Bell,
   Flame,
   Award,
   ChevronDown,
-  BookOpen,
   Map,
-  Bookmark,
   X,
   LogOut,
   Smile,
@@ -22,6 +19,8 @@ import {
   HelpCircle,
   Info,
   Sparkles,
+  MessageSquare,
+  CheckCircle2,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -37,12 +36,11 @@ import {
 } from "@/components/student-avatar";
 import {
   fetchStudentStats,
-  fetchLessonsForStudent,
-  fetchAllVocabularyWords,
-  fetchBadgesFromSupabase,
+  fetchStudentNotifications,
+  markNotificationAsRead,
   type LiveStudentStats,
+  type StudentNotificationItem,
 } from "@/utils/supabase-queries";
-import type { Lesson, VocabularyWord, Badge } from "@/lib/types";
 
 const AVATAR_OPTIONS = AVAILABLE_KID_AVATARS;
 
@@ -60,21 +58,14 @@ export function DashboardHeader() {
   const [currentUser, setCurrentUser] = useState<UserProfile>(DEFAULT_STUDENT);
   const [stats, setStats] = useState<LiveStudentStats | null>(null);
 
-  // Global Search State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([]);
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-
   // Avatar Customizer Modal State
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   // Notification State
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
-  const [unreadNotifs, setUnreadNotifs] = useState(true);
+  const [unreadNotifs, setUnreadNotifs] = useState(false);
+  const [liveNotifs, setLiveNotifs] = useState<StudentNotificationItem[]>([]);
+  const [selectedTeacherMessage, setSelectedTeacherMessage] = useState<StudentNotificationItem | null>(null);
   const notifsContainerRef = useRef<HTMLDivElement>(null);
 
   // Profile Dropdown State
@@ -112,18 +103,17 @@ export function DashboardHeader() {
       setCurrentUser({ ...user });
 
       const section = user.section || "Unassigned";
-      const teacherId = user.teacherId || null;
-      const [liveStats, liveLessons, liveVocab, liveBadges] = await Promise.all([
-        fetchStudentStats(user.id, user.fullName, section, user.avatar || "🦊"),
-        fetchLessonsForStudent(section, teacherId),
-        fetchAllVocabularyWords(),
-        fetchBadgesFromSupabase(section, teacherId),
-      ]);
-
+      const liveStats = await fetchStudentStats(user.id, user.fullName, section, user.avatar || "🦊");
       setStats(liveStats);
-      setLessons(liveLessons);
-      setVocabulary(liveVocab);
-      setBadges(liveBadges);
+
+      // Fetch live notifications addressed to this student
+      try {
+        const notifs = await fetchStudentNotifications(user.id);
+        setLiveNotifs(notifs);
+        if (notifs.some((n) => !n.is_read)) {
+          setUnreadNotifs(true);
+        }
+      } catch {}
     }
 
     loadUserData();
@@ -135,6 +125,12 @@ export function DashboardHeader() {
         fetchStudentStats(user.id, user.fullName, user.section, user.avatar || "🦊").then(
           (s) => setStats(s)
         );
+        fetchStudentNotifications(user.id).then((notifs) => {
+          setLiveNotifs(notifs);
+          if (notifs.some((n) => !n.is_read)) {
+            setUnreadNotifs(true);
+          }
+        });
       }
     };
 
@@ -146,28 +142,16 @@ export function DashboardHeader() {
     };
   }, []);
 
-  // Keyboard shortcut: Ctrl+K or Cmd+K to focus search
+  // Handle escape and click outside for dropdowns
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        setIsSearchOpen(true);
-      }
       if (e.key === "Escape") {
-        setIsSearchOpen(false);
         setIsNotifsOpen(false);
         setIsProfileOpen(false);
       }
     };
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(e.target as Node)
-      ) {
-        setIsSearchOpen(false);
-      }
       if (
         notifsContainerRef.current &&
         !notifsContainerRef.current.contains(e.target as Node)
@@ -215,202 +199,79 @@ export function DashboardHeader() {
   const liveStreak = stats?.streakDays ?? 0;
   const liveXp = stats?.totalXp ?? 0;
 
-  // Filter Search Results
-  const cleanQuery = searchQuery.trim().toLowerCase();
-  const matchingLessons = cleanQuery
-    ? lessons.filter(
-        (l) =>
-          l.lesson_title.toLowerCase().includes(cleanQuery) ||
-          l.lesson_description.toLowerCase().includes(cleanQuery)
-      )
-    : [];
+  function formatTime(isoStr?: string) {
+    if (!isoStr) return "Just now";
+    try {
+      const diffMs = Date.now() - new Date(isoStr).getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return new Date(isoStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch {
+      return "Recently";
+    }
+  }
 
-  const matchingVocab = cleanQuery
-    ? vocabulary.filter(
-        (v) =>
-          v.word.toLowerCase().includes(cleanQuery) ||
-          v.definition.toLowerCase().includes(cleanQuery)
-      )
-    : [];
+  const teacherNotifications = liveNotifs.map((n) => ({
+    id: n.id,
+    rawItem: n,
+    title: n.title,
+    message: n.message,
+    time: formatTime(n.created_at),
+    type: n.type,
+    is_read: n.is_read,
+    isTeacherNote: true,
+  }));
 
-  const matchingBadges = cleanQuery
-    ? badges.filter(
-        (b) =>
-          b.badge_name.toLowerCase().includes(cleanQuery) ||
-          b.description.toLowerCase().includes(cleanQuery)
-      )
-    : [];
-
-  const hasSearchResults =
-    matchingLessons.length > 0 || matchingVocab.length > 0 || matchingBadges.length > 0;
-
-  const notifications = [
+  const defaultMilestones = [
     {
-      id: 1,
+      id: -1,
+      rawItem: null,
       title: "New Chapter Unlocked! 🌟",
       message: "Stage 1: Friendship in Bloom is ready for reading.",
       time: "Just now",
       type: "lesson",
+      is_read: true,
+      isTeacherNote: false,
     },
     {
-      id: 2,
+      id: -2,
+      rawItem: null,
       title: "Streak Maintained! 🔥",
       message: `You're on a ${liveStreak}-day learning adventure.`,
       time: "Today",
       type: "streak",
+      is_read: true,
+      isTeacherNote: false,
     },
     {
-      id: 3,
+      id: -3,
+      rawItem: null,
       title: "Badge Showcase Open 🏆",
       message: "Check your Living Storybook achievements map.",
       time: "Yesterday",
       type: "badge",
+      is_read: true,
+      isTeacherNote: false,
     },
   ];
+
+  const notifications = [...teacherNotifications, ...defaultMilestones];
 
   return (
     <>
       <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
-        {/* ── 1. Global Instant Live Search Bar (⌘K) ────────────────── */}
-        <div ref={searchContainerRef} className="relative flex-1 max-w-md">
-          <div className="relative w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search stories, vocabulary words, badges..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl pl-9 pr-12 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
-            />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 bg-white border border-slate-200 pointer-events-none">
-              ⌘K
-            </div>
-          </div>
-
-          {/* Live Search Results Dropdown */}
-          {isSearchOpen && cleanQuery && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 max-h-96 overflow-y-auto anim-pop-bounce">
-              <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Live Search Results ({cleanQuery})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsSearchOpen(false)}
-                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {!hasSearchResults ? (
-                <div className="p-8 text-center text-xs text-slate-400 space-y-1">
-                  <Search className="w-6 h-6 text-slate-300 mx-auto mb-1" />
-                  <p className="font-bold text-slate-600">No matching items found</p>
-                  <p className="text-[11px]">Try typing story keywords, vocabulary terms, or stage names.</p>
-                </div>
-              ) : (
-                <div className="p-2 space-y-3 divide-y divide-slate-100">
-                  {/* Lessons Matches */}
-                  {matchingLessons.length > 0 && (
-                    <div className="pt-2 first:pt-0">
-                      <span className="text-[10px] font-bold text-blue-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        <span>Stories &amp; Lessons ({matchingLessons.length})</span>
-                      </span>
-                      {matchingLessons.slice(0, 4).map((l) => (
-                        <div
-                          key={l.lesson_id}
-                          onClick={() => {
-                            setIsSearchOpen(false);
-                            router.push(`/dashboard/lessons?id=${l.lesson_id}`);
-                          }}
-                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 leading-tight">{l.lesson_title}</p>
-                            <span className="text-[10px] text-slate-400 line-clamp-1">{l.lesson_description}</span>
-                          </div>
-                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                            Read →
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Vocabulary Matches */}
-                  {matchingVocab.length > 0 && (
-                    <div className="pt-2">
-                      <span className="text-[10px] font-bold text-purple-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                        <Bookmark className="w-3 h-3" />
-                        <span>Vocabulary Words ({matchingVocab.length})</span>
-                      </span>
-                      {matchingVocab.slice(0, 4).map((v) => (
-                        <div
-                          key={v.word_id}
-                          onClick={() => {
-                            setIsSearchOpen(false);
-                            router.push("/dashboard/vocabulary");
-                          }}
-                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">{v.word}</p>
-                            <span className="text-[10px] text-slate-400 line-clamp-1">{v.definition}</span>
-                          </div>
-                          <span className="text-[9px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
-                            Vocab →
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Badges Matches */}
-                  {matchingBadges.length > 0 && (
-                    <div className="pt-2">
-                      <span className="text-[10px] font-bold text-amber-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                        <Award className="w-3 h-3" />
-                        <span>Badges &amp; Accolades ({matchingBadges.length})</span>
-                      </span>
-                      {matchingBadges.slice(0, 3).map((b) => (
-                        <div
-                          key={b.badge_id}
-                          onClick={() => {
-                            setIsSearchOpen(false);
-                            router.push("/dashboard/badges");
-                          }}
-                          className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                        >
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">{b.badge_name}</p>
-                            <span className="text-[10px] text-slate-400">{b.description}</span>
-                          </div>
-                          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
-                            +{b.xp_reward} XP
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {/* Left Spacer */}
+        <div />
 
         {/* ── 2. Live Stats & Avatar Profile Actions ───────────────────── */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Flame Reading Streak Pill */}
           <div
             title="Your daily active reading streak"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 text-amber-700 shadow-2xs transition-all hover:scale-102"
+            className="h-9 flex items-center gap-1.5 px-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-800 shadow-2xs transition-all hover:scale-102 select-none"
           >
             <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
             <span className="text-xs font-black tracking-tight">{liveStreak}d Streak</span>
@@ -419,9 +280,9 @@ export function DashboardHeader() {
           {/* XP Reward Points Pill */}
           <div
             title="Total reading experience points earned"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 text-blue-700 shadow-2xs transition-all hover:scale-102"
+            className="hidden sm:flex h-9 items-center gap-1.5 px-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-800 shadow-2xs transition-all hover:scale-102 select-none"
           >
-            <Award className="w-4 h-4 text-blue-600" />
+            <Award className="w-4 h-4 text-amber-600" />
             <span className="text-xs font-black tracking-tight">{liveXp} XP</span>
           </div>
 
@@ -434,11 +295,11 @@ export function DashboardHeader() {
                 setUnreadNotifs(false);
               }}
               aria-label="View notifications"
-              className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+              className="h-9 w-9 relative rounded-xl text-amber-800 hover:text-amber-900 bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 transition-colors cursor-pointer flex items-center justify-center"
             >
               <Bell className="w-4 h-4" />
               {unreadNotifs && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white animate-pulse" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
               )}
             </button>
 
@@ -458,21 +319,49 @@ export function DashboardHeader() {
                   </button>
                 </div>
 
-                <div className="p-2 space-y-1 max-h-72 overflow-y-auto">
+                <div className="p-2 space-y-1.5 max-h-80 overflow-y-auto">
                   {notifications.map((notif) => (
                     <div
                       key={notif.id}
                       onClick={() => {
                         setIsNotifsOpen(false);
-                        router.push("/dashboard/badges");
+                        if (notif.isTeacherNote && notif.rawItem) {
+                          setSelectedTeacherMessage(notif.rawItem);
+                        } else {
+                          router.push("/dashboard/badges");
+                        }
                       }}
-                      className="p-2.5 rounded-xl bg-slate-50/80 hover:bg-blue-50/50 transition-colors text-left space-y-0.5 cursor-pointer block"
+                      className={`p-2.5 rounded-xl transition-all text-left space-y-1 cursor-pointer block ${
+                        notif.isTeacherNote
+                          ? notif.is_read
+                            ? "bg-blue-50/40 hover:bg-blue-50/80 border border-blue-100"
+                            : "bg-blue-50 hover:bg-blue-100/70 border-2 border-blue-300 shadow-xs"
+                          : "bg-slate-50/80 hover:bg-blue-50/50"
+                      }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">{notif.title}</span>
-                        <span className="text-[9px] text-slate-400 font-medium">{notif.time}</span>
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {notif.isTeacherNote && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-600 text-white shrink-0">
+                              Teacher
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-slate-800 truncate">
+                            {notif.title}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-slate-400 font-medium shrink-0">
+                          {notif.time}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">{notif.message}</p>
+                      <p className="text-[11px] text-slate-600 leading-snug line-clamp-2">
+                        {notif.message}
+                      </p>
+                      {notif.isTeacherNote && (
+                        <div className="text-[10px] text-blue-600 font-bold flex items-center gap-1 pt-0.5">
+                          <span>Click to read full message →</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -487,16 +376,16 @@ export function DashboardHeader() {
             <button
               type="button"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200 transition-all text-left outline-none cursor-pointer select-none"
+              className="h-9 flex items-center gap-2 px-2 rounded-xl hover:bg-amber-50/60 border border-transparent hover:border-amber-200/60 transition-all text-left outline-none cursor-pointer select-none"
             >
               <StudentAvatar
                 avatar={currentUser.avatar}
                 name={currentUser.fullName}
                 size="sm"
-                className="shadow-xs ring-2 ring-blue-500/20"
+                className="shadow-xs ring-2 ring-amber-500/20"
               />
               <div className="hidden md:block">
-                <span className="text-xs font-bold text-slate-800 block leading-tight max-w-[140px] truncate">
+                <span className="text-xs font-bold text-slate-800 block leading-tight max-w-[150px] truncate" title={currentUser.fullName}>
                   {currentUser.fullName}
                 </span>
                 <span className="text-[10px] font-semibold text-blue-600 block">
@@ -687,6 +576,98 @@ export function DashboardHeader() {
             >
               Close
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. Teacher Guidance Message Modal ─────────────────────────── */}
+      {selectedTeacherMessage && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedTeacherMessage(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-2 border-blue-200 text-left space-y-4 anim-pop-bounce relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3.5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                  {selectedTeacherMessage.type === "praise" ? (
+                    <Sparkles className="w-5 h-5 text-amber-500 fill-amber-400" />
+                  ) : (
+                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">
+                    {selectedTeacherMessage.title}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    From {selectedTeacherMessage.teacher_name || "Teacher"} · {formatTime(selectedTeacherMessage.created_at)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedTeacherMessage(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Teacher's Message Speech Bubble */}
+            <div className="p-4 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 rounded-2xl border border-blue-100 space-y-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 block">
+                Teacher Encouragement Note
+              </span>
+              <p className="text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed italic">
+                "{selectedTeacherMessage.message}"
+              </p>
+            </div>
+
+            {/* Intervention / Hint Recommendation if present */}
+            {selectedTeacherMessage.recommendation && (
+              <div className="p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-1">
+                <div className="flex items-center gap-1.5 font-black text-amber-900 text-[11px]">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>Teacher's Learning Advice:</span>
+                </div>
+                <p className="text-[11px] font-medium leading-relaxed pl-5">
+                  {selectedTeacherMessage.recommendation}
+                </p>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="pt-2 flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (selectedTeacherMessage) {
+                    await markNotificationAsRead(selectedTeacherMessage.id, currentUser.id);
+                    setLiveNotifs((prev) =>
+                      prev.map((n) =>
+                        n.id === selectedTeacherMessage.id ? { ...n, is_read: true } : n
+                      )
+                    );
+                    setUnreadNotifs(
+                      liveNotifs.some(
+                        (n) => n.id !== selectedTeacherMessage.id && !n.is_read
+                      )
+                    );
+                  }
+                  setSelectedTeacherMessage(null);
+                }}
+                className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-blue-200"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Got it! Thanks Teacher!</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}

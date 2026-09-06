@@ -148,6 +148,30 @@
   background: #CBD5E1;
 }
 
+/* Custom visible scrollbar for the adventure map viewport */
+.map-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.map-viewport::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.map-viewport::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 9999px;
+  border: 2px solid rgba(15, 23, 42, 0.5);
+}
+
+.map-viewport::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+.map-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 rgba(15, 23, 42, 0.5);
+}
+
 /* 3D Realistic Storybook Page-Turn Leaf Transitions */
 .book-perspective {
   perspective: 2200px;

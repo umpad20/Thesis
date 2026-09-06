@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReadSmart — System Feature Manual & Functional Snippets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --student-color: #0284c7;
+      --student-bg: #f0f9ff;
+      --teacher-color: #7c3aed;
+      --teacher-bg: #f5f3ff;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: var(--slate-800);
+      line-height: 1.6;
+      padding: 2.5rem 1rem;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 20px;
+      padding: 3.5rem 3rem;
+      box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
+    }
+
+    header {
+      border-bottom: 2px solid var(--slate-100);
+      padding-bottom: 2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      background: var(--student-bg);
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      line-height: 1.25;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--slate-600);
+      line-height: 1.6;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+
+    .meta-item strong {
+      display: block;
+      color: var(--slate-500);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-item span {
+      font-weight: 700;
+      color: var(--slate-800);
+    }
+
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      margin: 3rem 0 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--slate-200);
+    }
+
+    .feature-card {
+      margin-bottom: 2.75rem;
+      border: 1px solid var(--slate-200);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.04);
+      page-break-inside: avoid;
+    }
+
+    .feature-header {
+      padding: 1.25rem 1.5rem;
+      background: #ffffff;
+      border-bottom: 1px solid var(--slate-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .feature-title-group h3 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin-bottom: 0.25rem;
+    }
+
+    .route-tag {
+      font-family: monospace;
+      font-size: 0.78rem;
+      background: var(--slate-100);
+      color: var(--slate-700);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--slate-200);
+    }
+
+    .role-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .role-student {
+      background: var(--student-bg);
+      color: var(--student-color);
+      border: 1px solid #bae6fd;
+    }
+
+    .role-teacher {
+      background: var(--teacher-bg);
+      color: var(--teacher-color);
+      border: 1px solid #ddd6fe;
+    }
+
+    .role-auth {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1px solid #fde68a;
+    }
+
+    .feature-img-wrapper {
+      background: #0f172a;
+      border-bottom: 1px solid var(--slate-200);
+      text-align: center;
+      padding: 0.75rem;
+    }
+
+    .feature-img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+
+    .feature-body {
+      padding: 1.25rem 1.5rem;
+      background: var(--slate-50);
+    }
+
+    .feature-purpose {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--slate-900);
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .capability-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.5rem 1rem;
+    }
+
+    .capability-list li {
+      font-size: 0.85rem;
+      color: var(--slate-600);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .capability-list li::before {
+      content: "•";
+      color: var(--primary);
+      font-weight: bold;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .print-banner {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .print-banner p {
+      font-size: 0.85rem;
+      color: #1e40af;
+      font-weight: 600;
+    }
+
+    .print-btn {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(37,99,235,0.25);
+      transition: background 0.15s;
+    }
+
+    .print-btn:hover {
+      background: var(--primary-dark);
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .print-banner {
+        display: none;
+      }
+      .feature-card {
+        box-shadow: none;
+        border: 1px solid #cbd5e1;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin-bottom: 2rem;
+      }
+      .feature-img-wrapper {
+        background: transparent;
+        padding: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="print-banner">
+      <p>💡 Tip for Submission: Click "Print to PDF" to save or print this entire system catalog as an official PDF document for your teacher.</p>
+      <button class="print-btn" onclick="window.print()">Print to PDF (Ctrl+P)</button>
+    </div>
+
+    <header>
+      <div class="doc-badge">Official Technical Documentation</div>
+      <h1>ReadSmart System Feature Manual & Snippets</h1>
+      <p class="subtitle">
+        A comprehensive catalog of functional screen captures and descriptions covering every feature per user type (Student, Teacher, and System Administrator) for Pedro Victorina Calo Elementary School.
+      </p>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <strong>Application Name</strong>
+          <span>ReadSmart Platform</span>
+        </div>
+        <div class="meta-item">
+          <strong>Target Users</strong>
+          <span>Pupils & Faculty (Grade 3)</span>
+        </div>
+        <div class="meta-item">
+          <strong>Curriculum Base</strong>
+          <span>DepEd Reading Standards</span>
+        </div>
+        <div class="meta-item">
+          <strong>Core Technologies</strong>
+          <span>Next.js, Supabase, TTS Web Speech</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- SECTION 1: AUTHENTICATION -->
+    <h2 class="section-title">🔐 Part 1: Authentication & Access Control</h2>
+
+    <!-- 01. Login Portal -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>01. Unified Secure Sign-In Portal</h3>
+          <span class="route-tag">/login</span>
+        </div>
+        <span class="role-badge role-auth">All User Roles</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/01_login_portal.png" alt="Unified Login Portal">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Serves as the gateway to ReadSmart, authenticating students and faculty members with credential validation and role-based redirecting.
+        </p>
+        <ul class="capability-list">
+          <li>Encrypted session management via Supabase Auth</li>
+          <li>Automatic routing: students to <code>/dashboard</code> and teachers to <code>/teacher</code></li>
+          <li>Helpful validation prompts for invalid or unverified accounts</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 02. Student Registration -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>02. Student Self-Enrollment & Section Assignment</h3>
+          <span class="route-tag">/signup</span>
+        </div>
+        <span class="role-badge role-auth">Pupil Registration</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/02_student_registration.png" alt="Student Self-Enrollment">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Enables grade school pupils to create their learner accounts and automatically link to their official class section and teacher advisory.
+        </p>
+        <ul class="capability-list">
+          <li>Selectable class sections (Grade 3-A, Grade 3-B, Grade 3-C, etc.)</li>
+          <li>Initializes student reading profile with 0 XP, default streak, and mascot character</li>
+          <li>Immediate feedback with pre-filled login credentials post-creation</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SECTION 2: STUDENT PORTAL -->
+    <h2 class="section-title">🎒 Part 2: Student (Pupil) Portal Features</h2>
+
+    <!-- 03. Student Dashboard -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>03. Student Home Learning Dashboard</h3>
+          <span class="route-tag">/dashboard</span>
+        </div>
+        <span class="role-badge role-student">Student Portal</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/03_student_dashboard.png" alt="Student Home Learning Dashboard">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          The main student command center providing quick access to active reading lessons, daily reading streaks, and accumulated experience points (XP).
+        </p>
+        <ul class="capability-list">
+          <li>Live daily reading streak counter (🔥) to encourage consistent practice</li>
+          <li>"Continue Reading" card pointing directly to the current in-progress story</li>
+          <li>Quick glance at earned badges and classroom XP standings</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 04. Mastery Pathway -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>04. 5-Stage Storybook Mastery Pathway</h3>
+          <span class="route-tag">/dashboard (Pathway Overview)</span>
+        </div>
+        <span class="role-badge role-student">Student Portal</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/04_mastery_pathway.png" alt="5-Stage Storybook Mastery Pathway">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Visualizes sequential reading progression across 5 structured achievement stages: 1st Star, 2nd Ribbon, 3rd Bronze, 4th Silver, and 5th Gold.
+        </p>
+        <ul class="capability-list">
+          <li>Progress percentage tracking toward active badge goals</li>
+          <li>Clear visual feedback on mastered vs. locked stages</li>
+          <li>DepEd-aligned reading difficulty ramp-up</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 05. Storybook Library -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>05. Storybook Library & Chapter Catalogue</h3>
+          <span class="route-tag">/dashboard/lessons</span>
+        </div>
+        <span class="role-badge role-student">Student Portal</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/05_storybook_library.png" alt="Storybook Library">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Categorized collection of all curated story lessons, allowing learners to browse passages by difficulty level (Easy, Medium, Hard).
+        </p>
+        <ul class="capability-list">
+          <li>Illustrated story cards with vocabulary count and reading time estimates</li>
+          <li>Status indicators showing Completed, Ready to Read, or Locked</li>
+          <li>Search and filter options by chapter theme or grade level</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 06. Chapter Breakdown -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>06. Chapter Story Checklist & Checkpoints</h3>
+          <span class="route-tag">/dashboard/lessons (Module Breakdown)</span>
+        </div>
+        <span class="role-badge role-student">Student Portal</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/06_chapter_story_selection.png" alt="Chapter Story Checklist">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Breaks each chapter into bite-sized stories that must be read before unlocking the Stage Final Assessment and badge accolades.
+        </p>
+        <ul class="capability-list">
+          <li>Score history badge per story (e.g. 100% Score)</li>
+          <li>"Re-read" and "Retake" buttons for self-paced reinforcement</li>
+          <li>Locked milestone safeguard ensuring thorough comprehension before advancing</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 07. Interactive Reader -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>07. Living Storybook Interactive Reader</h3>
+          <span class="route-tag">/dashboard/lessons/[id]</span>
+        </div>
+        <span class="role-badge role-student">Core Function</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/07_interactive_story_reader.png" alt="Interactive Story Reader">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          The flagship reading experience featuring custom scene illustrations, synchronized sentence progression, and assistive AI narration.
+        </p>
+        <ul class="capability-list">
+          <li><b>Read Aloud (TTS):</b> Browser speech synthesis pronouncing sentences naturally</li>
+          <li><b>Click-to-Pronounce:</b> Underlined vocabulary words can be tapped for instant phonics audio</li>
+          <li>Sentence-by-sentence pacing with visual progress bar (e.g., Sentence 2/18)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 08. Word Vault Callout -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>08. In-Story Vocabulary Callout & Phonics Support</h3>
+          <span class="route-tag">/dashboard/lessons/[id] (Interactive Modal)</span>
+        </div>
+        <span class="role-badge role-student">Core Function</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/08_word_vault_definition.png" alt="Vocabulary Callout">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Provides immediate vocabulary scaffolding whenever a pupil encounters an unfamiliar word during active reading.
+        </p>
+        <ul class="capability-list">
+          <li>Kid-friendly English and contextual definitions</li>
+          <li>Audio playback button for slow and clear word pronunciation</li>
+          <li>Contextual sentence usage helping children understand word meaning in story context</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 09. Comprehension Quiz -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>09. Interactive Comprehension Assessment</h3>
+          <span class="route-tag">/dashboard/quiz/[id]</span>
+        </div>
+        <span class="role-badge role-student">Assessment</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/09_comprehension_quiz.png" alt="Comprehension Assessment">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Evaluates reading recall, context clues, and moral understanding through multiple-choice questions configured by teachers.
+        </p>
+        <ul class="capability-list">
+          <li>Distraction-free question interface with single-choice selection</li>
+          <li>"Need a reading hint?" assistance link to guide struggling pupils</li>
+          <li>Clear XP bounty indicators (+10 XP to +20 XP per item)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 10. Instant Quiz Feedback -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>10. Instant Evaluation, XP Reward & Educational Rationale</h3>
+          <span class="route-tag">/dashboard/quiz/[id] (Answer Verification)</span>
+        </div>
+        <span class="role-badge role-student">Assessment</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/10_quiz_instant_evaluation.png" alt="Instant Evaluation">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Provides immediate positive reinforcement upon answer submission, explaining why an answer is correct to solidify comprehension.
+        </p>
+        <ul class="capability-list">
+          <li>Instant XP point credit with celebratory animations</li>
+          <li>Teacher-authored explanation explaining the key theme or fact from the passage</li>
+          <li>Real-time score logging to teacher database for comprehension analytics</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 11. Badges Showcase -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>11. Trophy Room & Milestone Badges Showcase</h3>
+          <span class="route-tag">/dashboard/badges</span>
+        </div>
+        <span class="role-badge role-student">Gamification</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/11_badges_showcase.png" alt="Badges Showcase">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Showcases unlocked and upcoming accolades earned by completing stories and demonstrating high comprehension accuracy.
+        </p>
+        <ul class="capability-list">
+          <li>Interactive badge map with visual medals (Star, Ribbon, Bronze, Silver, Gold)</li>
+          <li>Detailed criteria inspection for locked badges</li>
+          <li>Motivates children through gamified educational recognition</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 12. Classroom Leaderboard -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>12. Classroom Champions Podium & Leaderboard</h3>
+          <span class="route-tag">/dashboard/leaderboard</span>
+        </div>
+        <span class="role-badge role-student">Gamification</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/12_classroom_leaderboard.png" alt="Classroom Leaderboard">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Displays ranking standings within the student's enrolled section based on total XP and consistent reading streaks.
+        </p>
+        <ul class="capability-list">
+          <li>Elevated Top 3 podium (1st Gold Crown, 2nd Silver, 3rd Bronze)</li>
+          <li>Personalized "Your Current Standing" banner highlighting remaining XP to advance</li>
+          <li>Scope toggle between Section-wide and School-wide ranks</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 13. Award Certificate -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>13. Official Star Reader Certificate of Completion</h3>
+          <span class="route-tag">/dashboard/quiz (Grand Milestone Modal)</span>
+        </div>
+        <span class="role-badge role-student">Accreditation</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/13_award_certificate.png" alt="Award Certificate">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          An official DepEd Region XIII compliant certificate generated upon mastering all 5 Story Realm stages.
+        </p>
+        <ul class="capability-list">
+          <li>Personalized with pupil's name, school name, section, and date of award</li>
+          <li>"Print Award" function generating a physical diploma ready for framing</li>
+          <li>Audio applause celebration to reward academic perseverance</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 14. Kid Avatars Customizer -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>14. Settings Hub & 24 Illustrated Kid Avatar Selector</h3>
+          <span class="route-tag">/dashboard/settings?tab=account</span>
+        </div>
+        <span class="role-badge role-student">Personalization</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/14_kid_avatars_settings.png" alt="Kid Avatars Settings">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Allows young learners to personalize their reading identity by selecting from 24 custom-illustrated, diverse boy and girl character portraits.
+        </p>
+        <ul class="capability-list">
+          <li>Real-time avatar synchronization across header, leaderboard, and certificates</li>
+          <li>AI Voice narration speed and pitch adjustment controls in voice tab</li>
+          <li>Friendly profile overview with class section and learner ID</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SECTION 3: TEACHER PORTAL -->
+    <h2 class="section-title">👩‍🏫 Part 3: Teacher (Faculty) Portal Features</h2>
+
+    <!-- 15. Teacher Reading Hub -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>15. Grade 3 Classroom Reading Hub & Cohort Analytics</h3>
+          <span class="route-tag">/teacher</span>
+        </div>
+        <span class="role-badge role-teacher">Teacher Portal</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/15_teacher_reading_hub.png" alt="Teacher Reading Hub">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Executive dashboard providing real-time data on class-wide comprehension benchmarks, active accounts, and stage mastery distribution.
+        </p>
+        <ul class="capability-list">
+          <li>Class Comprehension Rate gauge (compared to the DepEd ≥70% passing threshold)</li>
+          <li>Section switcher filtering analytics across Grade 3-A, 3-B, 3-C, and Twilight</li>
+          <li>Live pupil progression distribution tracking students along the 5-stage pathway</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 16. Intervention Radar -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>16. Pupil Early-Intervention & Attention Radar</h3>
+          <span class="route-tag">/teacher (Intervention Section)</span>
+        </div>
+        <span class="role-badge role-teacher">Teacher Portal</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/16_teacher_intervention_radar.png" alt="Intervention Radar">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          An automated alert system that detects struggling readers needing phonics assistance, score recovery, or reading intervention.
+        </p>
+        <ul class="capability-list">
+          <li>Automated triage badges: <b>Critical</b>, <b>Watchlist</b>, and <b>Mastering & On Track</b></li>
+          <li>Actionable recommendations (e.g. "Challenge with Next Stage Stories" or "Provide Remedial Phonics")</li>
+          <li>Quick "Send Praise" or "Send Guidance" note trigger</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 17. Student Records & Roster -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>17. Pupil Enrollment & Section Roster Management</h3>
+          <span class="route-tag">/teacher/students</span>
+        </div>
+        <span class="role-badge role-teacher">Administration</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/17_teacher_student_roster.png" alt="Student Records & Roster">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Comprehensive roster table displaying individual learner metrics including comprehension scores, reading speed (WPM), and quiz counts.
+        </p>
+        <ul class="capability-list">
+          <li>Individual student status monitoring with section tags and pupil IDs</li>
+          <li>"Export Roster (CSV)" function for school administrative reports</li>
+          <li>"+ Enroll New Student" action for quick classroom registration</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 18. Curriculum Manager -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>18. Reading Passages & Story Curriculum Manager</h3>
+          <span class="route-tag">/teacher/lessons</span>
+        </div>
+        <span class="role-badge role-teacher">Curriculum Authoring</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/18_teacher_curriculum_manager.png" alt="Curriculum Manager">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          Empowers teachers to manage and customize the story reading curriculum stored in Supabase.
+        </p>
+        <ul class="capability-list">
+          <li>Publish / Unpublish toggle to pace lesson releases per class section</li>
+          <li>Audio narration and reading threshold configuration (e.g., Pass ≥ 70%)</li>
+          <li>Assign stories to specific class sections or core curriculum</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 19. Question Bank -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>19. Comprehension Question Bank & Assessment Hub</h3>
+          <span class="route-tag">/teacher/quizzes</span>
+        </div>
+        <span class="role-badge role-teacher">Assessment Control</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/19_teacher_question_bank.png" alt="Question Bank">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          A centralized repository for reviewing, editing, and authoring comprehension quiz questions for every story passage.
+        </p>
+        <ul class="capability-list">
+          <li>Story-by-story question filter to inspect questions assigned to any story</li>
+          <li>Correct answer key validation badges and point weight adjustments</li>
+          <li>Customization of teacher explanations and student hints</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 20. Question Authoring Modal -->
+    <div class="feature-card">
+      <div class="feature-header">
+        <div class="feature-title-group">
+          <h3>20. Question Authoring & Item Calibration Modal</h3>
+          <span class="route-tag">/teacher/quizzes (Authoring Dialog)</span>
+        </div>
+        <span class="role-badge role-teacher">Assessment Control</span>
+      </div>
+      <div class="feature-img-wrapper">
+        <img class="feature-img" src="snippets/20_teacher_create_question.png" alt="Question Authoring Modal">
+      </div>
+      <div class="feature-body">
+        <p class="feature-purpose">
+          A guided form allowing faculty to craft high-standard DepEd comprehension questions with custom choices, hints, and explanations.
+        </p>
+        <ul class="capability-list">
+          <li>Radio button selection to specify the single verified correct answer key</li>
+          <li>Mandatory teacher explanation field supporting educational rationale</li>
+          <li>Optional student hint field to assist struggling readers without giving away answers</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer style="margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--slate-200); text-align: center; font-size: 0.82rem; color: var(--slate-500);">
+      <p><b>ReadSmart</b> — Gamified Reading Comprehension Platform for Grade 3 Pupils</p>
+      <p>Pedro Victorina Calo Elementary School · DepEd Region XIII (Caraga)</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>

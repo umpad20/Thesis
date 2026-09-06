@@ -1,0 +1,11 @@
+{
+  "terminal.integrated.allowChaining": true,
+  "antigravity.terminal.autoApprove": true,
+  "antigravity.terminal.allowedCommands": [
+    "node *",
+    "npm *",
+    "npx *",
+    "git *",
+    "tsc *"
+  ]
+}

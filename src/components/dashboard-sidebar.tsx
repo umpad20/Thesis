@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
   Map,
   SpellCheck,
   Trophy,
@@ -22,10 +21,9 @@ interface NavItem {
 }
 
 const studentNavItems: NavItem[] = [
-  { name: "My Learning", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Badge Pathway", href: "/dashboard/badges", icon: Map, badge: "Mastery Map" },
+  { name: "Badge Pathway", href: "/dashboard/badges", icon: Map },
   { name: "Vocabulary Vault", href: "/dashboard/vocabulary", icon: SpellCheck },
-  { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy, badge: "Top XP" },
+  { name: "Leaderboard", href: "/dashboard/leaderboard", icon: Trophy },
   { name: "My Achievements", href: "/dashboard/achievements", icon: Award },
 ];
 
@@ -36,7 +34,7 @@ export function DashboardSidebar() {
     <aside className="w-64 min-w-64 max-w-64 bg-white border-r border-slate-200/80 hidden md:flex flex-col flex-shrink-0 h-full overflow-hidden z-40 select-none justify-between">
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100 flex-shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
+        <Link href="/dashboard/badges" className="flex items-center gap-3 overflow-hidden">
           <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm shadow-blue-200 flex-shrink-0">
             <GraduationCap className="w-5 h-5" />
           </div>
@@ -60,10 +58,7 @@ export function DashboardSidebar() {
           </div>
           <nav className="space-y-1">
             {studentNavItems.map((item) => {
-              const isActive =
-                item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname.startsWith(item.href);
+              const isActive = pathname.startsWith(item.href);
               const Icon = item.icon;
 
               return (

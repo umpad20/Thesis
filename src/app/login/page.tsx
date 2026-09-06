@@ -49,7 +49,7 @@ function LoginForm() {
       if (result.user.role === "teacher") {
         router.push("/teacher");
       } else {
-        router.push("/dashboard");
+        router.push("/dashboard/badges");
       }
     } catch {
       setErrorMessage("Unable to sign in. Please check your credentials.");

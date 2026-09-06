@@ -209,18 +209,18 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
 INSERT INTO public.badges (badge_id, badge_name, badge_type, medal_type, description, badge_order, required_passing_score, xp_reward, badge_icon_url)
 VALUES
     -- Star Badges (Lesson Mastery Milestones)
-    (1, 'Reading Star', 'star', NULL, 'Begin your reading journey by completing your first story and comprehension quiz.', 1, 70, 100, '/badges/star_reading.svg'),
-    (2, 'Vocabulary Star', 'star', NULL, 'Master contextual grade 3 vocabulary and understand word meanings.', 2, 70, 150, '/badges/star_vocabulary.svg'),
-    (3, 'Fluency Star', 'star', NULL, 'Develop fluent narrative pace and accurate story listening skills.', 3, 75, 200, '/badges/star_fluency.svg'),
+    (1, 'Reading Star', 'star', NULL, 'Begin your reading journey by completing your first story and comprehension quiz.', 1, 70, 100, '/images/badges/badge_stage_1_star.png'),
+    (2, 'Vocabulary Star', 'star', NULL, 'Master contextual grade 3 vocabulary and understand word meanings.', 2, 70, 150, '/images/badges/badge_stage_1_star.png'),
+    (3, 'Fluency Star', 'star', NULL, 'Develop fluent narrative pace and accurate story listening skills.', 3, 75, 200, '/images/badges/badge_stage_1_star.png'),
 
     -- Ribbon Badges (Stage Milestone Quizzes)
-    (4, 'Reading Ribbon', 'ribbon', NULL, 'Awarded for clearing Stage 1 & 2 cumulative comprehension checkpoints.', 4, 75, 250, '/badges/ribbon_reading.svg'),
-    (5, 'Comprehension Ribbon', 'ribbon', NULL, 'Awarded for high-level inference and critical reading evaluations.', 5, 80, 300, '/badges/ribbon_comprehension.svg'),
+    (4, 'Reading Ribbon', 'ribbon', NULL, 'Awarded for clearing Stage 1 & 2 cumulative comprehension checkpoints.', 4, 75, 250, '/images/badges/badge_stage_2_ribbon.png'),
+    (5, 'Comprehension Ribbon', 'ribbon', NULL, 'Awarded for high-level inference and critical reading evaluations.', 5, 80, 300, '/images/badges/badge_stage_2_ribbon.png'),
 
     -- Medal Badges (Final Mastery Accolades)
-    (6, 'Bronze Reader Medal', 'medal', 'bronze', 'Demonstrate solid grade-level mastery across foundational reading passages.', 6, 80, 400, '/badges/medal_bronze.svg'),
-    (7, 'Silver Reader Medal', 'medal', 'silver', 'Demonstrate advanced comprehension, speed, and analytical reading performance.', 7, 85, 500, '/badges/medal_silver.svg'),
-    (8, 'Gold Reader Medal', 'medal', 'gold', 'Highest honor: Perfect or near-perfect mastery across all Grade 3 modules.', 8, 90, 750, '/badges/medal_gold.svg')
+    (6, 'Bronze Reader Medal', 'medal', 'bronze', 'Demonstrate solid grade-level mastery across foundational reading passages.', 6, 80, 400, '/images/badges/badge_stage_3_bronze.png'),
+    (7, 'Silver Reader Medal', 'medal', 'silver', 'Demonstrate advanced comprehension, speed, and analytical reading performance.', 7, 85, 500, '/images/badges/badge_stage_4_silver.png'),
+    (8, 'Gold Reader Medal', 'medal', 'gold', 'Highest honor: Perfect or near-perfect mastery across all Grade 3 modules.', 8, 90, 750, '/images/badges/badge_stage_5_gold.png')
 ON CONFLICT (badge_id) DO UPDATE SET
     badge_name = EXCLUDED.badge_name,
     badge_type = EXCLUDED.badge_type,

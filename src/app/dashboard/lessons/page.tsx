@@ -226,7 +226,9 @@ function LessonReaderContent() {
     if (!activeLesson.badge_id) return false;
 
     // Find the badge associated with this lesson
-    const currentBadge = badges.find((b) => b.badge_id === activeLesson.badge_id);
+    const currentBadge = badges.find(
+      (b) => Number(b.badge_id) === Number(activeLesson.badge_id)
+    );
 
     // Custom teacher quests are NEVER locked behind default DepEd curriculum stages!
     if (currentBadge?.teacher_id || activeLesson.teacher_id) {
@@ -234,7 +236,20 @@ function LessonReaderContent() {
     }
 
     // Default DepEd Stage 1 is always unlocked
-    if (currentBadge?.badge_order === 1 || activeLesson.badge_id === 1) {
+    if (currentBadge?.badge_order === 1 || Number(activeLesson.badge_id) === 1) {
+      return false;
+    }
+
+    // If this lesson's badge is already in_progress or completed or earned, it is NOT locked!
+    const curProg = badgeProgress.find(
+      (p) => Number(p.badge_id) === Number(currentBadge?.badge_id || activeLesson.badge_id)
+    );
+    if (
+      curProg?.status === "completed" ||
+      curProg?.status === "in_progress" ||
+      Boolean(curProg?.earned_date) ||
+      (curProg?.completion_percentage || 0) > 0
+    ) {
       return false;
     }
 
@@ -244,9 +259,15 @@ function LessonReaderContent() {
     );
     if (!prevBadge) return false;
 
-    const prevProg = badgeProgress.find((p) => p.badge_id === prevBadge.badge_id);
+    const prevProg = badgeProgress.find(
+      (p) => Number(p.badge_id) === Number(prevBadge.badge_id)
+    );
     if (!prevProg) return true;
-    return prevProg.status !== "completed" && (prevProg.completion_percentage || 0) < 100;
+    const isPrevDone =
+      prevProg.status === "completed" ||
+      Boolean(prevProg.earned_date) ||
+      (prevProg.completion_percentage || 0) >= 100;
+    return !isPrevDone;
   }, [activeLesson.badge_id, activeLesson.teacher_id, badges, badgeProgress]);
 
   if (loading) {
@@ -254,8 +275,13 @@ function LessonReaderContent() {
   }
 
   if (isLessonLocked) {
-    const reqBadgeId = (activeLesson.badge_id || 2) - 1;
-    const reqBadge = badges.find((b) => b.badge_id === reqBadgeId);
+    const currentBadge = badges.find(
+      (b) => Number(b.badge_id) === Number(activeLesson.badge_id)
+    );
+    const reqBadge = badges.find(
+      (b) => !b.teacher_id && b.badge_order === (currentBadge?.badge_order || 2) - 1
+    );
+    const reqStageNum = reqBadge?.badge_order || (currentBadge?.badge_order ? currentBadge.badge_order - 1 : 1);
 
     return (
       <div className="max-w-2xl mx-auto py-12 px-4">
@@ -269,11 +295,11 @@ function LessonReaderContent() {
               Stage Milestone Locked
             </span>
             <h2 className="text-xl font-black text-slate-900 mt-2">
-              Complete Stage {reqBadgeId} Mastery First!
+              Complete Stage {reqStageNum} Mastery First!
             </h2>
             <p className="text-xs text-slate-600 max-w-md mx-auto mt-2 leading-relaxed">
               To read <strong>{activeLesson.lesson_title}</strong>, you must first pass the Stage Final Assessment for{" "}
-              <strong>{reqBadge?.badge_name || `Stage ${reqBadgeId} Badge`}</strong>.
+              <strong>{reqBadge?.badge_name || `Stage ${reqStageNum} Badge`}</strong>.
             </p>
           </div>
 
