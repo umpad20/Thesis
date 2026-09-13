@@ -150,26 +150,26 @@
 
 /* Custom visible scrollbar for the adventure map viewport */
 .map-viewport::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 
 .map-viewport::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: #ffffff;
 }
 
 .map-viewport::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: #cbd5e1;
   border-radius: 9999px;
-  border: 2px solid rgba(15, 23, 42, 0.5);
+  border: 2px solid #ffffff;
 }
 
 .map-viewport::-webkit-scrollbar-thumb:hover {
-  background: #2563eb;
+  background: #94a3b8;
 }
 
 .map-viewport {
   scrollbar-width: thin;
-  scrollbar-color: #3b82f6 rgba(15, 23, 42, 0.5);
+  scrollbar-color: #cbd5e1 #ffffff;
 }
 
 /* 3D Realistic Storybook Page-Turn Leaf Transitions */
@@ -283,4 +283,34 @@
 
 .anim-float-particle {
   animation: floatParticle 1.2s ease-out infinite;
+}
+
+/* Cloud Transition & Ambient Drift Animations */
+@keyframes cloudFloatSubtle {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.015);
+  }
+}
+
+@keyframes cloudDriftSlow {
+  0% {
+    transform: translateX(-12px);
+  }
+  50% {
+    transform: translateX(12px);
+  }
+  100% {
+    transform: translateX(-12px);
+  }
+}
+
+.anim-cloud-float {
+  animation: cloudFloatSubtle 4s ease-in-out infinite;
+}
+
+.anim-cloud-drift {
+  animation: cloudDriftSlow 12s ease-in-out infinite;
 }

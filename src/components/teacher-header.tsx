@@ -241,7 +241,7 @@ export function TeacherHeader() {
   ];
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-50">
       {/* ── Left: Global Instant Live Search Bar (⌘K) ────────────────── */}
       <div ref={searchContainerRef} className="relative flex-1 max-w-md">
         <div className="relative w-full">
@@ -424,7 +424,7 @@ export function TeacherHeader() {
           </button>
 
           {isNotifsOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 anim-pop-bounce">
+            <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 anim-pop-bounce">
               <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                 <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                   <Bell className="w-3.5 h-3.5 text-blue-600" />
@@ -497,7 +497,7 @@ export function TeacherHeader() {
 
           {/* Profile Dropdown Popup Menu */}
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
+            <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
               {/* Header Info */}
               <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
                 <span className="text-2xl p-1 bg-white rounded-xl shadow-2xs">

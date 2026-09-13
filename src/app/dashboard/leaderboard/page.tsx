@@ -73,6 +73,9 @@ export default function LeaderboardPage() {
       setMyTeacherId(teacherId);
       setCurrentUserId(user?.id || null);
 
+      let effectiveSection = studentSection;
+      let effectiveTeacherId = teacherId;
+
       if (user?.id) {
         try {
           const { createClient } = await import("@/utils/supabase/client");
@@ -84,8 +87,14 @@ export default function LeaderboardPage() {
             .maybeSingle();
 
           if (prof) {
-            if (prof.section) setMySection(prof.section);
-            if (prof.teacher_id) setMyTeacherId(prof.teacher_id);
+            if (prof.section) {
+              setMySection(prof.section);
+              effectiveSection = prof.section;
+            }
+            if (prof.teacher_id) {
+              setMyTeacherId(prof.teacher_id);
+              effectiveTeacherId = prof.teacher_id;
+            }
             // @ts-expect-error join type
             if (prof.teacher?.full_name) setTeacherName(prof.teacher.full_name);
           }
@@ -94,9 +103,7 @@ export default function LeaderboardPage() {
         }
       }
 
-      const entries = teacherId
-        ? await fetchClassroomLeaderboard(undefined, teacherId)
-        : await fetchClassroomLeaderboard(studentSection);
+      const entries = await fetchClassroomLeaderboard(effectiveSection, effectiveTeacherId || undefined);
 
       setLeaderboard(entries);
       setLoading(false);
@@ -111,9 +118,7 @@ export default function LeaderboardPage() {
     let entries: LeaderboardEntry[] = [];
 
     if (mode === "class") {
-      entries = myTeacherId
-        ? await fetchClassroomLeaderboard(undefined, myTeacherId)
-        : await fetchClassroomLeaderboard(mySection);
+      entries = await fetchClassroomLeaderboard(mySection, myTeacherId || undefined);
     } else {
       entries = await fetchClassroomLeaderboard("all");
     }

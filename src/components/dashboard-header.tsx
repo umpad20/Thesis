@@ -262,16 +262,16 @@ export function DashboardHeader() {
 
   return (
     <>
-      <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+      <header className="h-16 min-h-[64px] bg-white border-b border-slate-200/80 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50 shrink-0">
         {/* Left Spacer */}
         <div />
 
         {/* ── 2. Live Stats & Avatar Profile Actions ───────────────────── */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3 sm:gap-3.5">
           {/* Flame Reading Streak Pill */}
           <div
             title="Your daily active reading streak"
-            className="h-9 flex items-center gap-1.5 px-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-800 shadow-2xs transition-all hover:scale-102 select-none"
+            className="h-9 flex items-center gap-2 px-4 rounded-full bg-amber-50/90 border border-amber-200/90 text-amber-800 shadow-2xs transition-all hover:scale-102 select-none"
           >
             <Flame className="w-4 h-4 fill-amber-500 text-amber-500 animate-pulse" />
             <span className="text-xs font-black tracking-tight">{liveStreak}d Streak</span>
@@ -280,7 +280,7 @@ export function DashboardHeader() {
           {/* XP Reward Points Pill */}
           <div
             title="Total reading experience points earned"
-            className="hidden sm:flex h-9 items-center gap-1.5 px-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-800 shadow-2xs transition-all hover:scale-102 select-none"
+            className="hidden sm:flex h-9 items-center gap-2 px-4 rounded-full bg-amber-50/90 border border-amber-200/90 text-amber-800 shadow-2xs transition-all hover:scale-102 select-none"
           >
             <Award className="w-4 h-4 text-amber-600" />
             <span className="text-xs font-black tracking-tight">{liveXp} XP</span>
@@ -295,7 +295,7 @@ export function DashboardHeader() {
                 setUnreadNotifs(false);
               }}
               aria-label="View notifications"
-              className="h-9 w-9 relative rounded-xl text-amber-800 hover:text-amber-900 bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 transition-colors cursor-pointer flex items-center justify-center"
+              className="h-9 w-9 relative rounded-full text-amber-800 hover:text-amber-900 bg-amber-50/90 hover:bg-amber-100/90 border border-amber-200/90 transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
             >
               <Bell className="w-4 h-4" />
               {unreadNotifs && (
@@ -304,7 +304,7 @@ export function DashboardHeader() {
             </button>
 
             {isNotifsOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 anim-pop-bounce">
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 anim-pop-bounce">
                 <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                   <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                     <Bell className="w-3.5 h-3.5 text-blue-600" />
@@ -369,14 +369,14 @@ export function DashboardHeader() {
             )}
           </div>
 
-          <div className="w-px h-6 bg-slate-200 mx-0.5" />
+          <div className="w-px h-6 bg-slate-200 mx-1" />
 
           {/* ── 3. Functional Profile & Avatar Customizer Dropdown ─────── */}
           <div ref={profileContainerRef} className="relative">
             <button
               type="button"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="h-9 flex items-center gap-2 px-2 rounded-xl hover:bg-amber-50/60 border border-transparent hover:border-amber-200/60 transition-all text-left outline-none cursor-pointer select-none"
+              className="h-10 flex items-center gap-2.5 px-3 py-1 rounded-2xl hover:bg-slate-100/70 border border-transparent hover:border-slate-200/80 transition-all text-left outline-none cursor-pointer select-none"
             >
               <StudentAvatar
                 avatar={currentUser.avatar}
@@ -388,7 +388,7 @@ export function DashboardHeader() {
                 <span className="text-xs font-bold text-slate-800 block leading-tight max-w-[150px] truncate" title={currentUser.fullName}>
                   {currentUser.fullName}
                 </span>
-                <span className="text-[10px] font-semibold text-blue-600 block">
+                <span className="text-[10px] font-semibold text-blue-600 block mt-0.5">
                   {currentUser.section || "Unassigned"} · Student
                 </span>
               </div>
@@ -401,7 +401,7 @@ export function DashboardHeader() {
 
             {/* Profile Dropdown Popup Menu */}
             {isProfileOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
                 {/* Profile Card Header */}
                 <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
                   <StudentAvatar

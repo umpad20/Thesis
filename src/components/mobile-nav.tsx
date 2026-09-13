@@ -28,7 +28,7 @@ export function StudentMobileNav() {
   ];
 
   const rightNavItems = [
-    { name: "Badges", href: "/dashboard/achievements", icon: Award },
+    { name: "Achievements", href: "/dashboard/achievements", icon: Award },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
