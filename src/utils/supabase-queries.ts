@@ -1185,7 +1185,7 @@ export async function fetchMasteryStageDistribution(
 // ============================================================================
 
 /**
- * Fetch live classroom leaderboard for a section or teacher's cohort.
+ * Fetch live classroom leaderboard for a section or teacher's classroom roster.
  * Computes rank, total XP, accuracy rate, quizzes passed, streaks, and rank tiers.
  */
 export async function fetchClassroomLeaderboard(
@@ -1227,7 +1227,7 @@ export async function fetchClassroomLeaderboard(
         .in("student_id", studentIds),
       supabase
         .from("quiz_attempts")
-        .select("student_id, score, percentage, status, completed_at, started_at")
+        .select("student_id, quiz_id, score, percentage, status, completed_at, started_at")
         .in("student_id", studentIds),
     ]);
 
@@ -1514,7 +1514,7 @@ export async function fetchStudentDetailedQuizAttempts(
     if (quizIds.length > 0) {
       const { data: quizzes } = await supabase
         .from("quizzes")
-        .select("quiz_id, title, lesson_id")
+        .select("quiz_id, quiz_title, lesson_id, quiz_type, badge_id")
         .in("quiz_id", quizIds);
 
       if (quizzes && quizzes.length > 0) {
@@ -1524,17 +1524,22 @@ export async function fetchStudentDetailedQuizAttempts(
         if (lessonIds.length > 0) {
           const { data: lessons } = await supabase
             .from("lessons")
-            .select("lesson_id, title")
+            .select("lesson_id, lesson_title")
             .in("lesson_id", lessonIds);
 
           if (lessons) {
-            lessons.forEach((l) => lessonMap.set(l.lesson_id, l.title));
+            lessons.forEach((l: any) => lessonMap.set(l.lesson_id, l.lesson_title));
           }
         }
 
-        quizzes.forEach((q) => {
+        quizzes.forEach((q: any) => {
           const lessonTitle = q.lesson_id ? lessonMap.get(q.lesson_id) : undefined;
-          const displayTitle = q.title || lessonTitle || `Quiz #${q.quiz_id}`;
+          const displayTitle =
+            q.quiz_title ||
+            (lessonTitle ? `Comprehension: ${lessonTitle}` : undefined) ||
+            (q.quiz_type === "badge_final"
+              ? `Stage ${q.badge_id || (q.quiz_id >= 100 ? q.quiz_id - 100 : "")} Final Mastery Quiz`
+              : `Quiz #${q.quiz_id}`);
           quizMap.set(q.quiz_id, displayTitle);
         });
       }
@@ -1543,7 +1548,11 @@ export async function fetchStudentDetailedQuizAttempts(
     return attempts.map((a) => ({
       attempt_id: a.attempt_id,
       quiz_id: a.quiz_id,
-      quiz_title: quizMap.get(a.quiz_id) || `Chapter Quiz #${a.quiz_id}`,
+      quiz_title:
+        quizMap.get(a.quiz_id) ||
+        (a.quiz_id >= 100
+          ? `Stage ${a.quiz_id - 100} Final Mastery Quiz`
+          : `Lesson Quiz #${a.quiz_id}`),
       score: a.score ?? 0,
       percentage: Math.round(Number(a.percentage ?? 0)),
       status: a.status || (Number(a.percentage ?? 0) >= 70 ? "passed" : "failed"),

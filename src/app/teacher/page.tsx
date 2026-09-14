@@ -6,13 +6,11 @@ import {
   Users,
   BookOpen,
   FileCheck2,
-  Plus,
   ArrowRight,
   ChevronRight,
   Sparkles,
   Award,
   Layers,
-  UserPlus,
   AlertTriangle,
   Trophy,
   Flame,
@@ -160,37 +158,12 @@ export default function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header & Quick Actions */}
+      {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-            Grade 3 Classroom Reading Hub
+            Classroom Reading Hub
           </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Cohort monitoring & reading comprehension analytics
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Link href="/teacher/students">
-            <Button
-              size="sm"
-              className="h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Enroll Student</span>
-            </Button>
-          </Link>
-          <Link href="/teacher/lessons">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5 text-slate-500" />
-              <span>Add Story</span>
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -655,128 +628,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* ── 7. Live Pupil Performance Snapshot Table ──────────────────── */}
-      <div className="dashboard-card p-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-600" />
-              <span>Pupil Roster Snapshot ({selectedSection === "all" ? "All Sections" : selectedSection})</span>
-            </h3>
-            <p className="text-xs text-slate-500">
-              Direct student accounts with active badge milestones, comprehension, and status.
-            </p>
-          </div>
-          <Link href="/teacher/students" className="text-xs font-bold text-blue-600 hover:text-blue-700">
-            Open Full Roster →
-          </Link>
-        </div>
 
-        {loading ? (
-          <div className="py-8 text-center text-xs text-slate-400">Loading student records...</div>
-        ) : reports.length === 0 ? (
-          <div className="py-10 text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto border border-blue-200">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-800">No pupils registered in your classroom yet</p>
-              <p className="text-[11px] text-slate-400">Enroll your students to start tracking their live reading comprehension and badge milestones.</p>
-            </div>
-            <Link href="/teacher/students">
-              <Button size="sm" className="h-8 px-4 rounded-xl bg-blue-600 text-white font-bold text-xs">
-                <UserPlus className="w-3.5 h-3.5 mr-1" />
-                <span>Enroll Student</span>
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                  <th className="pb-3">Pupil Name / ID</th>
-                  <th className="pb-3">Section</th>
-                  <th className="pb-3">Active Badge Goal</th>
-                  <th className="pb-3">Comprehension</th>
-                  <th className="pb-3">Quizzes Passed</th>
-                  <th className="pb-3 text-right">Mastery Status</th>
-                  <th className="pb-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {reports.slice(0, 5).map((s) => (
-                  <tr key={s.studentId} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 font-bold text-slate-900">
-                      <div>{s.name}</div>
-                      <span className="text-[10px] text-slate-400 font-normal">{s.studentId}</span>
-                    </td>
-                    <td className="py-3">
-                      <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded text-[10px] border border-blue-200">
-                        {s.section}
-                      </span>
-                    </td>
-                    <td className="py-3 text-slate-700 font-semibold">{s.currentBadge}</td>
-                    <td className="py-3 font-bold text-slate-900">{s.comprehensionPct}</td>
-                    <td className="py-3 text-slate-600">{s.quizzesPassed}</td>
-                    <td className="py-3 text-right">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          s.status === "Mastering"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : s.status === "On Track"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : "bg-rose-50 text-rose-700 border border-rose-200"
-                        }`}
-                      >
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const matchingPupil = radar.pupils.find((p) => p.studentId === s.studentId) || {
-                            studentId: s.studentId,
-                            studentName: s.name,
-                            avatar: "🦊",
-                            section: s.section,
-                            comprehensionPct: Number.parseInt(s.comprehensionPct, 10) || 0,
-                            quizzesPassed:
-                              typeof s.quizzesPassed === "number"
-                                ? s.quizzesPassed
-                                : Number.parseInt(s.quizzesPassed, 10) || 0,
-                            failedAttemptsCount: 0,
-                            lastActiveDate: s.lastActive || new Date().toISOString(),
-                            daysInactive: 0,
-                            riskLevel:
-                              s.status === "Mastering"
-                                ? "mastering"
-                                : s.status === "On Track"
-                                ? "watchlist"
-                                : "critical",
-                            struggleReason:
-                              s.status === "Mastering"
-                                ? "Consistently excelling at comprehension benchmarks."
-                                : "Under evaluation for reading recall and phonics.",
-                            recommendedAction: "Review student reading progression and provide targeted guidance.",
-                          };
-                          setSelectedPupilForRecord(matchingPupil);
-                        }}
-                        className="h-6 px-2 rounded-lg text-slate-700 hover:text-blue-700 hover:border-blue-300 font-bold text-[10px] cursor-pointer"
-                        title={`View evaluation record for ${s.name}`}
-                      >
-                        Record
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
       {/* ── 7. Send Guidance Note Modal ───────────────────────────────── */}
       {selectedPupilForNote && (

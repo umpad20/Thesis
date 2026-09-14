@@ -200,7 +200,7 @@ This document provides a comprehensive catalog of screen captures ("snippets") a
 
 ## Part 3: Teacher (Faculty) Portal Features
 
-### 15. Grade 3 Classroom Reading Hub & Cohort Analytics
+### 15. Grade 3 Classroom Reading Hub & Classroom Analytics
 - **Role:** Teacher (Faculty)
 - **URL Route:** `/teacher`
 - **Screenshot:** `public/docs/snippets/15_teacher_reading_hub.png`
@@ -208,7 +208,7 @@ This document provides a comprehensive catalog of screen captures ("snippets") a
   The executive faculty dashboard providing bird's-eye metrics on classroom reading comprehension, active enrollments, and curriculum pacing.
 - **Key Capabilities:**
   - **Class Comprehension Gauge:** Compares class average against the DepEd ≥70% benchmark.
-  - **Section Switcher:** Easily toggle between Grade 3-A, 3-B, 3-C, and Twilight cohorts.
+  - **Section Switcher:** Easily toggle between Grade 3-A, 3-B, 3-C, and Twilight sections.
   - **Live Progression Distribution:** Visual breakdown of pupils across Star, Ribbon, and Medal stages.
 
 ---

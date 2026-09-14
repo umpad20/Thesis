@@ -71,7 +71,7 @@ export default function ReportsPage() {
             Reading Performance &amp; Evaluation Analytics
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            Pedro Victorina Calo Elementary School · Live Database Cohort Reports
+            Pedro Victorina Calo Elementary School · Live Database Student Reports
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export default function ReportsPage() {
 
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Reading Velocity
+            Reading Speed
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-black text-slate-900">95 WPM</span>

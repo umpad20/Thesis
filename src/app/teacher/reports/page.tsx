@@ -54,6 +54,14 @@ export default function TeacherReportsPage() {
   const masteringCount = reports.filter((r) => r.status === "Mastering").length;
   const masteryRate = reports.length > 0 ? Math.round((masteringCount / reports.length) * 100) : 75;
 
+  const validSpeeds = reports
+    .map((r) => Number.parseInt(r.readingSpeed.replace(/\D/g, ""), 10))
+    .filter((s) => !Number.isNaN(s) && s > 0);
+  const avgSpeed =
+    validSpeeds.length > 0
+      ? Math.round(validSpeeds.reduce((acc, curr) => acc + curr, 0) / validSpeeds.length)
+      : 95;
+
   const exportCSV = () => {
     if (reports.length === 0) return;
     const headers = "Student ID,Student Name,Sex,Section,Current Milestone,Comprehension %,Reading Speed,Quizzes Cleared,Status\n";
@@ -83,7 +91,7 @@ export default function TeacherReportsPage() {
             Reading Comprehension Analytics &amp; Reports
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Cohort reading comprehension analytics &amp; data export
+            Classroom reading comprehension analytics &amp; data export
           </p>
         </div>
 
@@ -127,7 +135,7 @@ export default function TeacherReportsPage() {
 
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Enrolled Cohort
+            Enrolled Pupils
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-black text-slate-900">{reports.length}</span>
@@ -138,13 +146,13 @@ export default function TeacherReportsPage() {
 
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Avg Reading Velocity
+            Avg Reading Speed
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">95 WPM</span>
+            <span className="text-xl font-black text-slate-900">{avgSpeed} WPM</span>
             <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">Grade 3 Norm</span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Target: 80–120 WPM</p>
+          <p className="text-[11px] text-slate-500 mt-2">Target: 80–120 WPM (Phil-IRI)</p>
         </div>
       </div>
 

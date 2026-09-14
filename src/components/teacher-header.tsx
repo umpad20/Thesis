@@ -216,11 +216,11 @@ export function TeacherHeader() {
   const notificationsList = [
     {
       id: 1,
-      title: "Classroom Cohort Active",
+      title: "Classroom Active",
       message:
         students.length > 0
           ? `${students.length} pupil(s) enrolled and monitored in your live faculty dashboard.`
-          : "Your classroom cohort is ready. Enroll student accounts to track reading metrics.",
+          : "Your classroom is ready. Enroll student accounts to track reading metrics.",
       time: "Live",
       type: "roster",
     },
