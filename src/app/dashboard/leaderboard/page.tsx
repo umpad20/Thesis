@@ -167,9 +167,6 @@ export default function LeaderboardPage() {
             <Trophy className="w-5 h-5 text-amber-500 fill-amber-400" />
             <span>Leaderboard</span>
           </h1>
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-            {scopeMode === "class" ? mySection : "School-wide"}
-          </span>
         </div>
 
         {/* Segmented Scope Switcher */}
@@ -245,60 +242,68 @@ export default function LeaderboardPage() {
 
       {/* ── 3. Sleek Colorful Champions Podium ───────────────────────── */}
       {leaderboard.length >= 1 && (
-        <div className="dashboard-card p-5 sm:p-7 bg-gradient-to-b from-slate-50/70 via-white to-amber-50/30 border border-amber-200/70 relative overflow-hidden">
-          <div className="flex items-end justify-center gap-3 sm:gap-6 lg:gap-8 pt-2 pb-1 max-w-3xl mx-auto">
+        <div className="dashboard-card px-2.5 py-4 sm:p-6 lg:p-7 bg-gradient-to-b from-slate-50/80 via-white to-amber-50/40 border-2 border-amber-200/80 relative overflow-hidden shadow-xs">
+          <div className="flex items-end justify-center gap-2 sm:gap-4 lg:gap-6 pt-1 pb-1 max-w-2xl mx-auto w-full">
             {/* #2 Silver Podium */}
             {top2 ? (
-              <div className="flex-1 max-w-[200px] flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
-                <div className="relative mb-2.5">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 p-1 ring-3 ring-slate-300 shadow-sm flex items-center justify-center">
+              <div className="flex-1 max-w-[190px] min-w-0 flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
+                <div className="relative mb-2">
+                  <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 p-1 ring-3 ring-slate-300 shadow-sm flex items-center justify-center">
                     <StudentAvatar
                       avatar={top2.avatar}
                       name={top2.studentName}
                       size="lg"
-                      className="w-12 h-12 sm:w-14 sm:h-14 shadow-sm"
+                      className="w-11 h-11 sm:w-14 sm:h-14 shadow-sm"
                     />
                   </div>
-                  <div className="absolute -bottom-1.5 -right-1 w-5 h-5 rounded-full bg-slate-700 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
                     2
                   </div>
                 </div>
 
-                <div className="w-full bg-gradient-to-t from-slate-200/90 via-slate-100 to-white rounded-t-2xl p-3 text-center border border-slate-200 border-b-0 min-h-[90px] flex flex-col justify-end shadow-2xs">
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate">{top2.studentName}</h3>
-                  <span className="text-xs font-black text-blue-600 mt-0.5">+{top2.totalXp} XP</span>
-                  <span className="text-[10px] font-bold text-slate-500 mt-0.5 block truncate">
-                    {top2.rankTierLabel}
+                <div className="w-full bg-gradient-to-t from-slate-200/90 via-slate-100/80 to-white rounded-2xl p-2.5 sm:p-3 text-center border-2 border-slate-300/80 min-h-[85px] sm:min-h-[95px] flex flex-col justify-end shadow-xs">
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate" title={top2.studentName}>
+                    {top2.studentName}
+                  </h3>
+                  <span className="text-[11px] sm:text-xs font-black text-blue-600 mt-0.5">
+                    +{top2.totalXp} XP
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-0.5 block truncate">
+                    🥈 {top2.rankTierLabel}
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 max-w-[200px]" />
+              <div className="flex-1 max-w-[190px]" />
             )}
 
             {/* #1 Gold Podium (Elevated) */}
             {top1 && (
-              <div className="flex-1 max-w-[230px] flex flex-col items-center -mt-5 group transition-transform hover:-translate-y-1.5 duration-200 z-10">
-                <div className="relative mb-2.5">
-                  <Crown className="w-6 h-6 text-amber-500 fill-amber-400 mx-auto mb-0.5 animate-bounce" />
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 p-1.5 ring-3 ring-amber-400 ring-offset-2 ring-offset-white shadow-lg shadow-amber-400/30 flex items-center justify-center relative">
+              <div className="flex-1 max-w-[210px] min-w-0 flex flex-col items-center -mt-4 sm:-mt-5 group transition-transform hover:-translate-y-1.5 duration-200 z-10">
+                <div className="relative mb-2">
+                  <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-400 mx-auto mb-0.5 animate-bounce" />
+                  <div className="w-15 h-15 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 p-1.5 ring-3 ring-amber-400 ring-offset-2 ring-offset-white shadow-lg shadow-amber-400/30 flex items-center justify-center relative">
                     <StudentAvatar
                       avatar={top1.avatar}
                       name={top1.studentName}
                       size="xl"
-                      className="w-13 h-13 sm:w-16 sm:h-16 shadow-md"
+                      className="w-12 h-12 sm:w-16 sm:h-16 shadow-md"
                     />
                   </div>
-                  <div className="absolute -bottom-1.5 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
+                  <div className="absolute -bottom-1 -right-1 w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
                     1
                   </div>
                 </div>
 
-                <div className="w-full bg-gradient-to-t from-amber-200/90 via-amber-100/60 to-white rounded-t-2xl p-3.5 text-center border-2 border-amber-300 border-b-0 min-h-[115px] flex flex-col justify-end shadow-md shadow-amber-200/30 relative overflow-hidden">
+                <div className="w-full bg-gradient-to-t from-amber-200/90 via-amber-100/70 to-white rounded-2xl p-2.5 sm:p-3.5 text-center border-2 border-amber-400 min-h-[105px] sm:min-h-[120px] flex flex-col justify-end shadow-md shadow-amber-300/30 relative overflow-hidden">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.2)_0%,_transparent_70%)] pointer-events-none" />
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate relative">{top1.studentName}</h3>
-                  <span className="text-xs sm:text-sm font-black text-amber-700 mt-0.5 relative">+{top1.totalXp} XP</span>
-                  <span className="text-[10px] font-black text-amber-800/90 mt-0.5 block relative truncate">
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate relative" title={top1.studentName}>
+                    {top1.studentName}
+                  </h3>
+                  <span className="text-xs sm:text-sm font-black text-amber-700 mt-0.5 relative">
+                    +{top1.totalXp} XP
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-black text-amber-800/90 mt-0.5 block relative truncate">
                     🏆 {top1.rankTierLabel}
                   </span>
                 </div>
@@ -307,33 +312,40 @@ export default function LeaderboardPage() {
 
             {/* #3 Bronze Podium */}
             {top3 ? (
-              <div className="flex-1 max-w-[200px] flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
-                <div className="relative mb-2.5">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 p-1 ring-3 ring-amber-300 shadow-sm flex items-center justify-center">
+              <div className="flex-1 max-w-[190px] min-w-0 flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
+                <div className="relative mb-2">
+                  <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-100 via-orange-100 to-amber-200 p-1 ring-3 ring-amber-400/80 shadow-sm flex items-center justify-center">
                     <StudentAvatar
                       avatar={top3.avatar}
                       name={top3.studentName}
                       size="lg"
-                      className="w-12 h-12 sm:w-14 sm:h-14 shadow-sm"
+                      className="w-11 h-11 sm:w-14 sm:h-14 shadow-sm"
                     />
                   </div>
-                  <div className="absolute -bottom-1.5 -right-1 w-5 h-5 rounded-full bg-amber-800 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-amber-700 to-amber-900 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
                     3
                   </div>
                 </div>
 
-                <div className="w-full bg-gradient-to-t from-amber-100/70 via-amber-50/40 to-white rounded-t-2xl p-3 text-center border border-amber-200 border-b-0 min-h-[80px] flex flex-col justify-end shadow-2xs">
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate">{top3.studentName}</h3>
-                  <span className="text-xs font-black text-blue-600 mt-0.5">+{top3.totalXp} XP</span>
-                  <span className="text-[10px] font-bold text-slate-500 mt-0.5 block truncate">
-                    {top3.rankTierLabel}
+                <div className="w-full bg-gradient-to-t from-amber-100/90 via-orange-50/60 to-white rounded-2xl p-2.5 sm:p-3 text-center border-2 border-amber-300/80 min-h-[75px] sm:min-h-[85px] flex flex-col justify-end shadow-xs">
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate" title={top3.studentName}>
+                    {top3.studentName}
+                  </h3>
+                  <span className="text-[11px] sm:text-xs font-black text-blue-600 mt-0.5">
+                    +{top3.totalXp} XP
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-0.5 block truncate">
+                    🥉 {top3.rankTierLabel}
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 max-w-[200px]" />
+              <div className="flex-1 max-w-[190px]" />
             )}
           </div>
+
+          {/* Unified Champion Stage Base */}
+          <div className="w-full max-w-2xl mx-auto h-2 sm:h-2.5 rounded-full bg-gradient-to-r from-slate-200 via-amber-300 to-slate-200 shadow-inner mt-1.5 opacity-90" />
         </div>
       )}
 

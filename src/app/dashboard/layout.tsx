@@ -25,7 +25,7 @@ export default function DashboardLayout({
         className={`bg-[#faf8f5] flex flex-col antialiased ${
           isLessonReader
             ? "h-screen h-[100dvh] overflow-y-auto lg:overflow-hidden"
-            : "min-h-screen overflow-y-auto"
+            : "min-h-screen min-h-[100dvh] overflow-y-auto"
         }`}
       >
         <main

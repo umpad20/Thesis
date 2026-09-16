@@ -394,8 +394,8 @@ function QuizContent() {
   // ══════════════════════════════════════════════════════════════════════════
   if (quizFinished && isStageFinal && isPassed) {
     return (
-      <div className="max-w-3xl mx-auto space-y-6 py-6 anim-pop-bounce">
-        <div className="dashboard-card p-8 sm:p-10 text-center space-y-7 relative overflow-hidden bg-gradient-to-b from-amber-50/60 via-white to-amber-50/40 border-2 border-amber-300 shadow-2xl">
+      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6 py-3 sm:py-6 anim-pop-bounce">
+        <div className="dashboard-card p-5 sm:p-8 md:p-10 text-center space-y-5 sm:space-y-7 relative overflow-hidden bg-gradient-to-b from-amber-50/60 via-white to-amber-50/40 border-2 border-amber-300 shadow-2xl">
           {/* Glowing Aura Background */}
           <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full bg-gradient-to-br from-amber-300/40 via-yellow-200/30 to-blue-300/30 blur-3xl pointer-events-none" />
 
@@ -615,25 +615,25 @@ function QuizContent() {
       (lessonId && !isLastLessonOfStage ? lessonId + 1 : null);
 
     return (
-      <div className="max-w-2xl mx-auto space-y-6 py-6 anim-pop-bounce">
-        <div className="dashboard-card p-8 sm:p-10 text-center space-y-6 relative overflow-hidden bg-gradient-to-b from-white via-amber-50/20 to-white border-2 border-amber-200/80 shadow-xl">
+      <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6 py-3 sm:py-6 anim-pop-bounce">
+        <div className="dashboard-card p-5 sm:p-8 md:p-10 text-center space-y-5 sm:space-y-6 relative overflow-hidden bg-gradient-to-b from-white via-amber-50/20 to-white border-2 border-amber-200/80 shadow-xl">
           {isPassed && (
             <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full bg-amber-300/30 blur-2xl pointer-events-none" />
           )}
 
           <div
-            className={`w-20 h-20 rounded-3xl mx-auto flex items-center justify-center font-bold text-3xl shadow-md border-2 transition-transform duration-500 animate-bounce ${
+            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl mx-auto flex items-center justify-center font-bold text-2xl sm:text-3xl shadow-md border-2 transition-transform duration-500 animate-bounce ${
               isPassed
                 ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white border-emerald-300 shadow-emerald-500/30"
                 : "bg-gradient-to-br from-amber-400 to-amber-600 text-white border-amber-300 shadow-amber-500/30"
             }`}
           >
-            {isPassed ? <PartyPopper className="w-10 h-10" /> : <RotateCcw className="w-10 h-10" />}
+            {isPassed ? <PartyPopper className="w-8 h-8 sm:w-10 sm:h-10" /> : <RotateCcw className="w-8 h-8 sm:w-10 sm:h-10" />}
           </div>
 
           <div>
             <span
-              className={`text-xs font-black uppercase tracking-widest block mb-1.5 ${
+              className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block mb-1.5 ${
                 isPassed
                   ? isLastLessonOfStage
                     ? "text-purple-600"
@@ -647,7 +647,7 @@ function QuizContent() {
                   : "Story Comprehension Passed"
                 : "Keep Practicing · Retained"}
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
               {isPassed
                 ? isLastLessonOfStage
                   ? "Ready for Stage Final Assessment!"
@@ -664,23 +664,23 @@ function QuizContent() {
           </div>
 
           {/* Score & XP Earned Metrics */}
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-md mx-auto">
+            <div className="p-2.5 sm:p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                 Score
               </span>
-              <span className="text-xl font-black text-slate-900">
+              <span className="text-base sm:text-xl font-black text-slate-900">
                 {score} / {maxScore}
               </span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80">
-              <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">
+            <div className="p-2.5 sm:p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80">
+              <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-0.5">
                 Accuracy
               </span>
-              <span className="text-xl font-black text-blue-900">{percentage}%</span>
+              <span className="text-base sm:text-xl font-black text-blue-900">{percentage}%</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80">
-              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-0.5">
+            <div className="p-2.5 sm:p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80">
+              <span className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-0.5">
                 Reward
               </span>
               <span className="text-xl font-black text-amber-900 flex items-center justify-center gap-1">
@@ -789,12 +789,12 @@ function QuizContent() {
   // C. ACTIVE QUESTION EVALUATION VIEW
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="max-w-3xl mx-auto space-y-4 relative pb-16">
+    <div className="w-full max-w-3xl mx-auto flex-1 flex flex-col justify-between sm:justify-start space-y-3 sm:space-y-4 relative pb-2 sm:pb-16 min-h-[calc(100dvh-1rem)] sm:min-h-0">
       {/* ── 1. Floating Top Feedback Toast on Answer ─────────────────── */}
       {feedbackType === "correct" && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="bg-emerald-700 text-white px-5 py-2.5 rounded-xl shadow-xl border border-emerald-500/40 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-800 text-emerald-100 flex items-center justify-center font-bold shadow-xs">
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200 w-[90vw] max-w-sm">
+          <div className="bg-emerald-700 text-white px-4 py-2.5 sm:px-5 rounded-xl shadow-xl border border-emerald-500/40 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-800 text-emerald-100 flex items-center justify-center font-bold shadow-xs flex-shrink-0">
               <CheckCircle2 className="w-4 h-4 text-emerald-200" />
             </div>
             <div>
@@ -810,9 +810,9 @@ function QuizContent() {
       )}
 
       {feedbackType === "wrong" && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="bg-amber-700 text-white px-5 py-2.5 rounded-xl shadow-xl border border-amber-500/40 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-800 text-amber-100 flex items-center justify-center font-bold shadow-xs">
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-2 duration-200 w-[90vw] max-w-sm">
+          <div className="bg-amber-700 text-white px-4 py-2.5 sm:px-5 rounded-xl shadow-xl border border-amber-500/40 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-800 text-amber-100 flex items-center justify-center font-bold shadow-xs flex-shrink-0">
               <HelpCircle className="w-4 h-4 text-amber-200" />
             </div>
             <div>
@@ -866,28 +866,31 @@ function QuizContent() {
       )}
 
       {/* ── 2. Clean, Compact Top Header ── */}
-      <div className="flex items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-xs">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 bg-white/95 backdrop-blur-md px-3.5 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-slate-200/80 shadow-xs flex-shrink-0">
         {/* Left: Title + Final Stage Badge */}
-        <div className="flex items-center gap-2 min-w-0">
-          <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+          <h1
+            className="text-xs sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate"
+            title={quizData.quiz_title}
+          >
             {quizData.quiz_title}
           </h1>
           {isStageFinal ? (
-            <span className="bg-amber-100 text-amber-800 text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-300 flex-shrink-0">
-              STAGE FINAL
+            <span className="bg-amber-100 text-amber-800 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full border border-amber-300 flex-shrink-0">
+              FINAL
             </span>
           ) : (
-            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex-shrink-0 hidden xs:inline">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex-shrink-0 hidden md:inline">
               Pass ≥{passingScore}%
             </span>
           )}
         </div>
 
         {/* Right: Question Progress + Clean Exit Button */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <div className="flex flex-col items-end gap-0.5 sm:gap-1">
-            <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700">
-              <span className="hidden sm:inline">Question</span>
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-slate-700">
+              <span className="hidden sm:inline text-slate-400">Question</span>
               <span>
                 {currentIndex + 1}/{totalQuestions}
               </span>
@@ -896,7 +899,7 @@ function QuizContent() {
               </span>
             </div>
             {/* Progress Bar */}
-            <div className="w-16 sm:w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div className="w-14 sm:w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
                 className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
                 style={{ width: `${((currentIndex + 1) / totalQuestions) * 100}%` }}
@@ -908,18 +911,18 @@ function QuizContent() {
             variant="outline"
             size="sm"
             onClick={() => setShowExitConfirm(true)}
-            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-9 px-2.5 sm:px-3 cursor-pointer flex items-center gap-1 transition-all"
-            title="Exit to Storybook"
+            className="rounded-xl border-slate-200 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 text-xs font-bold text-slate-700 bg-white shadow-2xs h-8 sm:h-9 px-2 sm:px-3 cursor-pointer flex items-center gap-1 transition-all"
+            title="Exit Assessment"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Exit</span>
+            <span className="hidden xs:inline">Exit</span>
           </Button>
         </div>
       </div>
 
       {/* ── 4. Question & Choice Cards ─────────────────────────────────── */}
       <div
-        className={`dashboard-card p-5 sm:p-7 space-y-4 sm:space-y-5 border-2 border-amber-100 bg-[#fffdfa] transition-all duration-300 ${
+        className={`dashboard-card p-4 sm:p-7 flex-1 sm:flex-initial flex flex-col justify-between space-y-3 sm:space-y-5 border-2 border-amber-100 bg-[#fffdfa] shadow-md transition-all duration-300 ${
           feedbackType === "correct"
             ? "ring-2 ring-emerald-400/50"
             : feedbackType === "wrong"
@@ -927,129 +930,133 @@ function QuizContent() {
             : ""
         }`}
       >
-        <div className="pb-3 border-b border-amber-200/60 flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <span className="text-[11px] font-black text-blue-600 uppercase tracking-widest block">
+        {/* Top: Question Header */}
+        <div className="pb-3 border-b border-amber-200/60 flex items-start justify-between gap-3 sm:gap-4 flex-shrink-0">
+          <div className="space-y-1 min-w-0">
+            <span className="text-[10px] sm:text-[11px] font-black text-blue-600 uppercase tracking-widest block">
               {isStageFinal ? "Stage Mastery Question" : "Comprehension Question"} {currentIndex + 1}
             </span>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+            <h2 className="text-sm sm:text-lg font-black text-slate-900 leading-snug">
               {currentQuestion.question_text}
             </h2>
           </div>
-          <span className="text-[11px] font-black text-amber-700 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200 whitespace-nowrap flex items-center gap-1">
+          <span className="text-[10px] sm:text-[11px] font-black text-amber-700 bg-amber-50 px-2.5 sm:px-3 py-1 rounded-xl border border-amber-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
             <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
             <span>+{currentQuestion.points || 10} XP</span>
           </span>
         </div>
 
-        {/* Answer Choice Grid */}
-        <div className="space-y-2.5">
-          {choices.map((choice, idx) => {
-            const letter = String.fromCharCode(65 + idx);
-            const isSelected = selectedChoiceId === choice.choice_id;
+        {/* Middle: Answer Choices + Feedback + Hint */}
+        <div className="flex-1 flex flex-col justify-center py-1 sm:py-2 space-y-2 sm:space-y-2.5 min-h-0">
+          {/* Answer Choice Grid */}
+          <div className="space-y-2 sm:space-y-2.5">
+            {choices.map((choice, idx) => {
+              const letter = String.fromCharCode(65 + idx);
+              const isSelected = selectedChoiceId === choice.choice_id;
 
-            let cardStyles = "border-slate-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/20";
-            let indicatorStyles = "bg-slate-100 text-slate-700 border-slate-200";
+              let cardStyles = "border-slate-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/20";
+              let indicatorStyles = "bg-slate-100 text-slate-700 border-slate-200";
 
-            if (isSelected && !isSubmitted) {
-              cardStyles = "border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20 shadow-xs";
-              indicatorStyles = "bg-blue-600 text-white border-blue-600 font-bold";
-            } else if (isSubmitted) {
-              if (choice.is_correct) {
-                cardStyles = "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/30 anim-pop-bounce";
-                indicatorStyles = "bg-emerald-500 text-white border-emerald-500 font-bold";
-              } else if (isSelected && !choice.is_correct) {
-                cardStyles = "border-rose-400 bg-rose-50/70";
-                indicatorStyles = "bg-rose-500 text-white border-rose-500 font-bold";
-              } else {
-                cardStyles = "opacity-40 border-slate-200 bg-slate-50";
+              if (isSelected && !isSubmitted) {
+                cardStyles = "border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20 shadow-xs";
+                indicatorStyles = "bg-blue-600 text-white border-blue-600 font-bold";
+              } else if (isSubmitted) {
+                if (choice.is_correct) {
+                  cardStyles = "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/30 anim-pop-bounce";
+                  indicatorStyles = "bg-emerald-500 text-white border-emerald-500 font-bold";
+                } else if (isSelected && !choice.is_correct) {
+                  cardStyles = "border-rose-400 bg-rose-50/70";
+                  indicatorStyles = "bg-rose-500 text-white border-rose-500 font-bold";
+                } else {
+                  cardStyles = "opacity-40 border-slate-200 bg-slate-50";
+                }
               }
-            }
 
-            return (
-              <div
-                key={choice.choice_id}
-                onClick={() => handleSelect(choice.choice_id)}
-                className={`p-3.5 sm:p-4 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${cardStyles}`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-black flex items-center justify-center border transition-all ${indicatorStyles}`}
-                  >
-                    {letter}
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-slate-800">
-                    {choice.choice_text}
-                  </span>
+              return (
+                <div
+                  key={choice.choice_id}
+                  onClick={() => handleSelect(choice.choice_id)}
+                  className={`p-3 sm:p-4 rounded-xl border transition-all flex items-center justify-between cursor-pointer min-h-[50px] sm:min-h-[54px] select-none ${cardStyles}`}
+                >
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
+                    <span
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-black flex items-center justify-center border flex-shrink-0 transition-all ${indicatorStyles}`}
+                    >
+                      {letter}
+                    </span>
+                    <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                      {choice.choice_text}
+                    </span>
+                  </div>
+
+                  {isSubmitted && choice.is_correct && (
+                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 flex-shrink-0 animate-bounce" />
+                  )}
+                  {isSubmitted && isSelected && !choice.is_correct && (
+                    <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 flex-shrink-0" />
+                  )}
                 </div>
+              );
+            })}
+          </div>
 
-                {isSubmitted && choice.is_correct && (
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600 flex-shrink-0 animate-bounce" />
-                )}
-                {isSubmitted && isSelected && !choice.is_correct && (
-                  <XCircle className="w-6 h-6 text-rose-500 flex-shrink-0" />
+          {/* Feedback / Explanation Box */}
+          {isSubmitted && (
+            <div
+              className={`p-3 sm:p-4 rounded-xl border text-xs leading-relaxed space-y-1 transition-all duration-200 ${
+                isCorrect
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-950"
+                  : "bg-amber-50 border-amber-200 text-amber-950"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-bold text-xs sm:text-sm">
+                {isCorrect ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>Correct! +{currentQuestion.points || 10} XP Earned</span>
+                  </>
+                ) : (
+                  <>
+                    <HelpCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>Review Explanation:</span>
+                  </>
                 )}
               </div>
-            );
-          })}
-        </div>
-
-        {/* Feedback / Explanation Box */}
-        {isSubmitted && (
-          <div
-            className={`p-4 sm:p-5 rounded-xl border text-xs leading-relaxed space-y-1.5 transition-all duration-200 ${
-              isCorrect
-                ? "bg-emerald-50 border-emerald-200 text-emerald-950"
-                : "bg-amber-50 border-amber-200 text-amber-950"
-            }`}
-          >
-            <div className="flex items-center gap-2 font-bold text-sm">
-              {isCorrect ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Correct! +{currentQuestion.points || 10} XP Earned</span>
-                </>
-              ) : (
-                <>
-                  <HelpCircle className="w-4 h-4 text-amber-600" />
-                  <span>Review Explanation:</span>
-                </>
+              {currentQuestion.explanation && (
+                <p className="text-[11px] sm:text-xs opacity-90 leading-relaxed font-medium">
+                  {currentQuestion.explanation}
+                </p>
               )}
             </div>
-            {currentQuestion.explanation && (
-              <p className="text-xs opacity-90 leading-relaxed font-medium">
-                {currentQuestion.explanation}
-              </p>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Hint Section */}
-        {currentQuestion.hint && (
-          <div className="pt-2">
-            {!showHint ? (
-              <button
-                type="button"
-                onClick={() => setShowHint(true)}
-                className="flex items-center gap-1.5 text-xs text-blue-600 font-bold hover:underline"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                <span>Need a reading hint?</span>
-              </button>
-            ) : (
-              <div className="p-3.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block">Hint:</span>
-                  <span className="text-[11px]">{currentQuestion.hint}</span>
+          {/* Hint Section */}
+          {currentQuestion.hint && (
+            <div className="pt-0.5">
+              {!showHint ? (
+                <button
+                  type="button"
+                  onClick={() => setShowHint(true)}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 font-bold hover:underline py-0.5 cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Need a reading hint?</span>
+                </button>
+              ) : (
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block">Hint:</span>
+                    <span className="text-[11px]">{currentQuestion.hint}</span>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
 
-        {/* Action Controls */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+        {/* Bottom: Action Controls */}
+        <div className="pt-3 sm:pt-4 border-t border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
           <div className="text-xs text-slate-400 font-bold">
             Question {currentIndex + 1} of {totalQuestions}
           </div>
@@ -1058,14 +1065,14 @@ function QuizContent() {
             <Button
               onClick={handleSubmitAnswer}
               disabled={selectedChoiceId === null}
-              className="h-11 px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 disabled:opacity-50 transition-all"
+              className="h-11 px-6 sm:px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 disabled:opacity-50 transition-all cursor-pointer"
             >
               Submit Answer
             </Button>
           ) : (
             <Button
               onClick={handleNext}
-              className="h-11 px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all"
+              className="h-11 px-6 sm:px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer"
             >
               <span>{currentIndex === totalQuestions - 1 ? "Complete Assessment" : "Next Question"}</span>
               <ArrowRight className="w-4 h-4 ml-0.5" />
