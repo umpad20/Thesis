@@ -194,50 +194,24 @@ export function LivingStorybook({
   const SEGMENT_HEIGHT = 640;
   const totalHeight = Math.max(displayedBadges.length, 1) * SEGMENT_HEIGHT;
 
-  // State for active popup card interactions (pure hover-based)
-  const [hoveredNodeId, setHoveredNodeId] = useState<number | null>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // State for active popup card interactions (pure click-based toggle: click to show, click again to unshow)
+  const [activeNodeId, setActiveNodeId] = useState<number | null>(null);
 
-  // Global pointer listener: immediately dismiss any open node card when tapping or clicking outside
+  // Global pointer listener: dismiss any open node card when clicking outside
   useEffect(() => {
     const handleGlobalPointer = (e: PointerEvent) => {
       if (!(e.target as HTMLElement | null)?.closest("[data-node-interactive]")) {
-        if (hoverTimeoutRef.current) {
-          clearTimeout(hoverTimeoutRef.current);
-          hoverTimeoutRef.current = null;
-        }
-        setHoveredNodeId(null);
+        setActiveNodeId(null);
       }
     };
     window.addEventListener("pointerdown", handleGlobalPointer);
     return () => window.removeEventListener("pointerdown", handleGlobalPointer);
   }, []);
 
-  const handleNodeMouseEnter = (lessonId: number) => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    setHoveredNodeId(lessonId);
-  };
-
-  const handleNodeMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredNodeId(null);
-    }, 100);
-  };
-
   const handleNodeClick = (lessonId: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    // Toggle card on click/tap: if already open, close it; otherwise open it
-    setHoveredNodeId((prev) => (prev === lessonId ? null : lessonId));
+    // Toggle card on click: click once to show, click again to unshow!
+    setActiveNodeId((prev) => (prev === lessonId ? null : lessonId));
   };
 
   const handleTabSwitch = (tab: "core" | "teacher") => {
@@ -525,20 +499,7 @@ export function LivingStorybook({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onClick={() => {
-          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-          setHoveredNodeId(null);
-        }}
-        onPointerMove={(e) => {
-          if (!(e.target as HTMLElement).closest("[data-node-interactive]")) {
-            if (hoveredNodeId !== null) {
-              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-              setHoveredNodeId(null);
-            }
-          }
-        }}
-        onPointerLeave={() => {
-          if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-          setHoveredNodeId(null);
+          setActiveNodeId(null);
         }}
         className="map-viewport relative w-full flex-1 min-h-0 overflow-hidden select-none bg-white flex items-center justify-center p-2 sm:p-3 pb-20 md:pb-3"
       >
@@ -716,7 +677,7 @@ export function LivingStorybook({
                       currentActiveLesson?.lesson_id === lesson.lesson_id;
 
                     const coord = getLessonCoords(idx, chLessons.length);
-                    const isCardOpen = hoveredNodeId === lesson.lesson_id;
+                    const isCardOpen = activeNodeId === lesson.lesson_id;
 
                     // Pop down for higher nodes, pop up for lower nodes
                     const popDown = coord.yPct < 45;
@@ -730,9 +691,6 @@ export function LivingStorybook({
                           left: `${coord.xPct}%`,
                           top: `${coord.yPct}%`,
                         }}
-                        onMouseEnter={() => handleNodeMouseEnter(lesson.lesson_id)}
-                        onMouseLeave={handleNodeMouseLeave}
-                        onPointerLeave={handleNodeMouseLeave}
                       >
                         {/* ── Case A: Completed Node (Golden Yellow Stepping Stone matching map road) ── */}
                         {isDone ? (
@@ -760,9 +718,6 @@ export function LivingStorybook({
                             <div
                               data-node-interactive="true"
                               onClick={(e) => e.stopPropagation()}
-                              onMouseEnter={() => handleNodeMouseEnter(lesson.lesson_id)}
-                              onMouseLeave={handleNodeMouseLeave}
-                              onPointerLeave={handleNodeMouseLeave}
                               className={`absolute ${
                                 popDown ? "top-full mt-2" : "bottom-full mb-2"
                               } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] bg-[#fffdf8] border border-amber-300/90 rounded-xl p-2 shadow-xl z-50 text-center transition-all duration-200 ${
@@ -842,9 +797,6 @@ export function LivingStorybook({
                             <div
                               data-node-interactive="true"
                               onClick={(e) => e.stopPropagation()}
-                              onMouseEnter={() => handleNodeMouseEnter(lesson.lesson_id)}
-                              onMouseLeave={handleNodeMouseLeave}
-                              onPointerLeave={handleNodeMouseLeave}
                               className={`absolute ${
                                 popDown ? "top-full mt-2" : "bottom-full mb-2"
                               } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] z-40 transition-all duration-200 ${
@@ -898,9 +850,6 @@ export function LivingStorybook({
                             data-node-interactive="true"
                             className="group relative flex flex-col items-center cursor-pointer select-none"
                             onClick={(e) => handleNodeClick(lesson.lesson_id, e)}
-                            onMouseEnter={() => handleNodeMouseEnter(lesson.lesson_id)}
-                            onMouseLeave={handleNodeMouseLeave}
-                            onPointerLeave={handleNodeMouseLeave}
                           >
                             <button
                               type="button"
@@ -917,9 +866,6 @@ export function LivingStorybook({
                             <div
                               data-node-interactive="true"
                               onClick={(e) => e.stopPropagation()}
-                              onMouseEnter={() => handleNodeMouseEnter(lesson.lesson_id)}
-                              onMouseLeave={handleNodeMouseLeave}
-                              onPointerLeave={handleNodeMouseLeave}
                               className={`absolute ${
                                 popDown ? "top-full mt-2" : "bottom-full mb-2"
                               } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] bg-slate-900/95 border border-slate-700 rounded-xl p-2 shadow-xl z-50 text-center transition-all duration-200 backdrop-blur-md ${

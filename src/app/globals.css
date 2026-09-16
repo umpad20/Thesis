@@ -240,6 +240,34 @@
   will-change: transform, opacity, filter, box-shadow;
 }
 
+/* Mobile-only synchronized page flip (both photo and words flip together on screens < 1024px) */
+@media (max-width: 1023px) {
+  .mobile-leaf-flip-forward {
+    transform-origin: left center;
+    animation: leafTurnForward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: transform, opacity, filter, box-shadow;
+  }
+  .mobile-leaf-flip-backward {
+    transform-origin: right center;
+    animation: leafTurnBackward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: transform, opacity, filter, box-shadow;
+  }
+}
+
+/* Desktop-only individual page flip (left backward, right forward on screens >= 1024px) */
+@media (min-width: 1024px) {
+  .desktop-leaf-flip-forward {
+    transform-origin: left center;
+    animation: leafTurnForward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: transform, opacity, filter, box-shadow;
+  }
+  .desktop-leaf-flip-backward {
+    transform-origin: right center;
+    animation: leafTurnBackward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    will-change: transform, opacity, filter, box-shadow;
+  }
+}
+
 /* Gamified Quiz Answer Feedback Keyframes */
 @keyframes popBounce {
   0% {
