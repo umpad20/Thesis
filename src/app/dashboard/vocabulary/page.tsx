@@ -11,10 +11,9 @@ import {
   Sparkles,
   BookOpen,
   Info,
-  Layers,
-  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BadgeGraphic } from "@/components/badge-graphic";
 import {
   fetchAllVocabularyWords,
   fetchLessonsForStudent,
@@ -29,8 +28,7 @@ import type { VocabularyWord, Lesson, StudentBadgeProgress, Badge } from "@/lib/
 
 export default function VocabularyPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState<"unlocked" | "all">("unlocked");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedBadgeId, setSelectedBadgeId] = useState<string>("all");
   const [words, setWords] = useState<VocabularyWord[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -113,16 +111,24 @@ export default function VocabularyPage() {
     return false;
   };
 
-  // Tag words with unlock status and enriched details
+  // Sort badges by badge_order
+  const sortedBadges = [...badges].sort((a, b) => (a.badge_order || 0) - (b.badge_order || 0));
+
+  // Tag words with unlock status, enriched details, and matched badge
   const enrichedWordsList = words.map((w) => {
     const unlocked = isLessonUnlocked(w.lesson_id);
     const meta = getEnrichedVocab(w.word, w.lesson_id);
     const relatedLesson = lessons.find((l) => l.lesson_id === w.lesson_id);
-    const relatedBadge = badges.find((b) => b.badge_id === relatedLesson?.badge_id);
+    const relatedBadge =
+      (relatedLesson?.badge_id ? badges.find((b) => b.badge_id === relatedLesson.badge_id) : null) ||
+      badges.find((b) => b.badge_order === meta.chapterNumber) ||
+      sortedBadges[0];
 
     return {
       ...w,
       isUnlocked: unlocked,
+      badge: relatedBadge,
+      badgeId: relatedBadge?.badge_id || 1,
       meta: {
         ...meta,
         storyTitle: relatedLesson?.lesson_title || meta.storyTitle,
@@ -135,12 +141,10 @@ export default function VocabularyPage() {
   const unlockedCount = enrichedWordsList.filter((w) => w.isUnlocked).length;
   const totalCount = enrichedWordsList.length;
 
-  // Filter words by tab, search term, and category
+  // Filter words by search term and badge filter (all storybook level words are included)
   const filteredWords = enrichedWordsList.filter((item) => {
-    if (activeTab === "unlocked" && !item.isUnlocked) return false;
-
-    if (selectedCategory !== "all") {
-      if (item.meta.chapterNumber.toString() !== selectedCategory) return false;
+    if (selectedBadgeId !== "all" && item.badgeId.toString() !== selectedBadgeId) {
+      return false;
     }
 
     if (!searchTerm.trim()) return true;
@@ -150,9 +154,45 @@ export default function VocabularyPage() {
       item.word.toLowerCase().includes(term) ||
       item.definition.toLowerCase().includes(term) ||
       item.meta.storyTitle.toLowerCase().includes(term) ||
+      item.meta.chapterName.toLowerCase().includes(term) ||
       item.meta.synonyms.some((s) => s.toLowerCase().includes(term))
     );
   });
+
+  // Group filtered words by badge into organized badge sections
+  const badgeSections = sortedBadges
+    .map((badge) => {
+      const allBadgeWords = enrichedWordsList.filter((w) => w.badgeId === badge.badge_id);
+      const matchingWords = filteredWords.filter((w) => w.badgeId === badge.badge_id);
+      const bUnlocked = allBadgeWords.filter((w) => w.isUnlocked).length;
+      const bTotal = allBadgeWords.length;
+
+      return {
+        badge,
+        words: matchingWords,
+        unlockedCount: bUnlocked,
+        totalCount: bTotal,
+      };
+    })
+    .filter((group) => {
+      // If a specific badge is selected in pills, only show that badge
+      if (selectedBadgeId !== "all" && group.badge.badge_id.toString() !== selectedBadgeId) {
+        return false;
+      }
+      // If student searched, only show badges with matching results
+      if (searchTerm.trim()) {
+        return group.words.length > 0;
+      }
+      // Show all badges that have words in the curriculum
+      return group.totalCount > 0;
+    });
+
+  const partOfSpeechColors: Record<string, string> = {
+    noun: "bg-blue-50 text-blue-700 border-blue-200",
+    verb: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    adjective: "bg-purple-50 text-purple-700 border-purple-200",
+    adverb: "bg-amber-50 text-amber-700 border-amber-200",
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -168,39 +208,17 @@ export default function VocabularyPage() {
         </div>
       </div>
 
-      {/* ── 2. Discovery Tabs & Filter Controls ────────────────────────── */}
-      <div className="dashboard-card p-4 flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Toggle Tabs: Unlocked Only vs. All Mystery Words */}
-        <div className="flex items-center p-1 bg-slate-100/90 rounded-xl w-full md:w-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab("unlocked")}
-            className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === "unlocked"
-                ? "bg-white text-blue-600 shadow-2xs font-black"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
+      {/* ── 2. Discovery Header & Quick Badge Filter Pills ─────────────── */}
+      <div className="dashboard-card p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          {/* My Discovered Words Label */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-black self-start sm:self-center">
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>My Discovered Words ({unlockedCount})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === "all"
-                ? "bg-white text-blue-600 shadow-2xs font-black"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-slate-500" />
-            <span>All Storybook Words ({totalCount})</span>
-          </button>
-        </div>
+            <span>My Discovered Words ({unlockedCount} / {totalCount} Unlocked)</span>
+          </div>
 
-        {/* Search Input & Stage Filter */}
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+          {/* Search Input (Dropdown filter removed) */}
+          <div className="relative flex-1 sm:max-w-xs">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -210,26 +228,60 @@ export default function VocabularyPage() {
               className="w-full bg-slate-50/80 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
             />
           </div>
+        </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-3 py-1.5">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
-            >
-              <option value="all">All Chapters</option>
-              <option value="1">Chapter 1 (Stage 1)</option>
-              <option value="2">Chapter 2 (Stage 2)</option>
-              <option value="3">Chapter 3 (Stage 3)</option>
-              <option value="4">Chapter 4 (Stage 4)</option>
-              <option value="5">Chapter 5 (Stage 5)</option>
-            </select>
-          </div>
+        {/* Quick Badge Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-0.5 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setSelectedBadgeId("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+              selectedBadgeId === "all"
+                ? "bg-blue-600 text-white shadow-2xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Badges
+          </button>
+          {sortedBadges.map((b) => {
+            const isSelected = selectedBadgeId === b.badge_id.toString();
+            const bWords = enrichedWordsList.filter((w) => w.badgeId === b.badge_id);
+            const bUnlocked = bWords.filter((w) => w.isUnlocked).length;
+            if (bWords.length === 0) return null;
+
+            return (
+              <button
+                key={b.badge_id}
+                type="button"
+                onClick={() => setSelectedBadgeId(isSelected ? "all" : b.badge_id.toString())}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer border ${
+                  isSelected
+                    ? "bg-blue-50 text-blue-700 border-blue-300 ring-2 ring-blue-500/20"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <BadgeGraphic
+                  type={b.badge_type}
+                  medalType={b.medal_type}
+                  badgeIconUrl={b.badge_icon_url}
+                  size="xs"
+                  status={bUnlocked > 0 ? "completed" : "locked"}
+                />
+                <span>{b.badge_name}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${
+                    isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {bWords.length}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── 3. Vocabulary Cards Grid ───────────────────────────────────── */}
+      {/* ── 3. Words Grouped by Badges ─────────────────────────────────── */}
       {loading ? (
         <div className="py-24 text-center space-y-3">
           <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -238,168 +290,216 @@ export default function VocabularyPage() {
       ) : filteredWords.length === 0 ? (
         <div className="dashboard-card p-12 text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
-            <Bookmark className="w-7 h-7" />
+            <Search className="w-7 h-7 text-amber-600" />
           </div>
           <div>
             <h3 className="text-base font-black text-slate-900">
-              {activeTab === "unlocked" && unlockedCount === 0
-                ? "No Words Discovered Yet"
-                : "No Vocabulary Terms Found"}
+              No Vocabulary Terms Found
             </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-              {activeTab === "unlocked"
-                ? "Read chapter stories in your Living Storybook to discover and unlock new vocabulary words!"
-                : "No glossary words matched your current search or chapter filter."}
+              No glossary words matched your search query &ldquo;{searchTerm}&rdquo;.
             </p>
           </div>
-          <Link href="/dashboard/badges">
-            <Button className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs">
-              <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-              <span>Explore Living Storybook</span>
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchTerm("");
+              setSelectedBadgeId("all");
+            }}
+            className="h-9 px-4 rounded-xl text-xs font-bold border-slate-200 cursor-pointer"
+          >
+            Reset Search Filter
+          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredWords.map((item) => {
-            if (!item.isUnlocked) {
-              // Locked Mystery Word Card
-              return (
-                <div
-                  key={item.word_id}
-                  className="dashboard-card p-5 border-dashed border-2 border-slate-200/80 bg-slate-50/60 flex flex-col justify-between space-y-4 opacity-75 relative overflow-hidden"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                        <Lock className="w-3 h-3 text-slate-400" />
-                        <span>Mystery Word</span>
-                      </span>
-                      <span className="text-[9px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
-                        Stage {item.meta.chapterNumber}
+        <div className="space-y-6">
+          {badgeSections.map((section) => (
+            <div
+              key={section.badge.badge_id}
+              className="bg-white/95 rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4"
+            >
+              {/* Badge Section Banner Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-1 rounded-2xl bg-amber-50/80 border border-amber-200/60 shadow-2xs shrink-0">
+                    <BadgeGraphic
+                      type={section.badge.badge_type}
+                      medalType={section.badge.medal_type}
+                      badgeIconUrl={section.badge.badge_icon_url}
+                      size="sm"
+                      status={section.unlockedCount > 0 ? "completed" : "locked"}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                        {section.badge.badge_name}
+                      </h2>
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        {section.badge.teacher_id ? "Custom Quest" : `Stage ${section.badge.badge_order}`}
                       </span>
                     </div>
-
-                    <h3 className="text-base font-black text-slate-400 tracking-wide blur-[2px] select-none">
-                      {item.word.replace(/./g, "•")}
-                    </h3>
-
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                      🔒 Read <strong className="text-slate-500">{item.meta.storyTitle}</strong> in {item.meta.chapterName} to discover this vocabulary term and hear its pronunciation!
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      {section.badge.description || `Storybook vocabulary for ${section.badge.badge_name}`}
                     </p>
                   </div>
-
-                  <Link href={`/dashboard/lessons?lessonId=${item.lesson_id}`}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full h-8 text-[11px] font-bold rounded-xl border-slate-200 text-slate-600 hover:bg-white"
-                    >
-                      <BookOpen className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                      <span>Read Story to Unlock</span>
-                    </Button>
-                  </Link>
-                </div>
-              );
-            }
-
-            // Unlocked Rich Vocabulary Card
-            const partOfSpeechColors: Record<string, string> = {
-              noun: "bg-blue-50 text-blue-700 border-blue-200",
-              verb: "bg-emerald-50 text-emerald-700 border-emerald-200",
-              adjective: "bg-purple-50 text-purple-700 border-purple-200",
-              adverb: "bg-amber-50 text-amber-700 border-amber-200",
-            };
-
-            return (
-              <div
-                key={item.word_id}
-                className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4 border-2 border-amber-100/80 bg-[#fffdfa] relative group shadow-xs"
-              >
-                <div>
-                  {/* Top Tags: Part of Speech + Story Tag */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          partOfSpeechColors[item.meta.partOfSpeech] || partOfSpeechColors.noun
-                        }`}
-                      >
-                        {item.meta.partOfSpeech}
-                      </span>
-                      <span className="text-[11px] font-mono text-slate-400 font-medium">
-                        {item.meta.phonetic}
-                      </span>
-                    </div>
-
-                    {/* Realistic Voice Speaker Button */}
-                    <button
-                      type="button"
-                      onClick={() => soundEffects.speakWord(item.word, item.example_sentence)}
-                      aria-label="Listen to realistic voice pronunciation"
-                      className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-2xs group/btn"
-                      title="Listen with realistic voice"
-                    >
-                      <Volume2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                    </button>
-                  </div>
-
-                  {/* Word Name & Chapter Source */}
-                  <div className="mb-2">
-                    <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {item.word}
-                    </h3>
-                    <span className="text-[10px] font-bold text-amber-700 block">
-                      {item.meta.chapterName} · {item.meta.storyTitle}
-                    </span>
-                  </div>
-
-                  {/* Definition */}
-                  <p className="text-xs text-slate-600 leading-relaxed font-medium mb-3">
-                    {item.definition}
-                  </p>
-
-                  {/* Synonyms Badges */}
-                  {item.meta.synonyms.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1 mb-2">
-                      <span className="text-[10px] font-bold text-slate-400 mr-1">Synonyms:</span>
-                      {item.meta.synonyms.slice(0, 3).map((syn, sIdx) => (
-                        <span
-                          key={sIdx}
-                          className="bg-slate-100 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded-md"
-                        >
-                          {syn}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
-                {/* Example Sentence Footer */}
-                {item.example_sentence && (
-                  <div className="pt-3 border-t border-amber-200/60 bg-amber-50/40 -mx-5 -mb-5 p-3.5 rounded-b-2xl flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[9px] font-bold text-amber-900/70 uppercase tracking-wider block mb-0.5">
-                        Story Passage Context:
+                {/* Badge Word Progress Counter */}
+                <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
+                  <div className="flex flex-col items-start sm:items-end gap-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <span className="text-slate-400">Unlocked:</span>
+                      <span className="font-extrabold text-slate-900">
+                        {section.unlockedCount} / {section.totalCount} Words
                       </span>
-                      <p className="text-[11px] text-slate-700 italic leading-snug">
-                        &ldquo;{item.example_sentence}&rdquo;
-                      </p>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setExpandedWord({ word: item, meta: item.meta })}
-                      className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0"
-                      title="View expanded meaning"
-                    >
-                      <Info className="w-4 h-4" />
-                    </button>
+                    <div className="w-28 sm:w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${section.totalCount > 0 ? (section.unlockedCount / section.totalCount) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            );
-          })}
+
+              {/* Cards Grid for this Badge */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {section.words.map((item) => {
+                  if (!item.isUnlocked) {
+                    // Locked Mystery Word Card (Visually marked as locked)
+                    return (
+                      <div
+                        key={item.word_id}
+                        className="dashboard-card p-5 border-dashed border-2 border-slate-200/80 bg-slate-50/60 flex flex-col justify-between space-y-4 opacity-75 relative overflow-hidden"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-slate-400" />
+                              <span>Mystery Word</span>
+                            </span>
+                            <span className="text-[9px] font-black uppercase tracking-widest bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md">
+                              Stage {item.meta.chapterNumber}
+                            </span>
+                          </div>
+
+                          <h3 className="text-base font-black text-slate-400 tracking-wide blur-[2px] select-none">
+                            {item.word.replace(/./g, "•")}
+                          </h3>
+
+                          <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                            🔒 Read <strong className="text-slate-500">{item.meta.storyTitle}</strong> in {item.meta.chapterName} to discover this vocabulary term and hear its pronunciation!
+                          </p>
+                        </div>
+
+                        <Link href={`/dashboard/lessons?lessonId=${item.lesson_id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full h-8 text-[11px] font-bold rounded-xl border-slate-200 text-slate-600 hover:bg-white cursor-pointer"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                            <span>Read Story to Unlock</span>
+                          </Button>
+                        </Link>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={item.word_id}
+                      className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4 border-2 border-amber-100/80 bg-[#fffdfa] relative group shadow-xs"
+                    >
+                      <div>
+                        {/* Top Tags: Part of Speech + Phonetic + Realistic Voice Speaker */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${partOfSpeechColors[item.meta.partOfSpeech] || partOfSpeechColors.noun
+                                }`}
+                            >
+                              {item.meta.partOfSpeech}
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-400 font-medium">
+                              {item.meta.phonetic}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => soundEffects.speakWord(item.word, item.example_sentence)}
+                            aria-label="Listen to realistic voice pronunciation"
+                            className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-2xs group/btn cursor-pointer"
+                            title="Listen with realistic voice"
+                          >
+                            <Volume2 className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                          </button>
+                        </div>
+
+                        {/* Word Name & Chapter Source */}
+                        <div className="mb-2">
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 group-hover:text-blue-600 transition-colors capitalize">
+                            {item.word}
+                          </h3>
+                          <span className="text-[10px] font-bold text-amber-700 block">
+                            {item.meta.chapterName} · {item.meta.storyTitle}
+                          </span>
+                        </div>
+
+                        {/* Definition */}
+                        <p className="text-xs text-slate-600 leading-relaxed font-medium mb-3">
+                          {item.definition}
+                        </p>
+
+                        {/* Synonyms Badges */}
+                        {item.meta.synonyms.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 mb-2">
+                            <span className="text-[10px] font-bold text-slate-400 mr-1">Synonyms:</span>
+                            {item.meta.synonyms.slice(0, 3).map((syn, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="bg-slate-100 text-slate-700 text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                              >
+                                {syn}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Example Sentence Footer */}
+                      {item.example_sentence && (
+                        <div className="pt-3 border-t border-amber-200/60 bg-amber-50/40 -mx-5 -mb-5 p-3.5 rounded-b-2xl flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-[9px] font-bold text-amber-900/70 uppercase tracking-wider block mb-0.5">
+                              Story Passage Context:
+                            </span>
+                            <p className="text-[11px] text-slate-700 italic leading-snug">
+                              &ldquo;{item.example_sentence}&rdquo;
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setExpandedWord({ word: item, meta: item.meta })}
+                            className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex-shrink-0 cursor-pointer"
+                            title="View expanded meaning"
+                          >
+                            <Info className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

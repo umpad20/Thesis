@@ -62,6 +62,7 @@ function LessonReaderContent() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [pageFlipDirection, setPageFlipDirection] = useState<"forward" | "backward" | null>(null);
+  const [targetSlideIndex, setTargetSlideIndex] = useState<number | null>(null);
   const [showExitModal, setShowExitModal] = useState<boolean>(false);
 
   useEffect(() => {
@@ -233,23 +234,28 @@ function LessonReaderContent() {
   const progressPercent = Math.round(((safeSlideIndex + 1) / totalSlides) * 100);
 
   // Split paragraph into distinct sentences for clean, spaced sentence-by-sentence reading
-  const sentencesToDisplay = useMemo(() => {
-    if (currentSlide.sentences && currentSlide.sentences.length > 1) {
-      return currentSlide.sentences;
+  const getSentencesForSlide = (slide: (typeof allSlides)[0] | undefined | null) => {
+    if (!slide) return [];
+    if (slide.sentences && slide.sentences.length > 1) {
+      return slide.sentences;
     }
-    if (currentSlide.sentences && currentSlide.sentences.length === 1) {
-      const matched = currentSlide.sentences[0].match(/[^.!?]+[.!?]+(\s|$)/g);
+    if (slide.sentences && slide.sentences.length === 1) {
+      const matched = slide.sentences[0].match(/[^.!?]+[.!?]+(\s|$)/g);
       if (matched && matched.length > 1) {
         return matched.map((s) => s.trim());
       }
-      return currentSlide.sentences;
+      return slide.sentences;
     }
-    const matched = (currentSlide.paragraphText || "").match(/[^.!?]+[.!?]+(\s|$)/g);
+    const matched = (slide.paragraphText || "").match(/[^.!?]+[.!?]+(\s|$)/g);
     if (matched && matched.length > 1) {
       return matched.map((s) => s.trim());
     }
-    return [currentSlide.paragraphText];
-  }, [currentSlide]);
+    return [slide.paragraphText || ""];
+  };
+
+  const sentencesToDisplay = useMemo(() => getSentencesForSlide(currentSlide), [currentSlide]);
+  const targetSlide = targetSlideIndex !== null ? allSlides[targetSlideIndex] : null;
+  const targetSentences = useMemo(() => getSentencesForSlide(targetSlide), [targetSlide]);
 
   // Speak active paragraph/page aloud (toggles pause/cancel if already playing)
   const speakCurrentParagraph = () => {
@@ -270,17 +276,20 @@ function LessonReaderContent() {
 
   const handleSlideChange = (newIndex: number, direction: "forward" | "backward") => {
     if (newIndex < 0 || newIndex >= totalSlides) return;
+    if (pageFlipDirection !== null) return;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
     setIsPlayingAudio(false);
     setPageFlipDirection(direction);
+    setTargetSlideIndex(newIndex);
     soundEffects.play("pageFlip");
 
     setTimeout(() => {
       setCurrentSlideIndex(newIndex);
       setPageFlipDirection(null);
-    }, 180);
+      setTargetSlideIndex(null);
+    }, 620);
   };
 
   // Check stage milestone locking (Custom teacher quests are ALWAYS unlocked)
@@ -376,20 +385,10 @@ function LessonReaderContent() {
     );
   }
 
-  // Page flip animation classes (Mobile: both flip together; Desktop: open-book individual flip)
-  const leftPageFlipClass =
-    pageFlipDirection === "forward"
-      ? "mobile-leaf-flip-forward"
-      : pageFlipDirection === "backward"
-      ? "mobile-leaf-flip-backward desktop-leaf-flip-backward"
-      : "";
-
-  const rightPageFlipClass =
-    pageFlipDirection === "forward"
-      ? "mobile-leaf-flip-forward desktop-leaf-flip-forward"
-      : pageFlipDirection === "backward"
-      ? "mobile-leaf-flip-backward"
-      : "";
+  // Active underneath slides during flip transitions
+  const displayLeftSlide = (pageFlipDirection === "backward" && targetSlide) ? targetSlide : currentSlide;
+  const displayRightSlide = (pageFlipDirection === "forward" && targetSlide) ? targetSlide : currentSlide;
+  const displayRightSentences = (pageFlipDirection === "forward" && targetSlide) ? targetSentences : sentencesToDisplay;
 
   return (
     <div className="h-full min-h-0 flex flex-col justify-between w-full max-w-full mx-auto gap-2 sm:gap-3 py-0.5 sm:py-1">
@@ -424,9 +423,6 @@ function LessonReaderContent() {
               <span className="font-extrabold text-slate-900">
                 {currentSlideIndex + 1}/{totalSlides}
               </span>
-              <span className="text-blue-600 font-bold hidden xs:inline sm:inline">
-                ({progressPercent}%)
-              </span>
             </div>
             {/* Progress Bar */}
             <div className="w-14 sm:w-28 md:w-36 h-1.5 sm:h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/80">
@@ -459,21 +455,165 @@ function LessonReaderContent() {
         <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-300/60 rounded-br-sm pointer-events-none" />
 
         {/* 2-Page Paper Spread Container (Unified flow on mobile, 2-page spread on desktop) */}
-        <div className="flex flex-col lg:grid lg:grid-cols-2 rounded-2xl overflow-hidden bg-[#fffefb] border border-amber-200/90 shadow-inner relative flex-1 min-h-0">
+        <div className="flex flex-col lg:grid lg:grid-cols-2 rounded-2xl bg-[#fffefb] border border-amber-200/90 shadow-inner relative flex-1 min-h-0 book-perspective">
           {/* Central Book Spine Crease Shadow (Desktop only) */}
           <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-gradient-to-r from-amber-900/10 via-amber-950/20 to-amber-900/10 pointer-events-none z-20 hidden lg:block shadow-inner" />
+
+          {/* ── 3D Physical Turning Leaf (Forward / Next Page - Desktop) ── */}
+          {pageFlipDirection === "forward" && targetSlide && (
+            <div
+              className="hidden lg:block absolute top-0 left-1/2 w-1/2 h-full pointer-events-none z-30"
+              style={{
+                perspective: "2400px",
+                transformStyle: "preserve-3d",
+                transformOrigin: "left center",
+              }}
+            >
+              <div
+                className="w-full h-full relative book-flipping-leaf-forward"
+                style={{
+                  transformStyle: "preserve-3d",
+                  transformOrigin: "left center",
+                }}
+              >
+                {/* FRONT FACE: Current Reading Page turning away */}
+                <div
+                  className="absolute inset-0 w-full h-full bg-[#fffefb] rounded-r-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between border-y border-r border-amber-200/90 shadow-lg"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
+                    transform: "rotateY(0deg)",
+                  }}
+                >
+                  <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
+                    <div className="space-y-2.5 sm:space-y-3.5 lg:space-y-4">
+                      {sentencesToDisplay.map((sentence, sIdx) => (
+                        <p
+                          key={sIdx}
+                          className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
+                        >
+                          <VocabularyHighlightedText
+                            text={sentence}
+                            vocabularyList={vocabulary}
+                          />
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
+                    <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+                  </div>
+                  <div className="absolute inset-0 leaf-front-shadow pointer-events-none" />
+                </div>
+
+                {/* BACK FACE: Next Scene Illustration landing on left */}
+                <div
+                  className="absolute inset-0 w-full h-full bg-[#fffdfa] rounded-l-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center border-y border-l border-amber-200/90 shadow-lg"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)",
+                  }}
+                >
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
+                    <img
+                      src={targetSlide.sceneImageUrl}
+                      alt={targetSlide.sceneTitle}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="absolute inset-0 leaf-back-shadow pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 3D Physical Turning Leaf (Backward / Previous Page - Desktop) ── */}
+          {pageFlipDirection === "backward" && targetSlide && (
+            <div
+              className="hidden lg:block absolute top-0 left-0 w-1/2 h-full pointer-events-none z-30"
+              style={{
+                perspective: "2400px",
+                transformStyle: "preserve-3d",
+                transformOrigin: "right center",
+              }}
+            >
+              <div
+                className="w-full h-full relative book-flipping-leaf-backward"
+                style={{
+                  transformStyle: "preserve-3d",
+                  transformOrigin: "right center",
+                }}
+              >
+                {/* FRONT FACE: Current Illustration turning away */}
+                <div
+                  className="absolute inset-0 w-full h-full bg-[#fffdfa] rounded-l-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center border-y border-l border-amber-200/90 shadow-lg"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
+                    transform: "rotateY(0deg)",
+                  }}
+                >
+                  <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
+                    <img
+                      src={currentSlide.sceneImageUrl}
+                      alt={currentSlide.sceneTitle}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="absolute inset-0 leaf-front-shadow pointer-events-none" />
+                </div>
+
+                {/* BACK FACE: Previous Reading Page landing on right */}
+                <div
+                  className="absolute inset-0 w-full h-full bg-[#fffefb] rounded-r-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between border-y border-r border-amber-200/90 shadow-lg"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)",
+                  }}
+                >
+                  <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
+                    <div className="space-y-2.5 sm:space-y-3.5 lg:space-y-4">
+                      {targetSentences.map((sentence, sIdx) => (
+                        <p
+                          key={sIdx}
+                          className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
+                        >
+                          <VocabularyHighlightedText
+                            text={sentence}
+                            vocabularyList={vocabulary}
+                          />
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
+                    <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+                  </div>
+                  <div className="absolute inset-0 leaf-back-shadow pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════════════
               LEFT PAGE / TOP (Mobile): Scene Illustration Plate
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] relative transition-all flex-1 min-h-0 ${leftPageFlipClass}`}
+            className={`p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl lg:rounded-tr-none lg:rounded-l-2xl relative transition-all flex-1 min-h-0 book-page-leaf ${
+              pageFlipDirection === "forward"
+                ? "mobile-leaf-flip-forward"
+                : pageFlipDirection === "backward"
+                ? "mobile-leaf-flip-backward"
+                : ""
+            }`}
           >
             {/* Story Illustration Photo (Size matches the Sentence Box below) */}
             <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center group">
               <img
-                src={currentSlide.sceneImageUrl}
-                alt={currentSlide.sceneTitle}
+                src={displayLeftSlide.sceneImageUrl}
+                alt={displayLeftSlide.sceneTitle}
                 className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
               />
             </div>
@@ -483,12 +623,18 @@ function LessonReaderContent() {
               RIGHT PAGE / BOTTOM (Mobile): 3-Sentence Reading Flow & Bottom Stepper
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] relative transition-all flex-1 min-h-0 ${rightPageFlipClass}`}
+            className={`p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl lg:rounded-bl-none lg:rounded-r-2xl relative transition-all flex-1 min-h-0 book-page-leaf ${
+              pageFlipDirection === "forward"
+                ? "mobile-leaf-flip-forward"
+                : pageFlipDirection === "backward"
+                ? "mobile-leaf-flip-backward"
+                : ""
+            }`}
           >
             {/* 3-Sentence Reading Box (Organized sentence-by-sentence with clean spacing) */}
             <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-y-auto">
               <div className="space-y-2.5 sm:space-y-3.5 lg:space-y-4">
-                {sentencesToDisplay.map((sentence, sIdx) => (
+                {displayRightSentences.map((sentence, sIdx) => (
                   <p
                     key={sIdx}
                     className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
@@ -508,7 +654,7 @@ function LessonReaderContent() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleSlideChange(currentSlideIndex - 1, "backward")}
-                disabled={currentSlideIndex === 0}
+                disabled={currentSlideIndex === 0 || pageFlipDirection !== null}
                 className="h-9 sm:h-10 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold border-amber-200/80 bg-white hover:bg-amber-50/50 shadow-2xs transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1.5 z-10"
               >
                 <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -520,6 +666,7 @@ function LessonReaderContent() {
                 <button
                   type="button"
                   onClick={speakCurrentParagraph}
+                  disabled={pageFlipDirection !== null}
                   title={isPlayingAudio ? "Stop reading" : "Read aloud"}
                   aria-label={isPlayingAudio ? "Stop reading aloud" : "Read aloud"}
                   className={`-top-5 sm:-top-6 absolute left-1/2 -translate-x-1/2 w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center border-4 border-[#fffefb] cursor-pointer select-none transition-all duration-300 active:scale-90 z-20 ${
@@ -539,6 +686,7 @@ function LessonReaderContent() {
               {!isLastSlide ? (
                 <Button
                   onClick={() => handleSlideChange(currentSlideIndex + 1, "forward")}
+                  disabled={pageFlipDirection !== null}
                   className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-xl text-xs sm:text-sm font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/25 flex items-center gap-1.5 transition-all cursor-pointer z-10"
                 >
                   <span>Next Page</span>
@@ -546,7 +694,10 @@ function LessonReaderContent() {
                 </Button>
               ) : (
                 <Link href={`/dashboard/quiz?lessonId=${activeLesson.lesson_id}&badgeId=${activeLesson.badge_id}`}>
-                  <Button className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer z-10">
+                  <Button
+                    disabled={pageFlipDirection !== null}
+                    className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer z-10"
+                  >
                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span>Take Quiz</span>
                     <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  DEFAULT_PREFERENCES,
   getVoicePreferences,
   saveVoicePreferences,
   speakSentenceWithVoice,
@@ -56,7 +57,7 @@ export function SettingsHub({ portal }: SettingsHubProps) {
   const [user, setUser] = useState<UserProfile | null>(null);
 
   // Voice Preferences State
-  const [voicePrefs, setVoicePrefs] = useState<VoicePreferences>(() => getVoicePreferences());
+  const [voicePrefs, setVoicePrefs] = useState<VoicePreferences>(DEFAULT_PREFERENCES);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [testSpeechText, setTestSpeechText] = useState(
     "Hello! I am your ReadSmart reading companion. Let's read wonderful stories together!"
@@ -133,37 +134,35 @@ export function SettingsHub({ portal }: SettingsHubProps) {
     {
       id: "voice" as SettingSection,
       title: "AI Voice & Speech Narrator",
-      subtitle: `Active: ${voicePrefs.gender === "female" ? "👧 Girl Voice" : "👦 Boy Voice"} (${voicePrefs.rate}x)`,
+      subtitle: portal === "teacher" ? `${voicePrefs.gender === "female" ? "👧 Girl Voice" : "👦 Boy Voice"} (${voicePrefs.rate}x speed)` : "",
       icon: Volume2,
-      badge: "Voice Engine",
       color: "bg-blue-600 text-white",
     },
     {
       id: "account" as SettingSection,
-      title: "Account & Mascot",
-      subtitle: user?.fullName ? `${user.fullName} · ${user.section || "Grade 3-A"}` : "Profile & Mascot Avatar",
+      title: portal === "student" ? "Account & Mascot Profile" : "Account Profile",
+      subtitle: portal === "teacher" ? "Manage faculty account profile" : "",
       icon: User,
-      badge: user?.role === "teacher" ? "Faculty" : "Pupil",
       color: "bg-indigo-600 text-white",
     },
     {
       id: "privacy" as SettingSection,
       title: "Privacy & Security",
-      subtitle: "Pedro Victorina Calo ES · Database integrity",
+      subtitle: portal === "student" ? "Safe learning & data protection" : "Database integrity & security",
       icon: Lock,
       color: "bg-emerald-600 text-white",
     },
     {
       id: "help" as SettingSection,
       title: "Help and Support",
-      subtitle: "Grade 3 Reading Guidelines & Phonics FAQ",
+      subtitle: portal === "student" ? "Reading guide & FAQ" : "Grade 3 Reading Guidelines & Phonics FAQ",
       icon: Headphones,
       color: "bg-purple-600 text-white",
     },
     {
       id: "about" as SettingSection,
       title: "About ReadSmart",
-      subtitle: "ReadSmart v1.0 · DepEd Curriculum Alignment",
+      subtitle: portal === "student" ? "Platform & school details" : "ReadSmart v1.0 · DepEd Curriculum Alignment",
       icon: HelpCircle,
       color: "bg-slate-700 text-white",
     },
@@ -172,8 +171,10 @@ export function SettingsHub({ portal }: SettingsHubProps) {
   const filteredMenuItems = menuItems.filter(
     (item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+      Boolean(item.subtitle && item.subtitle.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const getSubtitle = (id: SettingSection) => menuItems.find((item) => item.id === id)?.subtitle;
 
   const backUrl = portal === "teacher" ? "/teacher" : "/dashboard";
 
@@ -199,22 +200,28 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                 {portal === "teacher" ? "Faculty" : "Pupil"}
               </span>
             </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              Manage your AI narrator voice, reading preferences, and account profile.
-            </p>
+            {portal === "teacher" && (
+              <p className="text-xs text-slate-500 font-medium">
+                Manage narrator audio, classroom preferences, and faculty profile.
+              </p>
+            )}
           </div>
         </div>
 
         {/* User Card on Right */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-2xl">{selectedAvatar}</span>
+            <StudentAvatar
+              avatar={selectedAvatar}
+              name={user?.fullName || "Student"}
+              size="sm"
+            />
             <div className="text-left hidden md:block">
               <span className="text-xs font-black text-slate-900 block leading-tight truncate max-w-[120px]">
                 {user?.fullName || "Student"}
               </span>
               <span className="text-[10px] font-bold text-blue-600 block">
-                {user?.section || "Grade 3-A"}
+                {user?.section && user.section !== "Unassigned" ? user.section : "Grade 3 Learner"}
               </span>
             </div>
           </div>
@@ -287,25 +294,16 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                           >
                             {item.title}
                           </span>
-                          {item.badge && (
-                            <span
-                              className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded ${
-                                isActive
-                                  ? "bg-white/25 text-white"
-                                  : "bg-blue-50 text-blue-700 border border-blue-100"
-                              }`}
-                            >
-                              {item.badge}
-                            </span>
-                          )}
                         </div>
-                        <span
-                          className={`text-[11px] block truncate font-medium ${
-                            isActive ? "text-blue-100" : "text-slate-400"
-                          }`}
-                        >
-                          {item.subtitle}
-                        </span>
+                        {item.subtitle ? (
+                          <span
+                            className={`text-[11px] block truncate font-medium ${
+                              isActive ? "text-blue-100" : "text-slate-400"
+                            }`}
+                          >
+                            {item.subtitle}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -318,17 +316,6 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                 );
               })}
             </div>
-          </div>
-
-          {/* Quick Info Box */}
-          <div className="p-4 rounded-3xl bg-gradient-to-br from-blue-50 via-indigo-50/50 to-slate-50 border border-blue-100/80 space-y-2">
-            <div className="flex items-center gap-2 text-blue-900 font-black text-xs">
-              <GraduationCap className="w-4 h-4 text-blue-600" />
-              <span>ReadSmart Dual-Coding Engine</span>
-            </div>
-            <p className="text-[11px] text-blue-800/80 leading-relaxed">
-              Preferences are automatically synchronized with your classroom dashboard and Living Storybook reader.
-            </p>
           </div>
         </div>
 
@@ -344,12 +331,14 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                       <Volume2 className="w-5 h-5 text-blue-600" />
                       <span>AI Voice &amp; Speech Narrator</span>
                     </h2>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Configure your personalized AI reading assistant character for story narration.
-                    </p>
+                    {getSubtitle("voice") && (
+                      <p className="text-xs text-slate-500 font-medium">
+                        {getSubtitle("voice")}
+                      </p>
+                    )}
                   </div>
                   <span className="text-xs font-black px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
-                    Dual-Coding Audio
+                    Story Narrator
                   </span>
                 </div>
 
@@ -518,9 +507,11 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                       <User className="w-5 h-5 text-indigo-600" />
                       <span>Account &amp; Mascot Profile</span>
                     </h2>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Personalize your reading mascot and view your student record.
-                    </p>
+                    {getSubtitle("account") && (
+                      <p className="text-xs text-slate-500 font-medium">
+                        {getSubtitle("account")}
+                      </p>
+                    )}
                   </div>
                   {avatarSaved && (
                     <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
@@ -541,7 +532,7 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                     <h3 className="text-sm font-black text-slate-900">{user?.fullName || "Learner"}</h3>
                     <p className="text-xs text-slate-500">{user?.email || "student@pvces.edu.ph"}</p>
                     <div className="flex items-center gap-2 mt-1.5 text-[11px] font-bold text-blue-600">
-                      <span>🏫 {user?.section || "Grade 3-A"}</span>
+                      <span>🏫 {user?.section && user.section !== "Unassigned" ? user.section : "Grade 3 Learner"}</span>
                       <span>·</span>
                       <span>Role: {user?.role === "teacher" ? "Faculty" : "Pupil"}</span>
                     </div>
@@ -591,9 +582,11 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                     <Lock className="w-5 h-5 text-emerald-600" />
                     <span>Privacy &amp; Security</span>
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Secure educational data protection for Pedro Victorina Calo Elementary School.
-                  </p>
+                  {getSubtitle("privacy") && (
+                    <p className="text-xs text-slate-500 font-medium">
+                      {getSubtitle("privacy")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -623,11 +616,13 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                 <div className="border-b border-slate-100 pb-4">
                   <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
                     <Headphones className="w-5 h-5 text-purple-600" />
-                    <span>Help &amp; Support Guide</span>
+                    <span>Help and Support</span>
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Frequently asked questions and guides for Grade 3 reading.
-                  </p>
+                  {getSubtitle("help") && (
+                    <p className="text-xs text-slate-500 font-medium">
+                      {getSubtitle("help")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-3">
@@ -656,9 +651,11 @@ export function SettingsHub({ portal }: SettingsHubProps) {
                     <HelpCircle className="w-5 h-5 text-slate-700" />
                     <span>About ReadSmart</span>
                   </h2>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Platform information and DepEd curriculum alignment.
-                  </p>
+                  {getSubtitle("about") && (
+                    <p className="text-xs text-slate-500 font-medium">
+                      {getSubtitle("about")}
+                    </p>
+                  )}
                 </div>
 
                 <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">

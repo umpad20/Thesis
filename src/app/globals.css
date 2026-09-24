@@ -174,97 +174,267 @@
 
 /* 3D Realistic Storybook Page-Turn Leaf Transitions */
 .book-perspective {
-  perspective: 2200px;
+  perspective: 2400px;
+  perspective-origin: center center;
   transform-style: preserve-3d;
 }
 
-@keyframes leafTurnForward {
+.book-page-leaf {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* ── Full 180-Degree Storybook Flipping Leaf (Desktop) ── */
+@keyframes bookLeafTurn180Forward {
   0% {
-    transform: rotateY(0deg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    filter: brightness(1);
+    transform: rotateY(0deg) translateZ(0px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   }
-  35% {
-    transform: rotateY(-55deg) scale(0.98);
-    box-shadow: -25px 12px 35px rgba(0, 0, 0, 0.22);
-    filter: brightness(0.93);
+  25% {
+    transform: rotateY(-40deg) rotateZ(-1deg) translateZ(24px);
+    box-shadow: -15px 12px 35px rgba(0, 0, 0, 0.28);
   }
-  65% {
-    transform: rotateY(-110deg) scale(0.96);
-    box-shadow: -40px 18px 45px rgba(0, 0, 0, 0.28);
-    filter: brightness(0.88);
-    opacity: 0.85;
+  50% {
+    transform: rotateY(-90deg) rotateZ(-2deg) translateZ(40px);
+    box-shadow: -25px 18px 45px rgba(0, 0, 0, 0.35);
+  }
+  75% {
+    transform: rotateY(-140deg) rotateZ(-1deg) translateZ(24px);
+    box-shadow: 18px 14px 38px rgba(0, 0, 0, 0.26);
   }
   100% {
-    transform: rotateY(0deg) scale(1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: rotateY(-180deg) rotateZ(0deg) translateZ(0px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@keyframes bookLeafTurn180Backward {
+  0% {
+    transform: rotateY(0deg) translateZ(0px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+  25% {
+    transform: rotateY(40deg) rotateZ(1deg) translateZ(24px);
+    box-shadow: 15px 12px 35px rgba(0, 0, 0, 0.28);
+  }
+  50% {
+    transform: rotateY(90deg) rotateZ(2deg) translateZ(40px);
+    box-shadow: 25px 18px 45px rgba(0, 0, 0, 0.35);
+  }
+  75% {
+    transform: rotateY(140deg) rotateZ(1deg) translateZ(24px);
+    box-shadow: -18px 14px 38px rgba(0, 0, 0, 0.26);
+  }
+  100% {
+    transform: rotateY(180deg) rotateZ(0deg) translateZ(0px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.book-flipping-leaf-forward {
+  animation: bookLeafTurn180Forward 0.62s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
+}
+
+.book-flipping-leaf-backward {
+  animation: bookLeafTurn180Backward 0.62s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
+}
+
+@keyframes leafFrontShadowAnim {
+  0% {
+    opacity: 0;
+  }
+  48% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes leafBackShadowAnim {
+  0% {
+    opacity: 0.65;
+  }
+  52% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.leaf-front-shadow {
+  animation: leafFrontShadowAnim 0.62s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+}
+
+.leaf-back-shadow {
+  animation: leafBackShadowAnim 0.62s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+}
+
+/* ── Forward Flip: Left page smooth incoming reveal (Desktop) ── */
+@keyframes bookRevealForwardLeft {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  48% {
+    transform: scale(0.98) translateX(-6px);
+    filter: brightness(0.92);
+    opacity: 0.45;
+  }
+  52% {
+    transform: scale(0.98) translateX(6px);
+    filter: brightness(0.94);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1) translateX(0);
     filter: brightness(1);
     opacity: 1;
   }
 }
 
-@keyframes leafTurnBackward {
+/* ── Backward Flip: Left page lifts & turns towards right (Desktop) ── */
+@keyframes bookFlipBackwardLeft {
   0% {
-    transform: rotateY(0deg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: rotateY(0deg) translateZ(0);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
     filter: brightness(1);
+    opacity: 1;
   }
-  35% {
-    transform: rotateY(55deg) scale(0.98);
-    box-shadow: 25px 12px 35px rgba(0, 0, 0, 0.22);
-    filter: brightness(0.93);
-  }
-  65% {
-    transform: rotateY(110deg) scale(0.96);
-    box-shadow: 40px 18px 45px rgba(0, 0, 0, 0.28);
+  48% {
+    transform: rotateY(36deg) scale(0.97) translateZ(24px);
+    box-shadow: 20px 10px 32px rgba(0, 0, 0, 0.22);
     filter: brightness(0.88);
-    opacity: 0.85;
+    opacity: 0.25;
+  }
+  52% {
+    transform: rotateY(-30deg) scale(0.97) translateZ(24px);
+    box-shadow: -20px 10px 32px rgba(0, 0, 0, 0.18);
+    filter: brightness(0.90);
+    opacity: 0.25;
   }
   100% {
-    transform: rotateY(0deg) scale(1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transform: rotateY(0deg) scale(1) translateZ(0);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
     filter: brightness(1);
     opacity: 1;
   }
 }
 
-.leaf-flip-forward {
-  transform-origin: left center;
-  animation: leafTurnForward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  will-change: transform, opacity, filter, box-shadow;
+/* ── Backward Flip: Right page smooth incoming reveal (Desktop) ── */
+@keyframes bookRevealBackwardRight {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  48% {
+    transform: scale(0.98) translateX(6px);
+    filter: brightness(0.92);
+    opacity: 0.45;
+  }
+  52% {
+    transform: scale(0.98) translateX(-6px);
+    filter: brightness(0.94);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1) translateX(0);
+    filter: brightness(1);
+    opacity: 1;
+  }
 }
 
-.leaf-flip-backward {
-  transform-origin: right center;
-  animation: leafTurnBackward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  will-change: transform, opacity, filter, box-shadow;
+/* ── Mobile Unified Flip (Screens < 1024px) ── */
+@keyframes mobilePageFlipForward {
+  0% {
+    transform: rotateY(0deg) scale(1);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  48% {
+    transform: rotateY(-28deg) scale(0.96) translateX(-10px);
+    filter: brightness(0.90);
+    opacity: 0.25;
+  }
+  52% {
+    transform: rotateY(24deg) scale(0.96) translateX(10px);
+    filter: brightness(0.92);
+    opacity: 0.25;
+  }
+  100% {
+    transform: rotateY(0deg) scale(1) translateX(0);
+    filter: brightness(1);
+    opacity: 1;
+  }
 }
 
-/* Mobile-only synchronized page flip (both photo and words flip together on screens < 1024px) */
+@keyframes mobilePageFlipBackward {
+  0% {
+    transform: rotateY(0deg) scale(1);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  48% {
+    transform: rotateY(28deg) scale(0.96) translateX(10px);
+    filter: brightness(0.90);
+    opacity: 0.25;
+  }
+  52% {
+    transform: rotateY(-24deg) scale(0.96) translateX(-10px);
+    filter: brightness(0.92);
+    opacity: 0.25;
+  }
+  100% {
+    transform: rotateY(0deg) scale(1) translateX(0);
+    filter: brightness(1);
+    opacity: 1;
+  }
+}
+
+/* Mobile-only synchronized page flip (screens < 1024px) */
 @media (max-width: 1023px) {
   .mobile-leaf-flip-forward {
-    transform-origin: left center;
-    animation: leafTurnForward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    will-change: transform, opacity, filter, box-shadow;
+    transform-origin: center center;
+    animation: mobilePageFlipForward 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity, filter;
   }
   .mobile-leaf-flip-backward {
-    transform-origin: right center;
-    animation: leafTurnBackward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    will-change: transform, opacity, filter, box-shadow;
+    transform-origin: center center;
+    animation: mobilePageFlipBackward 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity, filter;
   }
 }
 
-/* Desktop-only individual page flip (left backward, right forward on screens >= 1024px) */
+/* Desktop-only coordinated open-book page flip (screens >= 1024px) */
 @media (min-width: 1024px) {
-  .desktop-leaf-flip-forward {
+  .desktop-leaf-flip-forward-right {
     transform-origin: left center;
-    animation: leafTurnForward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: bookFlipForwardRight 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     will-change: transform, opacity, filter, box-shadow;
   }
-  .desktop-leaf-flip-backward {
+  .desktop-leaf-flip-forward-left {
     transform-origin: right center;
-    animation: leafTurnBackward 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: bookRevealForwardLeft 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity, filter;
+  }
+
+  .desktop-leaf-flip-backward-left {
+    transform-origin: right center;
+    animation: bookFlipBackwardLeft 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     will-change: transform, opacity, filter, box-shadow;
+  }
+  .desktop-leaf-flip-backward-right {
+    transform-origin: left center;
+    animation: bookRevealBackwardRight 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity, filter;
   }
 }
 

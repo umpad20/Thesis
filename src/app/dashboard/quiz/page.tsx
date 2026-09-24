@@ -125,17 +125,17 @@ function QuizContent() {
         isStageFinal && badgeId
           ? fetchStageFinalQuiz(badgeId)
           : lessonId
-          ? fetchQuizForLesson(lessonId)
-          : fetchQuizForLesson(1),
+            ? fetchQuizForLesson(lessonId)
+            : fetchQuizForLesson(1),
         fetchLessonsForStudent(studentSec, teacherId),
         user?.id
           ? fetchStudentLessonProgress(user.id)
           : Promise.resolve(
-              {} as Record<
-                number,
-                { status: "completed" | "in_progress" | "locked"; highest_score: number }
-              >
-            ),
+            {} as Record<
+              number,
+              { status: "completed" | "in_progress" | "locked"; highest_score: number }
+            >
+          ),
       ]);
 
       setAllLessons(liveLessons);
@@ -212,24 +212,24 @@ function QuizContent() {
   const nextBadgeId = effectiveBadgeId < 5 ? effectiveBadgeId + 1 : null;
   const nextBadge: Badge | null = nextBadgeId
     ? badges.find((b) => b.badge_id === nextBadgeId) || {
-        badge_id: nextBadgeId,
-        badge_name: `Stage ${nextBadgeId} Badge`,
-        badge_type: (nextBadgeId === 2
-          ? "ribbon"
-          : "medal") as BadgeType,
-        medal_type: (nextBadgeId === 3
-          ? "bronze"
-          : nextBadgeId === 4
+      badge_id: nextBadgeId,
+      badge_name: `Stage ${nextBadgeId} Badge`,
+      badge_type: (nextBadgeId === 2
+        ? "ribbon"
+        : "medal") as BadgeType,
+      medal_type: (nextBadgeId === 3
+        ? "bronze"
+        : nextBadgeId === 4
           ? "silver"
           : nextBadgeId === 5
-          ? "gold"
-          : null) as MedalType,
-        description: "Next reading milestone",
-        required_passing_score: 75,
-        xp_reward: 200,
-        badge_order: nextBadgeId,
-        target_section: "all",
-      }
+            ? "gold"
+            : null) as MedalType,
+      description: "Next reading milestone",
+      required_passing_score: 75,
+      xp_reward: 200,
+      badge_order: nextBadgeId,
+      target_section: "all",
+    }
     : null;
 
   const nextFirstLessonId = badgeId ? badgeId * 3 + 1 : 4;
@@ -582,8 +582,8 @@ function QuizContent() {
       (rawBadgeId
         ? Number(rawBadgeId)
         : lessonId && lessonId <= 15
-        ? Math.ceil(lessonId / 3)
-        : badgeId);
+          ? Math.ceil(lessonId / 3)
+          : badgeId);
     const currentStageBadge =
       badges.find((b) => b.badge_id === currentStageBadgeId) || currentBadge;
 
@@ -601,14 +601,14 @@ function QuizContent() {
     const isLastLessonOfStage =
       chapterLessons.length > 0
         ? currentLessonIdx === chapterLessons.length - 1 ||
-          chapterLessons.every(
-            (l) =>
-              l.lesson_id === lessonId ||
-              lessonProgress[l.lesson_id]?.status === "completed"
-          )
+        chapterLessons.every(
+          (l) =>
+            l.lesson_id === lessonId ||
+            lessonProgress[l.lesson_id]?.status === "completed"
+        )
         : lessonId
-        ? lessonId % 3 === 0
-        : true;
+          ? lessonId % 3 === 0
+          : true;
 
     const nextLessonId =
       nextChapterLesson?.lesson_id ||
@@ -622,24 +622,22 @@ function QuizContent() {
           )}
 
           <div
-            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl mx-auto flex items-center justify-center font-bold text-2xl sm:text-3xl shadow-md border-2 transition-transform duration-500 animate-bounce ${
-              isPassed
+            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl mx-auto flex items-center justify-center font-bold text-2xl sm:text-3xl shadow-md border-2 transition-transform duration-500 animate-bounce ${isPassed
                 ? "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white border-emerald-300 shadow-emerald-500/30"
                 : "bg-gradient-to-br from-amber-400 to-amber-600 text-white border-amber-300 shadow-amber-500/30"
-            }`}
+              }`}
           >
             {isPassed ? <PartyPopper className="w-8 h-8 sm:w-10 sm:h-10" /> : <RotateCcw className="w-8 h-8 sm:w-10 sm:h-10" />}
           </div>
 
           <div>
             <span
-              className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block mb-1.5 ${
-                isPassed
+              className={`text-[10px] sm:text-xs font-black uppercase tracking-widest block mb-1.5 ${isPassed
                   ? isLastLessonOfStage
                     ? "text-purple-600"
                     : "text-emerald-600"
                   : "text-amber-600"
-              }`}
+                }`}
             >
               {isPassed
                 ? isLastLessonOfStage
@@ -875,13 +873,9 @@ function QuizContent() {
           >
             {quizData.quiz_title}
           </h1>
-          {isStageFinal ? (
+          {isStageFinal && (
             <span className="bg-amber-100 text-amber-800 text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded-full border border-amber-300 flex-shrink-0">
               FINAL
-            </span>
-          ) : (
-            <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex-shrink-0 hidden md:inline">
-              Pass ≥{passingScore}%
             </span>
           )}
         </div>
@@ -893,9 +887,6 @@ function QuizContent() {
               <span className="hidden sm:inline text-slate-400">Question</span>
               <span>
                 {currentIndex + 1}/{totalQuestions}
-              </span>
-              <span className="text-blue-600 font-black">
-                ({Math.round(((currentIndex + 1) / totalQuestions) * 100)}%)
               </span>
             </div>
             {/* Progress Bar */}
@@ -922,19 +913,18 @@ function QuizContent() {
 
       {/* ── 4. Question & Choice Cards ─────────────────────────────────── */}
       <div
-        className={`dashboard-card p-4 sm:p-7 flex-1 sm:flex-initial flex flex-col justify-between space-y-3 sm:space-y-5 border-2 border-amber-100 bg-[#fffdfa] shadow-md transition-all duration-300 ${
-          feedbackType === "correct"
+        className={`dashboard-card p-4 sm:p-7 flex-1 sm:flex-initial flex flex-col justify-between space-y-3 sm:space-y-5 border-2 border-amber-100 bg-[#fffdfa] shadow-md transition-all duration-300 ${feedbackType === "correct"
             ? "ring-2 ring-emerald-400/50"
             : feedbackType === "wrong"
-            ? "ring-2 ring-amber-400/50 anim-shake-wiggle"
-            : ""
-        }`}
+              ? "ring-2 ring-amber-400/50 anim-shake-wiggle"
+              : ""
+          }`}
       >
         {/* Top: Question Header */}
         <div className="pb-3 border-b border-amber-200/60 flex items-start justify-between gap-3 sm:gap-4 flex-shrink-0">
           <div className="space-y-1 min-w-0">
             <span className="text-[10px] sm:text-[11px] font-black text-blue-600 uppercase tracking-widest block">
-              {isStageFinal ? "Stage Mastery Question" : "Comprehension Question"} {currentIndex + 1}
+              {isStageFinal ? "Stage Mastery Question" : "Question"} {currentIndex + 1}
             </span>
             <h2 className="text-sm sm:text-lg font-black text-slate-900 leading-snug">
               {currentQuestion.question_text}
@@ -1003,11 +993,10 @@ function QuizContent() {
           {/* Feedback / Explanation Box */}
           {isSubmitted && (
             <div
-              className={`p-3 sm:p-4 rounded-xl border text-xs leading-relaxed space-y-1 transition-all duration-200 ${
-                isCorrect
+              className={`p-3 sm:p-4 rounded-xl border text-xs leading-relaxed space-y-1 transition-all duration-200 ${isCorrect
                   ? "bg-emerald-50 border-emerald-200 text-emerald-950"
                   : "bg-amber-50 border-amber-200 text-amber-950"
-              }`}
+                }`}
             >
               <div className="flex items-center gap-2 font-bold text-xs sm:text-sm">
                 {isCorrect ? (
@@ -1056,10 +1045,7 @@ function QuizContent() {
         </div>
 
         {/* Bottom: Action Controls */}
-        <div className="pt-3 sm:pt-4 border-t border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
-          <div className="text-xs text-slate-400 font-bold">
-            Question {currentIndex + 1} of {totalQuestions}
-          </div>
+        <div className="pt-3 sm:pt-4 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
 
           {!isSubmitted ? (
             <Button

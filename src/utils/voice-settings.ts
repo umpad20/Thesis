@@ -7,7 +7,7 @@ export interface VoicePreferences {
   selectedVoiceName?: string;
 }
 
-const DEFAULT_PREFERENCES: VoicePreferences = {
+export const DEFAULT_PREFERENCES: VoicePreferences = {
   gender: "female",
   rate: 0.85,
   pitch: 1.05,
