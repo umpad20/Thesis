@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Volume2, Sparkles, X } from "lucide-react";
+import { Volume2, BookOpen, X } from "lucide-react";
 import type { VocabularyWord } from "@/lib/types";
+import { getMatchingVoice, getVoicePreferences } from "@/utils/voice-settings";
 
 interface VocabularyPopoverProps {
   wordData: VocabularyWord;
@@ -41,9 +42,15 @@ export function VocabularyPopover({ wordData, displayText }: VocabularyPopoverPr
     e.stopPropagation();
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
+      const prefs = getVoicePreferences();
+      const voice = getMatchingVoice(prefs.gender);
       const utterance = new SpeechSynthesisUtterance(wordData.word);
-      utterance.rate = 0.85; // Slightly slower, clear for Grade 3 pupils
-      utterance.pitch = 1.1;
+      if (voice) {
+        utterance.voice = voice;
+      }
+      utterance.rate = prefs.rate || 0.85; // Slightly slower, clear for Grade 3 pupils
+      utterance.pitch = prefs.pitch || 1.05;
+      utterance.lang = "en-US";
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -161,7 +168,7 @@ export function VocabularyPopover({ wordData, displayText }: VocabularyPopoverPr
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100/90 text-amber-950 font-bold border-b-2 border-amber-400 cursor-pointer hover:bg-amber-200 transition-all duration-150 shadow-2xs group select-none"
       >
         <span>{displayText}</span>
-        <Sparkles className="w-3 h-3 text-amber-600 inline-block opacity-75 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+        <BookOpen className="w-3 h-3 text-amber-600 inline-block opacity-75 group-hover:opacity-100 group-hover:scale-110 transition-all" />
       </span>
 
       {/* Floating Meaning Tooltip Popover (Rendered in Portal to prevent clipping) */}

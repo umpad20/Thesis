@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Cloud, Sparkles, Compass, ArrowRight } from "lucide-react";
+import { Cloud, Compass, ArrowRight } from "lucide-react";
 
 /**
  * ── 1. Cloud Seam Divider ────────────────────────────────────────────────────
@@ -35,62 +35,26 @@ export function CloudSeamDivider({
       <svg
         viewBox="0 0 1000 160"
         preserveAspectRatio="none"
-        className="absolute inset-0 w-full h-full text-sky-100/70 fill-current anim-cloud-drift pointer-events-none"
+        className="absolute inset-0 w-full h-full fill-sky-100/70 anim-cloud-drift pointer-events-none"
       >
-        {/* Upper cloud scallops reaching upward */}
-        <circle cx="80" cy="80" r="70" />
-        <circle cx="220" cy="70" r="85" />
-        <circle cx="380" cy="75" r="90" />
-        <circle cx="530" cy="65" r="95" />
-        <circle cx="680" cy="75" r="85" />
-        <circle cx="820" cy="70" r="90" />
-        <circle cx="950" cy="80" r="75" />
-
-        {/* Lower cloud scallops reaching downward */}
-        <circle cx="150" cy="95" r="75" />
-        <circle cx="300" cy="100" r="85" />
-        <circle cx="460" cy="105" r="80" />
-        <circle cx="610" cy="95" r="90" />
-        <circle cx="760" cy="100" r="85" />
-        <circle cx="900" cy="95" r="75" />
+        {/* Organic cloud silhouette — back layer */}
+        <path d="M0,100 C50,60 100,30 180,50 C260,70 300,20 400,40 C500,60 520,10 620,35 C720,60 780,25 860,45 C940,65 970,40 1000,60 L1000,160 L0,160 Z" />
+        <path d="M0,120 C80,140 120,110 200,125 C280,140 340,100 440,115 C540,130 600,95 700,110 C800,125 860,100 940,115 C980,125 1000,110 1000,120 L1000,160 L0,160 Z" />
       </svg>
 
-      {/* ── Layer 2: Front Pillowy White Clouds (Pure white with soft drop-shadow) ── */}
+      {/* ── Layer 2: Front Pillowy White Clouds ── */}
       <svg
         viewBox="0 0 1000 160"
         preserveAspectRatio="none"
-        className="absolute inset-0 w-full h-full text-white fill-current filter drop-shadow-[0_4px_8px_rgba(15,23,42,0.08)] pointer-events-none anim-cloud-float"
+        className="absolute inset-0 w-full h-full fill-white filter drop-shadow-[0_4px_8px_rgba(15,23,42,0.08)] pointer-events-none anim-cloud-float"
       >
-        {/* Dense central cloud mass */}
-        <rect x="0" y="55" width="1000" height="50" />
-
-        {/* Crisp billowing cloud domes (top crest) */}
-        <circle cx="50" cy="70" r="55" />
-        <circle cx="140" cy="55" r="65" />
-        <circle cx="260" cy="50" r="75" />
-        <circle cx="390" cy="45" r="80" />
-        <circle cx="500" cy="40" r="85" />
-        <circle cx="620" cy="45" r="80" />
-        <circle cx="740" cy="50" r="75" />
-        <circle cx="860" cy="55" r="65" />
-        <circle cx="960" cy="70" r="55" />
-
-        {/* Crisp billowing cloud domes (bottom crest) */}
-        <circle cx="90" cy="95" r="55" />
-        <circle cx="210" cy="105" r="65" />
-        <circle cx="340" cy="110" r="70" />
-        <circle cx="470" cy="115" r="75" />
-        <circle cx="590" cy="110" r="70" />
-        <circle cx="710" cy="105" r="65" />
-        <circle cx="830" cy="100" r="60" />
-        <circle cx="930" cy="95" r="55" />
+        {/* Dense central fill */}
+        <rect x="0" y="65" width="1000" height="95" />
+        {/* Organic bumpy top crest */}
+        <path d="M0,80 C30,65 70,40 130,50 C190,60 220,25 290,35 C360,45 400,15 470,30 C540,45 570,10 640,25 C710,40 750,15 820,30 C890,45 930,20 970,40 C990,50 1000,55 1000,65 L1000,160 L0,160 Z" />
+        {/* Organic bumpy bottom crest */}
+        <path d="M0,130 C40,145 80,155 140,140 C200,125 260,150 340,135 C420,120 480,145 560,130 C640,115 700,140 780,130 C860,120 920,140 1000,130 L1000,160 L0,160 Z" />
       </svg>
-
-      {/* ── Floating Whimsical Sparkles & Ambient Cloud Wisps ── */}
-      <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 flex justify-between items-center pointer-events-none z-10 px-4">
-        <Sparkles className="w-4 h-4 text-amber-300 fill-amber-300/80 animate-pulse" />
-        <Sparkles className="w-3.5 h-3.5 text-sky-400 fill-sky-300 animate-pulse delay-300" />
-      </div>
 
       {/* ── Interactive Cloud Gateway Badge (bridges the two biomes) ── */}
       <div className="relative z-20 pointer-events-auto flex items-center justify-center">
@@ -116,82 +80,158 @@ export function CloudSeamDivider({
 /**
  * ── 2. Map-Scoped Cloud Wipe Transition Overlay ─────────────────────────────
  * Contained strictly within the map canvas (never the whole screen).
- * Clouds billow in from left & right to close halfway across the map,
- * and then part open as the new level is revealed.
+ * Uses organic SVG cloud-edge paths (not circles!) for natural fluffy silhouettes.
  */
 interface StorybookCloudWipeProps {
   phase: "idle" | "closing" | "closed" | "opening";
 }
 
+/**
+ * Organic cloud edge path — drawn as a vertical strip with natural bumps.
+ * The path goes from top-to-bottom along x=0..120, with the right side
+ * being the fluffy cloud edge (bumps outward) and left side a straight line.
+ * Mirror horizontally for the right cloud bank.
+ */
+const LEFT_CLOUD_EDGE_PATH =
+  "M0,0 L120,0 " +
+  "C115,20 130,35 118,55 " +
+  "C105,70 135,85 125,105 " +
+  "C112,125 140,140 130,165 " +
+  "C118,185 145,200 135,225 " +
+  "C120,250 150,265 140,290 " +
+  "C128,310 155,325 142,350 " +
+  "C130,370 158,390 145,415 " +
+  "C132,435 160,450 148,475 " +
+  "C136,495 162,515 150,540 " +
+  "C138,560 165,580 152,605 " +
+  "C140,625 168,645 155,670 " +
+  "C142,690 170,710 158,735 " +
+  "C145,755 172,775 160,800 " +
+  "C148,820 175,840 162,860 " +
+  "C150,880 178,900 165,925 " +
+  "C152,945 180,960 168,985 " +
+  "C155,1000 120,1000 120,1000 " +
+  "L0,1000 Z";
+
+const RIGHT_CLOUD_EDGE_PATH =
+  "M120,0 L0,0 " +
+  "C5,25 -15,40 2,60 " +
+  "C15,80 -12,95 -5,120 " +
+  "C8,140 -18,160 -10,185 " +
+  "C2,210 -22,230 -12,255 " +
+  "C0,280 -25,300 -15,325 " +
+  "C-2,350 -28,370 -18,395 " +
+  "C-5,420 -30,440 -20,465 " +
+  "C-8,490 -32,510 -22,535 " +
+  "C-5,560 -35,580 -25,605 " +
+  "C-8,630 -38,650 -28,675 " +
+  "C-5,700 -35,720 -25,745 " +
+  "C-2,770 -32,790 -22,815 " +
+  "C0,840 -28,860 -18,885 " +
+  "C5,910 -25,930 -15,955 " +
+  "C8,975 0,1000 0,1000 " +
+  "L120,1000 Z";
+
 export function StorybookCloudWipe({ phase }: StorybookCloudWipeProps) {
   if (phase === "idle") return null;
 
   const isClosedOrClosing = phase === "closing" || phase === "closed";
+  const transitionDuration = phase === "closing" ? "340ms" : "320ms";
+  const timingFunction =
+    phase === "closing"
+      ? "cubic-bezier(0.2, 0.9, 0.3, 1)"
+      : "cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
     <div
       className="absolute inset-0 z-30 pointer-events-none overflow-hidden flex items-center justify-center select-none"
       aria-hidden="true"
     >
-      {/* ── Left Cloud Curtain (Closes halfway to 50%) ── */}
+      {/* ── 1. Soft Ambient Sky-Mist Wash ── */}
       <div
-        className={`absolute top-0 bottom-0 left-0 w-1/2 h-full bg-white/95 transition-transform ease-out will-change-transform ${
+        className={`absolute inset-0 bg-gradient-to-b from-sky-100/70 via-white/80 to-sky-100/70 backdrop-blur-xs transition-opacity pointer-events-none z-10 ${
+          isClosedOrClosing ? "opacity-100" : "opacity-0"
+        }`}
+        style={{
+          transitionDuration: phase === "closing" ? "260ms" : "300ms",
+        }}
+      />
+
+      {/* ── 2. Left Cloud Bank ── */}
+      <div
+        className={`absolute top-0 bottom-0 left-0 w-[58%] h-full bg-white transition-transform ease-out will-change-transform z-20 ${
           isClosedOrClosing ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{
-          transitionDuration: phase === "closing" ? "340ms" : "300ms",
-          transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+          transitionDuration,
+          transitionTimingFunction: timingFunction,
         }}
       >
-        {/* Scalloped Puffy Cloud Edge on Right Boundary */}
-        <div className="absolute -right-10 sm:-right-14 top-0 bottom-0 w-14 sm:w-20 h-full pointer-events-none">
-          {/* Back Sky-Blue Depth Layer */}
-          <svg
-            viewBox="0 0 100 800"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full text-sky-100 fill-current translate-x-1 opacity-75"
-          >
-            <path d="M0,0 Q90,60 40,120 Q110,180 50,240 Q120,310 60,380 Q110,450 45,520 Q120,590 55,660 Q100,730 40,780 L0,800 Z" />
-          </svg>
-          {/* Front Pure White Cloud Scallop */}
-          <svg
-            viewBox="0 0 100 800"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full text-white fill-current filter drop-shadow-[2px_0_8px_rgba(15,23,42,0.1)]"
-          >
-            <path d="M0,0 Q80,50 35,110 Q105,170 45,230 Q115,300 55,370 Q105,440 40,510 Q115,580 50,650 Q95,720 35,770 L0,800 Z" />
-          </svg>
-        </div>
+        {/* Organic cloud edge — back shadow layer */}
+        <svg
+          className="absolute top-0 right-0 h-full pointer-events-none overflow-visible"
+          style={{ width: 80, transform: "translateX(55px)" }}
+          viewBox="0 0 120 1000"
+          preserveAspectRatio="none"
+          fill="#e0f2fe"
+        >
+          <path d={LEFT_CLOUD_EDGE_PATH} opacity="0.85" />
+        </svg>
+        {/* Organic cloud edge — front white layer */}
+        <svg
+          className="absolute top-0 right-0 h-full pointer-events-none overflow-visible"
+          style={{ width: 72, transform: "translateX(45px)", filter: "drop-shadow(3px 0 8px rgba(15,23,42,0.06))" }}
+          viewBox="0 0 120 1000"
+          preserveAspectRatio="none"
+          fill="white"
+        >
+          <path d={LEFT_CLOUD_EDGE_PATH} />
+        </svg>
       </div>
 
-      {/* ── Right Cloud Curtain (Closes halfway to 50%) ── */}
+      {/* ── 3. Right Cloud Bank ── */}
       <div
-        className={`absolute top-0 bottom-0 right-0 w-1/2 h-full bg-white/95 transition-transform ease-out will-change-transform ${
+        className={`absolute top-0 bottom-0 right-0 w-[58%] h-full bg-white transition-transform ease-out will-change-transform z-20 ${
           isClosedOrClosing ? "translate-x-0" : "translate-x-full"
         }`}
         style={{
-          transitionDuration: phase === "closing" ? "340ms" : "300ms",
-          transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+          transitionDuration,
+          transitionTimingFunction: timingFunction,
         }}
       >
-        {/* Scalloped Puffy Cloud Edge on Left Boundary */}
-        <div className="absolute -left-10 sm:-left-14 top-0 bottom-0 w-14 sm:w-20 h-full pointer-events-none">
-          {/* Back Sky-Blue Depth Layer */}
-          <svg
-            viewBox="0 0 100 800"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full text-sky-100 fill-current -translate-x-1 scale-x-[-1] opacity-75"
-          >
-            <path d="M0,0 Q90,60 40,120 Q110,180 50,240 Q120,310 60,380 Q110,450 45,520 Q120,590 55,660 Q100,730 40,780 L0,800 Z" />
-          </svg>
-          {/* Front Pure White Cloud Scallop */}
-          <svg
-            viewBox="0 0 100 800"
-            preserveAspectRatio="none"
-            className="absolute inset-0 w-full h-full text-white fill-current scale-x-[-1] filter drop-shadow-[-2px_0_8px_rgba(15,23,42,0.1)]"
-          >
-            <path d="M0,0 Q80,50 35,110 Q105,170 45,230 Q115,300 55,370 Q105,440 40,510 Q115,580 50,650 Q95,720 35,770 L0,800 Z" />
-          </svg>
+        {/* Organic cloud edge — back shadow layer */}
+        <svg
+          className="absolute top-0 left-0 h-full pointer-events-none overflow-visible"
+          style={{ width: 80, transform: "translateX(-55px)" }}
+          viewBox="0 0 120 1000"
+          preserveAspectRatio="none"
+          fill="#e0f2fe"
+        >
+          <path d={RIGHT_CLOUD_EDGE_PATH} opacity="0.85" />
+        </svg>
+        {/* Organic cloud edge — front white layer */}
+        <svg
+          className="absolute top-0 left-0 h-full pointer-events-none overflow-visible"
+          style={{ width: 72, transform: "translateX(-45px)", filter: "drop-shadow(-3px 0 8px rgba(15,23,42,0.06))" }}
+          viewBox="0 0 120 1000"
+          preserveAspectRatio="none"
+          fill="white"
+        >
+          <path d={RIGHT_CLOUD_EDGE_PATH} />
+        </svg>
+      </div>
+
+      {/* ── 4. Center twinkle (visible during closed hold) ── */}
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center transition-all duration-300 pointer-events-none z-30 ${
+          phase === "closed"
+            ? "opacity-100 scale-100"
+            : "opacity-0 scale-95"
+        }`}
+      >
+        <div className="relative flex items-center justify-center">
+          <div className="w-28 h-28 rounded-full bg-white/70 filter blur-lg animate-pulse" />
+          <Cloud className="w-8 h-8 text-sky-400 fill-sky-200/80 animate-pulse absolute drop-shadow-sm" />
         </div>
       </div>
     </div>
@@ -251,11 +291,7 @@ export function ChapterCloudPeek({
           isTop ? "" : "rotate-180"
         }`}
       >
-        <circle cx="60" cy="80" r="50" />
-        <circle cx="160" cy="70" r="60" />
-        <circle cx="280" cy="65" r="70" />
-        <circle cx="410" cy="70" r="65" />
-        <circle cx="530" cy="80" r="55" />
+        <path d="M0,70 C30,50 70,30 130,45 C190,60 230,25 300,35 C370,45 410,15 480,30 C550,45 600,20 600,40 L600,120 L0,120 Z" />
       </svg>
 
       {/* Floating prompt pill */}

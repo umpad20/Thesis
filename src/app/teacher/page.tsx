@@ -8,7 +8,6 @@ import {
   FileCheck2,
   ArrowRight,
   ChevronRight,
-  Sparkles,
   Award,
   Layers,
   AlertTriangle,
@@ -270,28 +269,28 @@ export default function TeacherDashboard() {
         </Link>
       </div>
 
-      {/* ── 4. 🚨 Early Intervention & Struggling Pupils Radar ──────────── */}
-      <div className="dashboard-card p-6 border-2 border-rose-100/80 bg-gradient-to-b from-rose-50/20 to-white space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rose-100">
+      {/* ── 4. 🚨 Student Support Radar ─────────────────────────────── */}
+      <div className="dashboard-card p-5 border border-slate-200/80 bg-white space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
             <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
-              <span>Pupil Early-Intervention &amp; Attention Radar</span>
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+              <span>Student Support Radar</span>
             </h3>
-            <p className="text-xs text-slate-500">
-              Live algorithmic monitoring of enrolled pupils requiring reading assistance, phonics support, or score recovery.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pupils who may need extra reading guidance or phonics assistance.
             </p>
           </div>
 
-          {/* Interactive Radar Filter Pills */}
-          <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
+          {/* Interactive Radar Filter Pills - Sleek Segmented Control */}
+          <div className="inline-flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs font-bold shrink-0 overflow-x-auto scrollbar-none self-start sm:self-center">
             <button
               type="button"
               onClick={() => setRadarFilter("all")}
-              className={`px-2.5 py-1 rounded-lg border transition-all ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 radarFilter === "all"
-                  ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                  : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                  ? "bg-white text-slate-900 shadow-2xs font-black"
+                  : "text-slate-600 hover:text-slate-900 font-semibold"
               }`}
             >
               All ({radar.pupils.length})
@@ -299,41 +298,44 @@ export default function TeacherDashboard() {
             <button
               type="button"
               onClick={() => setRadarFilter("critical")}
-              className={`px-2.5 py-1 rounded-lg border transition-all ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 radarFilter === "critical"
-                  ? "bg-rose-600 text-white border-rose-600 shadow-xs"
-                  : "bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200"
+                  ? "bg-rose-600 text-white shadow-2xs font-black"
+                  : "text-rose-700 hover:bg-rose-50 font-semibold"
               }`}
             >
-              🔴 {radar.criticalCount} Critical
+              <span className={`w-1.5 h-1.5 rounded-full ${radarFilter === "critical" ? "bg-white" : "bg-rose-500"}`} />
+              <span>{radar.criticalCount} Critical</span>
             </button>
             <button
               type="button"
               onClick={() => setRadarFilter("watchlist")}
-              className={`px-2.5 py-1 rounded-lg border transition-all ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 radarFilter === "watchlist"
-                  ? "bg-amber-500 text-white border-amber-500 shadow-xs"
-                  : "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200"
+                  ? "bg-amber-500 text-white shadow-2xs font-black"
+                  : "text-amber-700 hover:bg-amber-50 font-semibold"
               }`}
             >
-              🟡 {radar.watchlistCount} Watchlist
+              <span className={`w-1.5 h-1.5 rounded-full ${radarFilter === "watchlist" ? "bg-white" : "bg-amber-500"}`} />
+              <span>{radar.watchlistCount} Watchlist</span>
             </button>
             <button
               type="button"
               onClick={() => setRadarFilter("mastering")}
-              className={`px-2.5 py-1 rounded-lg border transition-all ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 radarFilter === "mastering"
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                  : "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+                  ? "bg-emerald-600 text-white shadow-2xs font-black"
+                  : "text-emerald-700 hover:bg-emerald-50 font-semibold"
               }`}
             >
-              🟢 {radar.masteringCount} Mastering
+              <span className={`w-1.5 h-1.5 rounded-full ${radarFilter === "mastering" ? "bg-white" : "bg-emerald-500"}`} />
+              <span>{radar.masteringCount} On Track</span>
             </button>
           </div>
         </div>
 
         {loading ? (
-          <div className="py-6 text-center text-xs text-slate-400">Evaluating classroom risk factors...</div>
+          <div className="py-6 text-center text-xs text-slate-400">Evaluating classroom progress factors...</div>
         ) : displayedRadarPupils.length === 0 ? (
           <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 text-emerald-900 flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
@@ -350,7 +352,7 @@ export default function TeacherDashboard() {
                     <th className="py-2.5 px-3.5 min-w-[160px]">Pupil</th>
                     <th className="py-2.5 px-3.5">Status</th>
                     <th className="py-2.5 px-3.5 text-center">Score</th>
-                    <th className="py-2.5 px-3.5 hidden md:table-cell min-w-[220px]">Algorithmic Insight &amp; Advice</th>
+                    <th className="py-2.5 px-3.5 hidden md:table-cell min-w-[220px]">Insight &amp; Guidance</th>
                     <th className="py-2.5 px-3.5 text-right min-w-[140px]">Action</th>
                   </tr>
                 </thead>
@@ -418,7 +420,7 @@ export default function TeacherDashboard() {
                               {p.struggleReason}
                             </span>
                             <span className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
-                              <Sparkles className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                              <ArrowRight className="w-2.5 h-2.5 text-amber-500 shrink-0" />
                               <span className="truncate">{p.recommendedAction}</span>
                             </span>
                           </div>
@@ -518,7 +520,7 @@ export default function TeacherDashboard() {
         <div className="dashboard-card p-6 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600" />
+              <Layers className="w-4 h-4 text-blue-600" />
               <span>Mastery Pathway Distribution</span>
             </h3>
             <span className="text-[10px] font-bold text-slate-400 uppercase">5-Stage Model</span>

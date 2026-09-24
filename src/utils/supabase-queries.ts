@@ -1007,9 +1007,44 @@ export interface TeacherReportRow {
   quizzesPassed: string;
   status: "Mastering" | "On Track" | "Needs Review";
   lastActive: string;
+  avatar?: string;
   totalXp?: number;
   streakDays?: number;
   isAllStagesCompleted?: boolean;
+}
+
+export function inferStudentGender(p: {
+  gender?: string;
+  sex?: string;
+  avatar?: string;
+  full_name?: string;
+}): "Male" | "Female" {
+  if (p.gender && (p.gender.toLowerCase() === "male" || p.gender.toLowerCase() === "m")) return "Male";
+  if (p.gender && (p.gender.toLowerCase() === "female" || p.gender.toLowerCase() === "f")) return "Female";
+  if (p.sex && (p.sex.toLowerCase() === "male" || p.sex.toLowerCase() === "m")) return "Male";
+  if (p.sex && (p.sex.toLowerCase() === "female" || p.sex.toLowerCase() === "f")) return "Female";
+  if (p.avatar === "👦") return "Male";
+  if (p.avatar === "👧") return "Female";
+
+  const name = (p.full_name || "").toLowerCase().trim();
+  const firstWord = name.split(/\s+/)[0] || "";
+
+  const boyKeywords = [
+    "martin", "john", "kenzie", "kenken", "angelo", "kyle", "michael",
+    "david", "james", "daniel", "mark", "alex", "gwapo", "gwapoko",
+    "carl", "christian", "joshua", "ethan", "liam", "noah", "lucas",
+    "ryan", "gabriel", "miguel", "anthony", "joseph"
+  ];
+  const girlKeywords = [
+    "jusmine", "jasmine", "trisha", "trish", "mia", "anna", "maria",
+    "sophia", "emma", "chloe", "reyes", "angela", "nicole", "sarah",
+    "bea", "claire", "hannah", "jessica", "joy", "grace"
+  ];
+
+  if (boyKeywords.includes(firstWord) || boyKeywords.some((b) => name.startsWith(b))) return "Male";
+  if (girlKeywords.includes(firstWord) || girlKeywords.some((g) => name.startsWith(g))) return "Female";
+
+  return "Male";
 }
 
 export async function fetchClassRosterReports(
@@ -1050,11 +1085,33 @@ export async function fetchClassRosterReports(
     const attemptList = attRes.data || [];
 
     return profiles.map((p) => {
-      const studentBadges = progressList.filter((pr) => pr.student_id === p.id);
+      const studentBadges = progressList
+        .filter((pr) => pr.student_id === p.id)
+        .sort((a, b) => Number(a.badge_id) - Number(b.badge_id));
       const studentAttempts = attemptList.filter((a) => a.student_id === p.id);
 
-      const latestBadgeId = studentBadges.length > 0 ? studentBadges[studentBadges.length - 1].badge_id : 1;
-      const badgeName = badgeMap.get(latestBadgeId) || "Stage 1: Reading Star";
+      const isAllStagesCompleted = studentBadges.some(
+        (b) => Number(b.badge_id) === 5 && b.status === "completed"
+      );
+
+      let badgeName = "Stage 1: Reading Star";
+      if (isAllStagesCompleted) {
+        badgeName = "Stage 5: Gold Medal (Completed)";
+      } else {
+        const inProgressBadge = studentBadges.find((b) => b.status === "in_progress");
+        if (inProgressBadge) {
+          badgeName = badgeMap.get(inProgressBadge.badge_id) || `Stage ${inProgressBadge.badge_id}`;
+        } else {
+          const completedBadges = studentBadges.filter((b) => b.status === "completed");
+          if (completedBadges.length > 0) {
+            const highestId = Math.max(...completedBadges.map((b) => Number(b.badge_id)));
+            const nextId = Math.min(highestId + 1, 5);
+            badgeName = badgeMap.get(nextId) || `Stage ${nextId}`;
+          } else if (studentBadges.length > 0) {
+            badgeName = badgeMap.get(studentBadges[0].badge_id) || "Stage 1: Reading Star";
+          }
+        }
+      }
 
       const totalAttempts = studentAttempts.length;
       const xpCalc = calculateStudentXp(studentBadges, studentAttempts, badgeXpMap);
@@ -1075,9 +1132,6 @@ export async function fetchClassRosterReports(
 
       const activityTimestamps = studentAttempts.map((a) => a.completed_at || a.started_at);
       const streakDays = calculateStudentStreak(activityTimestamps);
-      const isAllStagesCompleted = studentBadges.some(
-        (b) => Number(b.badge_id) === 5 && b.status === "completed"
-      );
 
       return {
         studentId: p.id,
@@ -1089,7 +1143,8 @@ export async function fetchClassRosterReports(
         readingSpeed: avgScore > 0 ? `${Math.round(85 + (avgScore / 100) * 20)} WPM` : "—",
         status: status as "Mastering" | "On Track" | "Needs Review",
         lastActive: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "Active recently",
-        gender: "Female",
+        avatar: p.avatar || "👧",
+        gender: inferStudentGender(p),
         totalXp: xpCalc.totalXp,
         streakDays,
         isAllStagesCompleted,
@@ -1205,6 +1260,9 @@ export async function fetchClassroomLeaderboard(
     }
 
     if (section && section !== "all") {
+      if (section === "Unassigned" || section.toLowerCase() === "unassigned") {
+        return [];
+      }
       query = query.eq("section", section);
     }
 
@@ -1500,10 +1558,30 @@ export async function fetchStudentDetailedQuizAttempts(
 
   try {
     const supabase = createClient();
+    let resolvedId = studentId.trim();
+
+    // Check if studentId is a formatted display ID (e.g., "STU-F482", "STU-1FA0") or short prefix
+    const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedId);
+    if (!isFullUuid) {
+      const cleanPrefix = resolvedId.replace(/^STU-/i, "").toLowerCase().trim();
+      if (cleanPrefix) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("id", `${cleanPrefix}%`)
+          .limit(1)
+          .maybeSingle();
+
+        if (prof?.id) {
+          resolvedId = prof.id;
+        }
+      }
+    }
+
     const { data: attempts, error } = await supabase
       .from("quiz_attempts")
       .select("attempt_id, quiz_id, score, percentage, status, completed_at")
-      .eq("student_id", studentId)
+      .eq("student_id", resolvedId)
       .order("completed_at", { ascending: false });
 
     if (error || !attempts || attempts.length === 0) return [];

@@ -10,9 +10,9 @@ import {
   Headphones,
   HelpCircle,
   ChevronRight,
+  ChevronDown,
   Search,
   Check,
-  Sparkles,
   ArrowLeft,
   VolumeX,
   Play,
@@ -50,7 +50,7 @@ export function SettingsHub({ portal }: SettingsHubProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as SettingSection) || "voice";
-  const [activeSection, setActiveSection] = useState<SettingSection>(
+  const [activeSection, setActiveSection] = useState<SettingSection | null>(
     ["voice", "account", "privacy", "help", "about"].includes(initialTab) ? initialTab : "voice"
   );
   const [searchQuery, setSearchQuery] = useState("");
@@ -178,30 +178,397 @@ export function SettingsHub({ portal }: SettingsHubProps) {
 
   const backUrl = portal === "teacher" ? "/teacher" : "/dashboard";
 
+  const renderSectionContent = (sectionId: SettingSection) => {
+    switch (sectionId) {
+      case "voice":
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-blue-600" />
+                  <span>AI Voice &amp; Speech Narrator</span>
+                </h2>
+                {getSubtitle("voice") && (
+                  <p className="text-xs text-slate-500 font-medium">
+                    {getSubtitle("voice")}
+                  </p>
+                )}
+              </div>
+              <span className="text-xs font-black px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                Story Narrator
+              </span>
+            </div>
+
+            {/* Narrator Character Gender Cards */}
+            <div className="space-y-3">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                Choose Narrator Voice Gender
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Girl / Female Voice Card */}
+                <button
+                  type="button"
+                  onClick={() => handleUpdateGender("female")}
+                  className={`p-4 sm:p-5 rounded-2xl border-2 text-left transition-all cursor-pointer relative flex items-center gap-4 ${
+                    voicePrefs.gender === "female"
+                      ? "border-blue-600 bg-blue-50/40 shadow-sm"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center text-2xl sm:text-3xl shadow-xs flex-shrink-0">
+                    👧
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-slate-900">Girl Voice (Female)</span>
+                      {voicePrefs.gender === "female" && (
+                        <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Warm, encouraging, and clear storyteller voice for Grade 3 pupils.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Boy / Male Voice Card */}
+                <button
+                  type="button"
+                  onClick={() => handleUpdateGender("male")}
+                  className={`p-4 sm:p-5 rounded-2xl border-2 text-left transition-all cursor-pointer relative flex items-center gap-4 ${
+                    voicePrefs.gender === "male"
+                      ? "border-blue-600 bg-blue-50/40 shadow-sm"
+                      : "border-slate-200 bg-white hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center text-2xl sm:text-3xl shadow-xs flex-shrink-0">
+                    👦
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-slate-900">Boy Voice (Male)</span>
+                      {voicePrefs.gender === "male" && (
+                        <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Friendly, energetic, and articulate companion voice for story reading.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Speed & Pitch Controls */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-blue-600" />
+                <span>Narration Pace &amp; Pitch Controls</span>
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                {/* Rate Slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-700">Reading Speed</span>
+                    <span className="text-blue-600 font-mono bg-blue-50 px-2 py-0.5 rounded-md">
+                      {voicePrefs.rate}x {voicePrefs.rate < 1 ? "(Gentle / Slow)" : voicePrefs.rate > 1 ? "(Brisk)" : "(Standard)"}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.7"
+                    max="1.2"
+                    step="0.05"
+                    value={voicePrefs.rate}
+                    onChange={(e) => handleUpdateRate(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
+                    <span>0.7x (Slow)</span>
+                    <span>1.0x (Normal)</span>
+                    <span>1.2x (Fast)</span>
+                  </div>
+                </div>
+
+                {/* Pitch Slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-700">Voice Pitch</span>
+                    <span className="text-blue-600 font-mono bg-blue-50 px-2 py-0.5 rounded-md">
+                      {voicePrefs.pitch.toFixed(2)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="1.3"
+                    step="0.05"
+                    value={voicePrefs.pitch}
+                    onChange={(e) => handleUpdatePitch(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
+                    <span>Deeper</span>
+                    <span>Natural</span>
+                    <span>Higher</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Speech Tester */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/80 space-y-3">
+              <label className="text-xs font-black text-slate-900 block">
+                🔊 Live Voice Test Preview
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={testSpeechText}
+                  onChange={(e) => setTestSpeechText(e.target.value)}
+                  className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <Button
+                  onClick={handleTestVoice}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {isPlayingPreview ? (
+                    <>
+                      <Square className="w-4 h-4 fill-white" />
+                      <span>Stop Audio</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>Test Voice</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "account":
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                  <User className="w-5 h-5 text-indigo-600" />
+                  <span>Account &amp; Mascot Profile</span>
+                </h2>
+                {getSubtitle("account") && (
+                  <p className="text-xs text-slate-500 font-medium">
+                    {getSubtitle("account")}
+                  </p>
+                )}
+              </div>
+              {avatarSaved && (
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                  ✓ Mascot Saved!
+                </span>
+              )}
+            </div>
+
+            {/* Profile Overview Card */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
+              <StudentAvatar
+                avatar={selectedAvatar}
+                name={user?.fullName || "Learner"}
+                size="xl"
+                className="shadow-sm ring-2 ring-white flex-shrink-0"
+              />
+              <div className="min-w-0">
+                <h3 className="text-sm font-black text-slate-900 truncate">{user?.fullName || "Learner"}</h3>
+                <p className="text-xs text-slate-500 truncate">{user?.email || "student@pvces.edu.ph"}</p>
+                <div className="flex items-center gap-2 mt-1.5 text-[11px] font-bold text-blue-600 flex-wrap">
+                  <span>🏫 {user?.section && user.section !== "Unassigned" ? user.section : "Grade 3 Learner"}</span>
+                  <span>·</span>
+                  <span>Role: {user?.role === "teacher" ? "Faculty" : "Pupil"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mascot Selector */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                  Choose Your Character Avatar ({PUPIL_MASCOTS.length} Characters)
+                </label>
+                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  High Resolution
+                </span>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-200/60">
+                {PUPIL_MASCOTS.map((avatarSrc, idx) => (
+                  <button
+                    key={avatarSrc}
+                    type="button"
+                    onClick={() => handleSelectAvatar(avatarSrc)}
+                    className={`h-16 rounded-2xl p-1.5 flex items-center justify-center transition-all cursor-pointer ${
+                      selectedAvatar === avatarSrc
+                        ? "bg-blue-600 ring-4 ring-blue-300 scale-105 shadow-sm"
+                        : "bg-white hover:bg-blue-50 border border-slate-200 hover:scale-105"
+                    }`}
+                    title={`Kid Avatar ${idx + 1}`}
+                  >
+                    <StudentAvatar
+                      avatar={avatarSrc}
+                      size="md"
+                      className="border-0 shadow-none pointer-events-none"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case "privacy":
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="border-b border-slate-100 pb-4">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-emerald-600" />
+                <span>Privacy &amp; Security</span>
+              </h2>
+              {getSubtitle("privacy") && (
+                <p className="text-xs text-slate-500 font-medium">
+                  {getSubtitle("privacy")}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-bold text-emerald-950">Student Data Privacy Compliant</h4>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed mt-0.5">
+                    Reading scores, phonics audio, and assessment progress are strictly encrypted in the DepEd Pedro Victorina Calo Elementary School database.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <h4 className="text-xs font-bold text-slate-900">User Role &amp; Permissions</h4>
+                <p className="text-xs text-slate-500">
+                  Logged in as <strong>{user?.fullName || "Student"}</strong> with <strong>{user?.role?.toUpperCase()}</strong> permissions.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "help":
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="border-b border-slate-100 pb-4">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <Headphones className="w-5 h-5 text-purple-600" />
+                <span>Help and Support</span>
+              </h2>
+              {getSubtitle("help") && (
+                <p className="text-xs text-slate-500 font-medium">
+                  {getSubtitle("help")}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <h4 className="text-xs font-bold text-slate-900">How do I hear word pronunciations?</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Click the 🔊 Read Aloud button in any story or tap highlighted vocabulary words in the text to hear the AI Narrator speak clearly.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <h4 className="text-xs font-bold text-slate-900">How do I unlock Stage Badges?</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Complete all 3 stories and pass their comprehension quizzes in a stage to unlock the Stage Mastery Badge on your Living Storybook pathway.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "about":
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="border-b border-slate-100 pb-4">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-slate-700" />
+                <span>About ReadSmart</span>
+              </h2>
+              {getSubtitle("about") && (
+                <p className="text-xs text-slate-500 font-medium">
+                  {getSubtitle("about")}
+                </p>
+              )}
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">Platform Version</span>
+                <span className="text-xs font-mono font-bold bg-white px-2.5 py-1 rounded-md border border-slate-200">
+                  ReadSmart v1.0.0 (Production)
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">Curriculum Framework</span>
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
+                  DepEd Grade 3 English &amp; Phonics
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">Pilot School</span>
+                <span className="text-xs font-bold text-slate-800">
+                  Pedro Victorina Calo Elementary School
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="w-full space-y-6 animate-in fade-in duration-300">
+    <div className="w-full space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       {/* ── Top Standalone Application Header Bar ─────────────────── */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
           <Link
             href={backUrl}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to {portal === "teacher" ? "Teacher Hub" : "My Learning"}</span>
+            <span className="hidden sm:inline">Back to {portal === "teacher" ? "Teacher Hub" : "My Learning"}</span>
+            <span className="inline sm:hidden">Back</span>
           </Link>
 
           <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>Settings &amp; Preferences</span>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+          <div className="min-w-0">
+            <h1 className="text-sm sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2 truncate">
+              <span className="truncate">Settings &amp; Preferences</span>
+              <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex-shrink-0">
                 {portal === "teacher" ? "Faculty" : "Pupil"}
               </span>
             </h1>
             {portal === "teacher" && (
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">
                 Manage narrator audio, classroom preferences, and faculty profile.
               </p>
             )}
@@ -209,8 +576,8 @@ export function SettingsHub({ portal }: SettingsHubProps) {
         </div>
 
         {/* User Card on Right */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-50 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-50 rounded-2xl border border-slate-100">
             <StudentAvatar
               avatar={selectedAvatar}
               name={user?.fullName || "Student"}
@@ -230,7 +597,8 @@ export function SettingsHub({ portal }: SettingsHubProps) {
             onClick={handleSignOut}
             variant="ghost"
             size="sm"
-            className="text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-xs flex items-center gap-1.5"
+            className="text-rose-600 hover:bg-rose-50 rounded-xl font-bold text-xs flex items-center gap-1 px-2.5 sm:px-3 cursor-pointer"
+            title="Sign Out"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sign Out</span>
@@ -238,9 +606,9 @@ export function SettingsHub({ portal }: SettingsHubProps) {
         </div>
       </div>
 
-      {/* ── Main 2-Column Expansive Desktop Layout ───────────────── */}
+      {/* ── Main 2-Column Desktop Layout & Mobile Accordion Dropdowns ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* ── Left Sidebar Navigation Rail ── */}
+        {/* ── Left Sidebar Navigation Rail (Desktop) / Mobile Accordion Stack ── */}
         <div className="lg:col-span-4 space-y-4">
           {/* Search Box */}
           <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-xs space-y-3">
@@ -255,431 +623,89 @@ export function SettingsHub({ portal }: SettingsHubProps) {
               />
             </div>
 
-            {/* Category Navigation Buttons */}
-            <div className="space-y-1.5">
+            {/* Category Navigation Items */}
+            <div className="space-y-2">
               {filteredMenuItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.id;
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                        window.speechSynthesis.cancel();
-                      }
-                      setIsPlayingPreview(false);
-                      setActiveSection(item.id);
-                    }}
-                    className={`w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer text-left ${
-                      isActive
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-[1.01]"
-                        : "bg-white hover:bg-slate-50 text-slate-700 border border-transparent hover:border-slate-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
-                        }`}
-                      >
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-xs font-bold block truncate ${
-                              isActive ? "text-white" : "text-slate-900"
-                            }`}
-                          >
-                            {item.title}
-                          </span>
-                        </div>
-                        {item.subtitle ? (
-                          <span
-                            className={`text-[11px] block truncate font-medium ${
-                              isActive ? "text-blue-100" : "text-slate-400"
-                            }`}
-                          >
-                            {item.subtitle}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <ChevronRight
-                      className={`w-4 h-4 flex-shrink-0 ${
-                        isActive ? "text-white" : "text-slate-300"
+                  <div key={item.id} className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                          window.speechSynthesis.cancel();
+                        }
+                        setIsPlayingPreview(false);
+                        setActiveSection((prev) => (prev === item.id ? null : item.id));
+                      }}
+                      className={`w-full p-3.5 rounded-2xl flex items-center justify-between transition-all cursor-pointer text-left ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-[1.01]"
+                          : "bg-white hover:bg-slate-50 text-slate-700 border border-transparent hover:border-slate-200"
                       }`}
-                    />
-                  </button>
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-xs font-bold block truncate ${
+                                isActive ? "text-white" : "text-slate-900"
+                              }`}
+                            >
+                              {item.title}
+                            </span>
+                          </div>
+                          {item.subtitle ? (
+                            <span
+                              className={`text-[11px] block truncate font-medium ${
+                                isActive ? "text-blue-100" : "text-slate-400"
+                              }`}
+                            >
+                              {item.subtitle}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Desktop arrow */}
+                      <ChevronRight
+                        className={`w-4 h-4 flex-shrink-0 hidden lg:block ${
+                          isActive ? "text-white" : "text-slate-300"
+                        }`}
+                      />
+                      {/* Mobile dropdown arrow */}
+                      <ChevronDown
+                        className={`w-4 h-4 flex-shrink-0 block lg:hidden transition-transform duration-200 ${
+                          isActive ? "text-white rotate-180" : "text-slate-400 rotate-0"
+                        }`}
+                      />
+                    </button>
+
+                    {/* ── Mobile-Only Inline Accordion Dropdown Content ── */}
+                    {isActive && (
+                      <div className="block lg:hidden bg-slate-50/70 rounded-2xl border border-slate-200/80 p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {renderSectionContent(item.id)}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           </div>
         </div>
 
-        {/* ── Right Detail Content Canvas ── */}
-        <div className="lg:col-span-8">
+        {/* ── Right Detail Content Canvas (Desktop Only) ── */}
+        <div className="hidden lg:block lg:col-span-8">
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-8 space-y-6">
-            {/* ── 1. AI VOICE & SPEECH NARRATOR ── */}
-            {activeSection === "voice" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                      <Volume2 className="w-5 h-5 text-blue-600" />
-                      <span>AI Voice &amp; Speech Narrator</span>
-                    </h2>
-                    {getSubtitle("voice") && (
-                      <p className="text-xs text-slate-500 font-medium">
-                        {getSubtitle("voice")}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs font-black px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
-                    Story Narrator
-                  </span>
-                </div>
-
-                {/* Narrator Character Gender Cards */}
-                <div className="space-y-3">
-                  <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                    Choose Narrator Voice Gender
-                  </label>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Girl / Female Voice Card */}
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateGender("female")}
-                      className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer relative flex items-center gap-4 ${
-                        voicePrefs.gender === "female"
-                          ? "border-blue-600 bg-blue-50/40 shadow-sm"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center text-3xl shadow-xs flex-shrink-0">
-                        👧
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black text-slate-900">Girl Voice (Female)</span>
-                          {voicePrefs.gender === "female" && (
-                            <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
-                              ✓
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Warm, encouraging, and clear storyteller voice for Grade 3 pupils.
-                        </p>
-                      </div>
-                    </button>
-
-                    {/* Boy / Male Voice Card */}
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateGender("male")}
-                      className={`p-5 rounded-2xl border-2 text-left transition-all cursor-pointer relative flex items-center gap-4 ${
-                        voicePrefs.gender === "male"
-                          ? "border-blue-600 bg-blue-50/40 shadow-sm"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center text-3xl shadow-xs flex-shrink-0">
-                        👦
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black text-slate-900">Boy Voice (Male)</span>
-                          {voicePrefs.gender === "male" && (
-                            <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">
-                              ✓
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Friendly, energetic, and articulate companion voice for story reading.
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Speed & Pitch Controls */}
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-blue-600" />
-                    <span>Narration Pace &amp; Pitch Controls</span>
-                  </h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {/* Rate Slider */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-700">Reading Speed</span>
-                        <span className="text-blue-600 font-mono bg-blue-50 px-2 py-0.5 rounded-md">
-                          {voicePrefs.rate}x {voicePrefs.rate < 1 ? "(Gentle / Slow)" : voicePrefs.rate > 1 ? "(Brisk)" : "(Standard)"}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.7"
-                        max="1.2"
-                        step="0.05"
-                        value={voicePrefs.rate}
-                        onChange={(e) => handleUpdateRate(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                      />
-                      <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
-                        <span>0.7x (Slow)</span>
-                        <span>1.0x (Normal)</span>
-                        <span>1.2x (Fast)</span>
-                      </div>
-                    </div>
-
-                    {/* Pitch Slider */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-slate-700">Voice Pitch</span>
-                        <span className="text-blue-600 font-mono bg-blue-50 px-2 py-0.5 rounded-md">
-                          {voicePrefs.pitch.toFixed(2)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0.8"
-                        max="1.3"
-                        step="0.05"
-                        value={voicePrefs.pitch}
-                        onChange={(e) => handleUpdatePitch(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                      />
-                      <div className="flex justify-between text-[10px] text-slate-400 font-semibold">
-                        <span>Deeper</span>
-                        <span>Natural</span>
-                        <span>Higher</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Live Speech Tester */}
-                <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-200/80 space-y-3">
-                  <label className="text-xs font-black text-slate-900 block">
-                    🔊 Live Voice Test Preview
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="text"
-                      value={testSpeechText}
-                      onChange={(e) => setTestSpeechText(e.target.value)}
-                      className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
-                    />
-                    <Button
-                      onClick={handleTestVoice}
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl px-5 py-2.5 shadow-sm flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      {isPlayingPreview ? (
-                        <>
-                          <Square className="w-4 h-4 fill-white" />
-                          <span>Stop Audio</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4 fill-white" />
-                          <span>Test Voice</span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── 2. ACCOUNT & MASCOT ── */}
-            {activeSection === "account" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                  <div>
-                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                      <User className="w-5 h-5 text-indigo-600" />
-                      <span>Account &amp; Mascot Profile</span>
-                    </h2>
-                    {getSubtitle("account") && (
-                      <p className="text-xs text-slate-500 font-medium">
-                        {getSubtitle("account")}
-                      </p>
-                    )}
-                  </div>
-                  {avatarSaved && (
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                      ✓ Mascot Saved!
-                    </span>
-                  )}
-                </div>
-
-                {/* Profile Overview Card */}
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
-                  <StudentAvatar
-                    avatar={selectedAvatar}
-                    name={user?.fullName || "Learner"}
-                    size="xl"
-                    className="shadow-sm ring-2 ring-white"
-                  />
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">{user?.fullName || "Learner"}</h3>
-                    <p className="text-xs text-slate-500">{user?.email || "student@pvces.edu.ph"}</p>
-                    <div className="flex items-center gap-2 mt-1.5 text-[11px] font-bold text-blue-600">
-                      <span>🏫 {user?.section && user.section !== "Unassigned" ? user.section : "Grade 3 Learner"}</span>
-                      <span>·</span>
-                      <span>Role: {user?.role === "teacher" ? "Faculty" : "Pupil"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mascot Selector */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                      Choose Your Character Avatar ({PUPIL_MASCOTS.length} Illustrated Characters)
-                    </label>
-                    <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                      High Resolution
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 p-3 bg-slate-50/50 rounded-2xl border border-slate-200/60">
-                    {PUPIL_MASCOTS.map((avatarSrc, idx) => (
-                      <button
-                        key={avatarSrc}
-                        type="button"
-                        onClick={() => handleSelectAvatar(avatarSrc)}
-                        className={`h-16 rounded-2xl p-1.5 flex items-center justify-center transition-all cursor-pointer ${
-                          selectedAvatar === avatarSrc
-                            ? "bg-blue-600 ring-4 ring-blue-300 scale-105 shadow-sm"
-                            : "bg-white hover:bg-blue-50 border border-slate-200 hover:scale-105"
-                        }`}
-                        title={`Kid Avatar ${idx + 1}`}
-                      >
-                        <StudentAvatar
-                          avatar={avatarSrc}
-                          size="md"
-                          className="border-0 shadow-none pointer-events-none"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── 3. PRIVACY & SECURITY ── */}
-            {activeSection === "privacy" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Lock className="w-5 h-5 text-emerald-600" />
-                    <span>Privacy &amp; Security</span>
-                  </h2>
-                  {getSubtitle("privacy") && (
-                    <p className="text-xs text-slate-500 font-medium">
-                      {getSubtitle("privacy")}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex items-start gap-3">
-                    <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-bold text-emerald-950">Student Data Privacy Compliant</h4>
-                      <p className="text-[11px] text-emerald-800 leading-relaxed mt-0.5">
-                        Reading scores, phonics audio, and assessment progress are strictly encrypted in the DepEd Pedro Victorina Calo Elementary School database.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-                    <h4 className="text-xs font-bold text-slate-900">User Role &amp; Permissions</h4>
-                    <p className="text-xs text-slate-500">
-                      Logged in as <strong>{user?.fullName || "Student"}</strong> with <strong>{user?.role?.toUpperCase()}</strong> permissions.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── 4. HELP & SUPPORT ── */}
-            {activeSection === "help" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Headphones className="w-5 h-5 text-purple-600" />
-                    <span>Help and Support</span>
-                  </h2>
-                  {getSubtitle("help") && (
-                    <p className="text-xs text-slate-500 font-medium">
-                      {getSubtitle("help")}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <h4 className="text-xs font-bold text-slate-900">How do I hear word pronunciations?</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      Click the 🔊 Read Aloud button in any story or tap highlighted vocabulary words in the text to hear the AI Narrator speak clearly.
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <h4 className="text-xs font-bold text-slate-900">How do I unlock Stage Badges?</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      Complete all 3 stories and pass their comprehension quizzes in a stage to unlock the Stage Mastery Badge on your Living Storybook pathway.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── 5. ABOUT READSMART ── */}
-            {activeSection === "about" && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <div className="border-b border-slate-100 pb-4">
-                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <HelpCircle className="w-5 h-5 text-slate-700" />
-                    <span>About ReadSmart</span>
-                  </h2>
-                  {getSubtitle("about") && (
-                    <p className="text-xs text-slate-500 font-medium">
-                      {getSubtitle("about")}
-                    </p>
-                  )}
-                </div>
-
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700">Platform Version</span>
-                    <span className="text-xs font-mono font-bold bg-white px-2.5 py-1 rounded-md border border-slate-200">
-                      ReadSmart v1.0.0 (Production)
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700">Curriculum Framework</span>
-                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
-                      DepEd Grade 3 English &amp; Phonics
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700">Pilot School</span>
-                    <span className="text-xs font-bold text-slate-800">
-                      Pedro Victorina Calo Elementary School
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {renderSectionContent(activeSection || "voice")}
           </div>
         </div>
       </div>

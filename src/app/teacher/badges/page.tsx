@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Edit,
   Plus,
-  Sparkles,
+  GraduationCap,
   Lock,
   Trash2,
   X,
@@ -195,9 +195,6 @@ export default function TeacherBadgesPage() {
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
             Reading Curriculum &amp; Stage Badges Studio
           </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Protected core stages (1–5) and teacher-created custom quests. Each stage contains story lessons and comprehensive evaluations.
-          </p>
         </div>
 
         <Button
@@ -248,7 +245,7 @@ export default function TeacherBadgesPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
             <span>Teacher Quests ({teacherQuestsCount})</span>
           </button>
         </div>
@@ -274,7 +271,7 @@ export default function TeacherBadgesPage() {
       {filteredBadges.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-xs space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto">
-            <Sparkles className="w-6 h-6" />
+            <GraduationCap className="w-6 h-6" />
           </div>
           <h3 className="text-sm font-black text-slate-900">No Stage Badges Found</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -337,7 +334,7 @@ export default function TeacherBadgesPage() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 flex-shrink-0">
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <GraduationCap className="w-2.5 h-2.5" />
                         <span>TEACHER QUEST</span>
                       </span>
                     )}

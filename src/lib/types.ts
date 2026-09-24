@@ -69,6 +69,7 @@ export interface StudentEnrollmentInput {
 
 export interface EnrolledStudent {
   id: string;
+  supabaseUserId?: string;
   name: string;
   gender: string;
   section: string;
@@ -79,6 +80,7 @@ export interface EnrolledStudent {
   status: "Mastering" | "On Track" | "Needs Review" | string;
   readingSpeed: string;
   lastActive: string;
+  lastActiveIso?: string;
   email?: string;
   avatar?: string;
   totalXp?: number;

@@ -64,7 +64,9 @@ export async function GET(request: Request) {
 
     // 4. Compute real metrics for each student
     const students = studentProfiles.map((p, idx) => {
-      const studentProgress = progressList.filter((pr) => pr.student_id === p.id);
+      const studentProgress = progressList
+        .filter((pr) => pr.student_id === p.id)
+        .sort((a, b) => Number(a.badge_id) - Number(b.badge_id));
       const studentAttempts = attemptList.filter((at) => at.student_id === p.id);
 
       const xpCalc = calculateStudentXp(studentProgress, studentAttempts, badgeXpMap);
@@ -79,13 +81,28 @@ export async function GET(request: Request) {
             )
           : 0;
 
-      const activeProgress =
-        studentProgress.find((pr) => pr.status === "in_progress") ||
-        studentProgress[0];
+      const isAllStagesCompleted = studentProgress.some(
+        (pr) => Number(pr.badge_id) === 5 && pr.status === "completed"
+      );
 
-      const activeBadgeName = activeProgress
-        ? `${badgeMap.get(activeProgress.badge_id) || "Reading Star"} (Stage ${activeProgress.badge_id})`
-        : "Reading Star (Stage 1)";
+      let activeBadgeName = "Reading Star (Stage 1)";
+      if (isAllStagesCompleted) {
+        activeBadgeName = "Stage 5: Gold Medal (Completed)";
+      } else {
+        const inProgressBadge = studentProgress.find((pr) => pr.status === "in_progress");
+        if (inProgressBadge) {
+          activeBadgeName = `${badgeMap.get(inProgressBadge.badge_id) || "Reading Star"} (Stage ${inProgressBadge.badge_id})`;
+        } else {
+          const completedBadges = studentProgress.filter((pr) => pr.status === "completed");
+          if (completedBadges.length > 0) {
+            const highestCompletedId = Math.max(...completedBadges.map((b) => Number(b.badge_id)));
+            const nextStageId = Math.min(highestCompletedId + 1, 5);
+            activeBadgeName = `${badgeMap.get(nextStageId) || "Reading Star"} (Stage ${nextStageId})`;
+          } else if (studentProgress.length > 0) {
+            activeBadgeName = `${badgeMap.get(studentProgress[0].badge_id) || "Reading Star"} (Stage ${studentProgress[0].badge_id})`;
+          }
+        }
+      }
 
       let status = "Not Started";
       if (studentAttempts.length > 0) {
@@ -96,22 +113,21 @@ export async function GET(request: Request) {
 
       // Format last active date and streak
       let lastActive = "Enrolled";
+      let lastActiveIso: string | undefined = undefined;
       if (studentAttempts.length > 0) {
         const latestAttempt = studentAttempts.sort(
           (a, b) => new Date(b.completed_at || b.started_at).getTime() - new Date(a.completed_at || a.started_at).getTime()
         )[0];
         if (latestAttempt) {
-          const d = new Date(latestAttempt.completed_at || latestAttempt.started_at);
-          lastActive = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          const rawIso = latestAttempt.completed_at || latestAttempt.started_at;
+          lastActiveIso = rawIso;
+          const d = new Date(rawIso);
+          lastActive = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
         }
       }
 
       const activityTimestamps = studentAttempts.map((a) => a.completed_at || a.started_at);
       const studentStreak = calculateStudentStreak(activityTimestamps);
-
-      const isAllStagesCompleted = studentProgress.some(
-        (pr) => Number(pr.badge_id) === 5 && pr.status === "completed"
-      );
 
       return {
         id: p.id ? `STU-${p.id.slice(0, 4).toUpperCase()}` : `STU-${idx + 100}`,
@@ -127,6 +143,7 @@ export async function GET(request: Request) {
         status,
         readingSpeed: avgScore > 0 ? `${Math.round(85 + (avgScore / 100) * 20)} WPM` : "—",
         lastActive,
+        lastActiveIso,
         avatar: p.avatar || "👧",
         totalXp: studentXp,
         streakDays: studentStreak,

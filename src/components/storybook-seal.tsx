@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Lock, Sparkles, Check } from "lucide-react";
+import { Lock, Star, Check } from "lucide-react";
 import type { BadgeType, MedalType } from "@/lib/types";
 
 export interface StorybookSealProps {
@@ -156,7 +156,7 @@ export function StorybookSeal({
         {/* Active Stage Indicator */}
         {isInProgress && (
           <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-blue-600 text-white flex items-center justify-center border-1.5 sm:border-2 border-white shadow-xs animate-pulse">
-            <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
           </div>
         )}
       </div>

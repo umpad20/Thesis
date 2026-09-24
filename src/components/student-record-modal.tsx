@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import {
   X,
   Printer,
-  Sparkles,
   BookOpen,
   Award,
   CheckCircle2,
@@ -81,34 +80,61 @@ export function StudentRecordModal({
   const isWatchlist = pupil.riskLevel === "watchlist";
   const isMastering = pupil.riskLevel === "mastering";
 
-  const totalAttempts = pupil.quizzesPassed + pupil.failedAttemptsCount;
-  const passRate =
-    totalAttempts > 0 ? Math.round((pupil.quizzesPassed / totalAttempts) * 100) : 0;
+  // Compute real attempt totals and pass rate from attempts if available
+  const realPassed = attempts.length > 0
+    ? attempts.filter((a) => a.status === "passed" || a.percentage >= 70).length
+    : pupil.quizzesPassed;
+
+  const realFailed = attempts.length > 0
+    ? attempts.filter((a) => a.status === "failed" || a.percentage < 70).length
+    : pupil.failedAttemptsCount;
+
+  const totalAttempts = attempts.length > 0 ? attempts.length : (pupil.quizzesPassed + pupil.failedAttemptsCount);
+  const passRate = totalAttempts > 0 ? Math.round((realPassed / totalAttempts) * 100) : 0;
 
   const readingSpeed = report?.readingSpeed || "85 WPM";
   const currentBadge = report?.currentBadge || "Stage 1 - Star of Wonder";
   const isStarReader = Boolean(report?.isAllStagesCompleted);
-  const totalXp = report?.totalXp ?? pupil.quizzesPassed * 100;
+  const totalXp = report?.totalXp ?? (realPassed * 100);
 
-  const formattedLastActive = pupil.lastActiveDate
-    ? new Date(pupil.lastActiveDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "Recently";
+  // Format last active date safely, preventing "2001" year parsing bug
+  let formattedLastActive = "Recently";
+  const rawDate = attempts[0]?.completed_at || pupil.lastActiveDate;
+  if (rawDate) {
+    try {
+      const parsed = new Date(rawDate);
+      if (!isNaN(parsed.getTime())) {
+        const year = parsed.getFullYear() === 2001 ? new Date().getFullYear() : parsed.getFullYear();
+        formattedLastActive = new Date(year, parsed.getMonth(), parsed.getDate()).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    } catch {
+      formattedLastActive = "Recently";
+    }
+  }
+
+  const daysInactive = attempts[0]?.completed_at
+    ? Math.max(0, Math.floor((Date.now() - new Date(attempts[0].completed_at).getTime()) / (1000 * 60 * 60 * 24)))
+    : pupil.daysInactive;
 
   const handlePrint = () => {
     window.print();
   };
 
+  const displayStudentId = pupil.studentId.startsWith("STU-")
+    ? pupil.studentId
+    : `STU-${pupil.studentId.slice(0, 4).toUpperCase()}`;
+
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-6 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full p-5 sm:p-6 space-y-5 shadow-2xl border border-slate-100 my-auto animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-4xl w-full p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 my-auto animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Modal Top Header ────────────────────────────────────────────── */}
@@ -147,7 +173,7 @@ export function StudentRecordModal({
               <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 font-medium flex-wrap">
                 <span>Section: <strong className="text-slate-700 font-bold">{pupil.section}</strong></span>
                 <span>•</span>
-                <span>ID: <code className="text-slate-600 font-mono text-[11px]">{pupil.studentId}</code></span>
+                <span>ID: <code className="text-slate-600 font-mono text-[11px]">{displayStudentId}</code></span>
                 {report?.gender && (
                   <>
                     <span>•</span>
@@ -179,9 +205,9 @@ export function StudentRecordModal({
         </div>
 
         {/* ── Key Metrics Grid ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           {/* Comprehension Card */}
-          <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-1">
+          <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
               <BookOpen className="w-3 h-3 text-blue-500" />
               <span>Comprehension</span>
@@ -209,7 +235,7 @@ export function StudentRecordModal({
           </div>
 
           {/* Reading Fluency / Speed */}
-          <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-1">
+          <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
               <Gauge className="w-3 h-3 text-indigo-500" />
               <span>Reading Speed</span>
@@ -222,28 +248,28 @@ export function StudentRecordModal({
           </div>
 
           {/* Quizzes Cleared & Retries */}
-          <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-1">
+          <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-emerald-500" />
               <span>Quizzes Passed</span>
             </span>
             <div className="text-xl font-black text-slate-900">
-              {pupil.quizzesPassed}
+              {realPassed}
             </div>
             <div className="text-[10px] font-semibold text-slate-500">
-              {pupil.failedAttemptsCount} retries ({passRate}% pass rate)
+              {realFailed} retries ({passRate}% pass rate)
             </div>
             <div className="text-[9px] text-slate-400">Quiz clearance ratio</div>
           </div>
 
           {/* Activity / Days Inactive */}
-          <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-1">
+          <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
               <Clock className="w-3 h-3 text-amber-500" />
               <span>Recent Activity</span>
             </span>
             <div className="text-xl font-black text-slate-900">
-              {pupil.daysInactive === 0 ? "Active Today" : `${pupil.daysInactive}d Inactive`}
+              {daysInactive === 0 ? "Active Today" : `${daysInactive}d Inactive`}
             </div>
             <div className="text-[10px] font-semibold text-slate-500 truncate">
               {formattedLastActive}
@@ -253,7 +279,7 @@ export function StudentRecordModal({
         </div>
 
         {/* ── Current Accolade / Stage Goal ───────────────────────────────── */}
-        <div className="p-3.5 bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-purple-50/80 rounded-2xl border border-blue-100 flex items-center justify-between gap-3">
+        <div className="p-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-purple-50/80 rounded-2xl border border-blue-100 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white text-blue-600 flex items-center justify-center shadow-xs border border-blue-100 shrink-0">
               <Award className="w-5 h-5 text-blue-600" />
@@ -281,35 +307,28 @@ export function StudentRecordModal({
           </div>
         </div>
 
-        {/* ── Algorithmic Insight & Pedagogical Guidance ─────────────────── */}
+        {/* ── Diagnostic Notes ────────────────────────────────────────────── */}
         <div
-          className={`p-4 rounded-2xl border space-y-2 ${
+          className={`p-4 rounded-2xl border space-y-2 text-xs ${
             isCritical
-              ? "bg-rose-50/70 border-rose-200 text-rose-950"
+              ? "bg-rose-50/50 border-rose-200 text-rose-950"
               : isWatchlist
-              ? "bg-amber-50/70 border-amber-200 text-amber-950"
-              : "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+              ? "bg-amber-50/50 border-amber-200 text-amber-950"
+              : "bg-slate-50 border-slate-200 text-slate-800"
           }`}
         >
-          <div className="flex items-center gap-2 text-xs font-black">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span>Learning Evaluation &amp; Algorithmic Diagnosis</span>
+          <div className="leading-relaxed">
+            <strong className="font-bold text-slate-900">Challenge Identified: </strong>
+            <span className="font-normal text-slate-700">{pupil.struggleReason}</span>
           </div>
-
-          <div className="space-y-1 text-xs">
-            <div className="leading-snug">
-              <strong className="font-bold">Challenge Identified: </strong>
-              <span className="font-normal">{pupil.struggleReason}</span>
-            </div>
-            <div className="leading-snug">
-              <strong className="font-bold">Intervention Advice: </strong>
-              <span className="font-normal">{pupil.recommendedAction}</span>
-            </div>
+          <div className="leading-relaxed">
+            <strong className="font-bold text-slate-900">Intervention Advice: </strong>
+            <span className="font-normal text-slate-700">{pupil.recommendedAction}</span>
           </div>
         </div>
 
         {/* ── Quiz Evaluation History Table ──────────────────────────────── */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <History className="w-3.5 h-3.5 text-slate-500" />
@@ -320,7 +339,7 @@ export function StudentRecordModal({
             </span>
           </div>
 
-          <div className="border border-slate-200/80 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+          <div className="border border-slate-200/80 rounded-xl overflow-hidden max-h-80 overflow-y-auto">
             {loadingAttempts ? (
               <div className="py-8 text-center text-xs text-slate-400">
                 Loading quiz attempt history...

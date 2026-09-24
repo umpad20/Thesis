@@ -12,12 +12,25 @@ export default function TeacherLayout({
 }) {
   const pathname = usePathname();
   const isStandaloneStudio = pathname?.startsWith("/teacher/badges/create");
+  const isEnrollPage = pathname?.startsWith("/teacher/students/enroll");
 
   // Standalone Full-Screen View: No Sidebar, No Header, 100% edge-to-edge screen usage
   if (isStandaloneStudio) {
     return (
       <div className="min-h-screen bg-[#faf8f5] flex flex-col antialiased w-full">
         <main className="flex-1 w-full p-3 sm:p-5 pb-20 md:pb-8">
+          {children}
+        </main>
+        <TeacherMobileNav />
+      </div>
+    );
+  }
+
+  // Standalone Enrollment Page: No Sidebar, No Header, full-width screen layout
+  if (isEnrollPage) {
+    return (
+      <div className="min-h-screen bg-slate-50/50 flex flex-col antialiased w-full">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 w-full max-w-7xl mx-auto pb-20 md:pb-12">
           {children}
         </main>
         <TeacherMobileNav />

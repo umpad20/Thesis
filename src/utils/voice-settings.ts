@@ -44,7 +44,7 @@ export function saveVoicePreferences(prefs: Partial<VoicePreferences>): VoicePre
 }
 
 /**
- * Find best matching browser voice for selected gender
+ * Find best matching browser voice for selected gender (prioritizing en-US for DepEd curriculum)
  */
 export function getMatchingVoice(gender: "female" | "male"): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
@@ -52,22 +52,49 @@ export function getMatchingVoice(gender: "female" | "male"): SpeechSynthesisVoic
   const voices = window.speechSynthesis.getVoices();
   if (voices.length === 0) return null;
 
-  const englishVoices = voices.filter((v) => v.lang.startsWith("en"));
-  const pool = englishVoices.length > 0 ? englishVoices : voices;
+  // Filter for US English first (standard for DepEd Philippine elementary curriculum)
+  const usVoices = voices.filter(
+    (v) => v.lang === "en-US" || v.lang.replace(/_/g, "-").startsWith("en-US")
+  );
+  const generalEnVoices = voices.filter((v) => v.lang.startsWith("en"));
+  const pool = usVoices.length > 0 ? usVoices : generalEnVoices.length > 0 ? generalEnVoices : voices;
 
-  const femaleKeywords = ["female", "zira", "samantha", "karen", "victoria", "hazel", "susan", "natural female", "eva", "cather", "aria"];
-  const maleKeywords = ["male", "david", "george", "daniel", "alex", "guy", "mark", "james", "natural male", "richard", "oliver"];
+  // Prioritize top natural/neural US voices first
+  const femaleKeywords = [
+    "jenny",
+    "aria",
+    "zira",
+    "google us english",
+    "samantha",
+    "natural female",
+    "female",
+    "eva",
+    "karen",
+  ];
+  const maleKeywords = [
+    "guy",
+    "david",
+    "google us english",
+    "natural male",
+    "alex",
+    "male",
+    "daniel",
+    "james",
+    "mark",
+    "richard",
+  ];
 
   const targetKeywords = gender === "female" ? femaleKeywords : maleKeywords;
 
-  for (const voice of pool) {
-    const nameLower = voice.name.toLowerCase();
-    if (targetKeywords.some((k) => nameLower.includes(k))) {
-      return voice;
+  // Find by priority keyword order
+  for (const keyword of targetKeywords) {
+    const match = pool.find((v) => v.name.toLowerCase().includes(keyword));
+    if (match) {
+      return match;
     }
   }
 
-  // Fallback: pick by index or default
+  // Fallback: pick by pool index
   return pool[0] || null;
 }
 
@@ -98,6 +125,7 @@ export function speakSentenceWithVoice(
   if (matchingVoice) {
     utterance.voice = matchingVoice;
   }
+  utterance.lang = "en-US";
 
   utterance.onend = () => {
     if (onEnd) onEnd();

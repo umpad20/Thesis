@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  Sparkles,
   BookOpen,
   HelpCircle,
   Award,
@@ -1312,7 +1311,7 @@ export function BadgeCreationStudio() {
                     <div className="p-5 rounded-2xl bg-indigo-50/70 border-2 border-indigo-200 space-y-3.5 animate-in fade-in duration-150">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-black text-indigo-950 flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-indigo-600" />
+                          <FileText className="w-4 h-4 text-indigo-600" />
                           <span>Paste Full Story Passage (Auto-Split into Sentence Cards)</span>
                         </span>
                         <button

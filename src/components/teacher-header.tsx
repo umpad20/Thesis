@@ -1,35 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  Search,
   Bell,
   ChevronDown,
-  ShieldCheck,
-  CheckCircle2,
-  Plus,
   Download,
-  BookOpen,
-  Users,
-  Award,
-  FileCheck2,
   X,
-  Sparkles,
-  ArrowRight,
   Smile,
   Settings,
-  Volume2,
-  User,
-  Lock,
-  HelpCircle,
-  Info,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { BadgeGraphic } from "@/components/badge-graphic";
 import {
   getCurrentUser,
   signOutUser,
@@ -56,18 +41,13 @@ const DEFAULT_TEACHER: UserProfile = {
 
 export function TeacherHeader() {
   const router = useRouter();
+  const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<UserProfile>(DEFAULT_TEACHER);
 
   // Live Database Data for Global Typeahead Search
   const [students, setStudents] = useState<EnrolledStudent[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
-
-  // Search State
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Notification State
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
@@ -115,28 +95,16 @@ export function TeacherHeader() {
     };
   }, []);
 
-  // Keyboard shortcut: Ctrl+K or Cmd+K
+  // Keyboard shortcut & click outside listener for dropdowns
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        setIsSearchOpen(true);
-      }
       if (e.key === "Escape") {
-        setIsSearchOpen(false);
         setIsNotifsOpen(false);
         setIsProfileOpen(false);
       }
     };
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        searchContainerRef.current &&
-        !searchContainerRef.current.contains(e.target as Node)
-      ) {
-        setIsSearchOpen(false);
-      }
       if (
         notifsContainerRef.current &&
         !notifsContainerRef.current.contains(e.target as Node)
@@ -181,37 +149,6 @@ export function TeacherHeader() {
       .toUpperCase();
   };
 
-  // Search Results Matching across live database items
-  const cleanQuery = searchQuery.trim().toLowerCase();
-  const matchingStudents = cleanQuery
-    ? students.filter(
-        (s) =>
-          s.name.toLowerCase().includes(cleanQuery) ||
-          s.id.toLowerCase().includes(cleanQuery) ||
-          (s.email && s.email.toLowerCase().includes(cleanQuery)) ||
-          s.section.toLowerCase().includes(cleanQuery)
-      )
-    : [];
-
-  const matchingLessons = cleanQuery
-    ? lessons.filter(
-        (l) =>
-          l.lesson_title.toLowerCase().includes(cleanQuery) ||
-          l.lesson_description.toLowerCase().includes(cleanQuery)
-      )
-    : [];
-
-  const matchingBadges = cleanQuery
-    ? badges.filter(
-        (b) =>
-          b.badge_name.toLowerCase().includes(cleanQuery) ||
-          b.description.toLowerCase().includes(cleanQuery)
-      )
-    : [];
-
-  const hasSearchResults =
-    matchingStudents.length > 0 || matchingLessons.length > 0 || matchingBadges.length > 0;
-
   // Live Notifications List
   const notificationsList = [
     {
@@ -242,155 +179,16 @@ export function TeacherHeader() {
 
   return (
     <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-50">
-      {/* ── Left: Global Instant Live Search Bar (⌘K) ────────────────── */}
-      <div ref={searchContainerRef} className="relative flex-1 max-w-md">
-        <div className="relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search students, stories, evaluations, questions..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setIsSearchOpen(true);
-            }}
-            onFocus={() => setIsSearchOpen(true)}
-            className="w-full bg-slate-50/80 border border-slate-200/80 rounded-xl pl-9 pr-12 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
-          />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 bg-white border border-slate-200 pointer-events-none">
-            ⌘K
-          </div>
+      {/* ── Left: Faculty Workspace Identity ── */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60 uppercase tracking-wider">
+            Teacher Workspace
+          </span>
+          <span className="hidden sm:inline-block text-xs font-bold text-slate-500">
+            · {currentUser.section || "Grade 3 Faculty"}
+          </span>
         </div>
-
-        {/* Live Search Dropdown Modal */}
-        {isSearchOpen && cleanQuery && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 max-h-96 overflow-y-auto anim-pop-bounce">
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Live Search Results ({cleanQuery})
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsSearchOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {!hasSearchResults ? (
-              <div className="p-8 text-center text-xs text-slate-400 space-y-1">
-                <Search className="w-6 h-6 text-slate-300 mx-auto mb-1" />
-                <p className="font-bold text-slate-600">No records found</p>
-                <p className="text-[11px]">Try searching by student name, story title, or badge.</p>
-              </div>
-            ) : (
-              <div className="p-2 space-y-3 divide-y divide-slate-100">
-                {/* Students Matches */}
-                {matchingStudents.length > 0 && (
-                  <div className="pt-2 first:pt-0">
-                    <span className="text-[10px] font-bold text-blue-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      <span>Enrolled Pupils ({matchingStudents.length})</span>
-                    </span>
-                    {matchingStudents.slice(0, 4).map((s) => (
-                      <div
-                        key={s.id}
-                        onClick={() => {
-                          setIsSearchOpen(false);
-                          router.push("/teacher/students");
-                        }}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{s.avatar || (s.gender === "Female" ? "👧" : "👦")}</span>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900 leading-tight">{s.name}</p>
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              {s.section} · {s.currentBadge}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                          {s.comprehension}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Stories Matches */}
-                {matchingLessons.length > 0 && (
-                  <div className="pt-2">
-                    <span className="text-[10px] font-bold text-emerald-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                      <BookOpen className="w-3 h-3" />
-                      <span>Story Curriculum ({matchingLessons.length})</span>
-                    </span>
-                    {matchingLessons.slice(0, 4).map((l) => (
-                      <div
-                        key={l.lesson_id}
-                        onClick={() => {
-                          setIsSearchOpen(false);
-                          router.push("/teacher/lessons");
-                        }}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                      >
-                        <div>
-                          <p className="text-xs font-bold text-slate-900 leading-tight">{l.lesson_title}</p>
-                          <span className="text-[10px] text-slate-400 line-clamp-1">{l.lesson_description}</span>
-                        </div>
-                        <span
-                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                            l.lesson_id <= 15
-                              ? "bg-amber-50 text-amber-800 border border-amber-200"
-                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          }`}
-                        >
-                          {l.lesson_id <= 15 ? "Core" : "Custom"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Stage Badges Matches */}
-                {matchingBadges.length > 0 && (
-                  <div className="pt-2">
-                    <span className="text-[10px] font-bold text-amber-600 px-2 uppercase tracking-wider block mb-1 flex items-center gap-1">
-                      <Award className="w-3 h-3" />
-                      <span>Stage Badges ({matchingBadges.length})</span>
-                    </span>
-                    {matchingBadges.slice(0, 3).map((b) => (
-                      <div
-                        key={b.badge_id}
-                        onClick={() => {
-                          setIsSearchOpen(false);
-                          router.push("/teacher/badges");
-                        }}
-                        className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <BadgeGraphic
-                            type={b.badge_type}
-                            medalType={b.badge_type === "medal" ? b.medal_type : undefined}
-                            size="xs"
-                            status="completed"
-                          />
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">{b.badge_name}</p>
-                            <span className="text-[10px] text-slate-400">Pass: ≥{b.required_passing_score}%</span>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-3 h-3 text-slate-400" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Right: Notification Center & Faculty Profile ── */}
@@ -466,8 +264,6 @@ export function TeacherHeader() {
           )}
         </div>
 
-        <div className="w-px h-6 bg-slate-200 mx-0.5" />
-
         {/* ── Functional Faculty Profile Dropdown ───────────────────────── */}
         <div ref={profileContainerRef} className="relative">
           <button
@@ -497,17 +293,17 @@ export function TeacherHeader() {
 
           {/* Profile Dropdown Popup Menu */}
           {isProfileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border-2 border-slate-100 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
+            <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden z-50 p-2 space-y-1 anim-pop-bounce">
               {/* Header Info */}
-              <div className="p-3 bg-gradient-to-br from-blue-50 via-indigo-50 to-amber-50/50 rounded-xl border border-blue-100 flex items-center gap-3 mb-1">
+              <div className="p-3 bg-gradient-to-br from-blue-50/80 via-indigo-50/50 to-amber-50/30 rounded-xl border border-blue-100/80 flex items-center gap-3 mb-1">
                 <span className="text-2xl p-1 bg-white rounded-xl shadow-2xs">
                   {currentUser.avatar || "👩‍🏫"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-black text-slate-900 block truncate">
+                  <span className="text-xs font-black text-slate-900 block truncate" title={currentUser.fullName}>
                     {currentUser.fullName}
                   </span>
-                  <span className="text-[10px] font-bold text-blue-600 block">
+                  <span className="inline-block text-[10px] font-bold text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded-md mt-1">
                     {currentUser.section || "Grade 3 Faculty"} · Faculty
                   </span>
                   <span className="text-[10px] text-slate-400 block truncate mt-0.5">
@@ -523,41 +319,15 @@ export function TeacherHeader() {
                   setIsProfileOpen(false);
                   router.push("/teacher/settings");
                 }}
-                className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer group"
               >
-                <div className="flex items-center gap-2">
-                  <Settings className="w-3.5 h-3.5 text-blue-600" />
-                  <span>All Faculty Settings</span>
+                <div className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-blue-600 transition-transform group-hover:rotate-45" />
+                  <span>Faculty Settings</span>
                 </div>
-                <span className="text-[9px] font-black text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-200">
-                  Open
+                <span className="text-[10px] font-semibold text-slate-400 group-hover:text-blue-600">
+                  Preferences
                 </span>
-              </button>
-
-              {/* AI Voice Engine Settings */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  router.push("/teacher/settings?tab=voice");
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
-              >
-                <Volume2 className="w-3.5 h-3.5 text-amber-500" />
-                <span>AI Voice Narrator Engine</span>
-              </button>
-
-              {/* Faculty Profile Account */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  router.push("/teacher/settings?tab=account");
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
-              >
-                <User className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Faculty Account Profile</span>
               </button>
 
               {/* Change Mascot / Avatar */}
@@ -567,49 +337,10 @@ export function TeacherHeader() {
                   setIsProfileOpen(false);
                   setShowAvatarPicker(true);
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-pink-50 hover:text-pink-800 transition-colors cursor-pointer text-left group"
               >
-                <Smile className="w-3.5 h-3.5 text-pink-500" />
+                <Smile className="w-4 h-4 text-pink-500 transition-transform group-hover:scale-110" />
                 <span>Change Faculty Mascot</span>
-              </button>
-
-              {/* Enrolled Students */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  router.push("/teacher/students");
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
-              >
-                <Users className="w-3.5 h-3.5 text-teal-600" />
-                <span>Enrolled Pupils &amp; Sections</span>
-              </button>
-
-              {/* Privacy & Security */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  router.push("/teacher/settings?tab=privacy");
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
-              >
-                <Lock className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Privacy &amp; Security</span>
-              </button>
-
-              {/* Help & Support Guide */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsProfileOpen(false);
-                  router.push("/teacher/settings?tab=help");
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer text-left"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-purple-500" />
-                <span>Help &amp; Support Guide</span>
               </button>
 
               <div className="h-px bg-slate-100 my-1" />
@@ -621,9 +352,9 @@ export function TeacherHeader() {
                   setIsProfileOpen(false);
                   handleSignOut();
                 }}
-                className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-colors cursor-pointer text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-colors cursor-pointer text-left"
               >
-                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <LogOut className="w-4 h-4 text-rose-600" />
                 <span>Sign Out</span>
               </button>
             </div>

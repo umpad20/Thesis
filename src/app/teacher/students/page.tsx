@@ -7,37 +7,33 @@ import {
   Download,
   UserPlus,
   Layers,
-  CheckCircle2,
-  Copy,
-  Sparkles,
   Plus,
-  Users,
-  Eye,
-  EyeOff,
+  ChevronDown,
   Filter,
   Trophy,
+  Users,
   Lock,
+  FileText,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CertificateModal } from "@/components/certificate-modal";
+import { StudentRecordModal } from "@/components/student-record-modal";
 import { StudentAvatar } from "@/components/student-avatar";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   addTeacherSection,
-  enrollStudentAccount,
   fetchTeacherSectionsFromSupabase,
   fetchStudentsFromSupabase,
   getCurrentUser,
 } from "@/utils/auth-helpers";
+import {
+  fetchTeacherInterventionRadar,
+  sendTeacherGuidanceNote,
+  type TeacherReportRow,
+} from "@/utils/supabase-queries";
 import { TableRosterSkeleton } from "@/components/page-skeletons";
-import type { EnrolledStudent, StudentEnrollmentInput } from "@/lib/types";
+import type { EnrolledStudent, InterventionPupil } from "@/lib/types";
 
 export default function TeacherStudentsPage() {
   const [students, setStudents] = useState<EnrolledStudent[]>([]);
@@ -48,25 +44,14 @@ export default function TeacherStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCertificateStudent, setSelectedCertificateStudent] = useState<EnrolledStudent | null>(null);
 
-  // Enrollment Modal State
-  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
-  const [newFullName, setNewFullName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("Student2026!");
-  const [newGender, setNewGender] = useState<"Female" | "Male">("Female");
-  const [newSection, setNewSection] = useState("Grade 3-A");
-  const [customSectionInput, setCustomSectionInput] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  // Success Slip State
-  const [createdCredentials, setCreatedCredentials] = useState<{
-    name: string;
-    email: string;
-    password: string;
-    section: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Individual Student Record & Guidance Note States
+  const [radarPupils, setRadarPupils] = useState<InterventionPupil[]>([]);
+  const [selectedPupilForRecord, setSelectedPupilForRecord] = useState<InterventionPupil | null>(null);
+  const [selectedReportForRecord, setSelectedReportForRecord] = useState<TeacherReportRow | null>(null);
+  const [selectedPupilForNote, setSelectedPupilForNote] = useState<InterventionPupil | null>(null);
+  const [noteMessage, setNoteMessage] = useState("");
+  const [isSendingNote, setIsSendingNote] = useState(false);
+  const [noteSentSuccess, setNoteSentSuccess] = useState(false);
 
   // Load dynamically enrolled students and sections from Supabase on mount
   useEffect(() => {
@@ -79,15 +64,20 @@ export default function TeacherStudentsPage() {
         const liveSections = await fetchTeacherSectionsFromSupabase(teacherId);
         if (Array.isArray(liveSections) && liveSections.length > 0) {
           setSections(liveSections);
-          setNewSection(liveSections[0]);
         }
       } catch {
         setSections(["Grade 3-A"]);
       }
 
       try {
-        const liveStudents = await fetchStudentsFromSupabase(selectedSection, teacherId);
+        const [liveStudents, radarData] = await Promise.all([
+          fetchStudentsFromSupabase(selectedSection, teacherId),
+          fetchTeacherInterventionRadar(teacherId || "", selectedSection),
+        ]);
         setStudents(liveStudents || []);
+        if (radarData?.pupils) {
+          setRadarPupils(radarData.pupils);
+        }
       } catch {
         setStudents([]);
       }
@@ -98,72 +88,32 @@ export default function TeacherStudentsPage() {
 
   const safeSections = Array.isArray(sections) && sections.length > 0 ? sections : ["Grade 3-A"];
 
-  const handleGeneratePassword = () => {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    setNewPassword(`ReadSmart${randomNum}!`);
-  };
 
-  const handleAutoSuggestEmail = (name: string, section: string) => {
-    const cleanName = name.toLowerCase().replace(/[^a-z]/g, ".");
-    const cleanSec = section.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (cleanName) {
-      setNewEmail(`${cleanName}.${cleanSec}@readsmart.edu`);
+
+  const sectionStudents = students.filter(
+    (s) => selectedSection === "all" || s.section === selectedSection
+  );
+
+  const getStudentCategory = (s: EnrolledStudent): "mastering" | "on track" | "needs review" => {
+    const compVal = parseFloat(s.comprehension.replace("%", "")) || s.accuracyRaw || 0;
+    const statusLower = s.status.toLowerCase();
+    if (
+      statusLower.includes("review") ||
+      statusLower.includes("critical") ||
+      statusLower.includes("practice") ||
+      compVal < 70
+    ) {
+      return "needs review";
     }
-  };
-
-  const handleEnrollStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFullName.trim() || !newEmail.trim()) return;
-
-    setIsSubmitting(true);
-    const targetSection = customSectionInput.trim() ? customSectionInput.trim() : newSection;
-
-    const teacher = getCurrentUser();
-
-    // Persist section directly to Supabase if new
-    if (customSectionInput.trim()) {
-      const updatedSections = await addTeacherSection(customSectionInput.trim(), teacher?.id);
-      setSections(updatedSections);
+    if (statusLower.includes("track") || (compVal >= 70 && compVal < 85)) {
+      return "on track";
     }
-
-    const payload: StudentEnrollmentInput = {
-      fullName: newFullName.trim(),
-      email: newEmail.trim(),
-      password: newPassword,
-      gender: newGender,
-      section: targetSection,
-      teacherId: teacher?.id,
-    };
-
-    const res = await enrollStudentAccount(payload);
-
-    if (res.success && res.student) {
-      setStudents((prev) => [res.student!, ...prev.filter((s) => s.email !== res.student!.email)]);
-      setCreatedCredentials({
-        name: res.student.name,
-        email: res.student.email || newEmail,
-        password: newPassword,
-        section: targetSection,
-      });
-
-      // Reset form fields
-      setNewFullName("");
-      setNewEmail("");
-      setCustomSectionInput("");
-      handleGeneratePassword();
-    } else {
-      alert(res.message || "Failed to enroll student.");
-    }
-    setIsSubmitting(false);
+    return "mastering";
   };
 
-  const handleCopyCredentials = () => {
-    if (!createdCredentials) return;
-    const text = `ReadSmart Pupil Credentials\nName: ${createdCredentials.name}\nEmail: ${createdCredentials.email}\nPassword: ${createdCredentials.password}\nSection: ${createdCredentials.section}\nURL: http://localhost:3000/login`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
+  const masteringCount = sectionStudents.filter((s) => getStudentCategory(s) === "mastering").length;
+  const onTrackCount = sectionStudents.filter((s) => getStudentCategory(s) === "on track").length;
+  const needsReviewCount = sectionStudents.filter((s) => getStudentCategory(s) === "needs review").length;
 
   // Filter students based on section tab, status, and search term
   const filteredStudents = students.filter((s) => {
@@ -172,8 +122,12 @@ export default function TeacherStudentsPage() {
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const category = getStudentCategory(s);
     const matchesFilter =
-      filterStatus === "all" || s.status.toLowerCase().includes(filterStatus);
+      filterStatus === "all" ||
+      filterStatus === category ||
+      s.status.toLowerCase().includes(filterStatus);
 
     return matchesSection && matchesSearch && matchesFilter;
   });
@@ -197,6 +151,120 @@ export default function TeacherStudentsPage() {
     document.body.removeChild(link);
   };
 
+  const enrolledStudentToInterventionPupil = (s: EnrolledStudent): InterventionPupil => {
+    const compVal = parseFloat(s.comprehension.replace("%", "")) || s.accuracyRaw || 0;
+    const passedCount = parseInt(s.quizzesPassed.split("/")[0]) || 0;
+    const totalCount = parseInt(s.quizzesPassed.split("/")[1]) || 16;
+    const statusLower = s.status.toLowerCase();
+
+    let riskLevel: "critical" | "watchlist" | "mastering" = "mastering";
+    let struggleReason = "Excelling at comprehension benchmark with consistent participation.";
+    let recommendedAction = "Challenge with Higher Stage Story Passages & Bonus Accolades.";
+
+    if (s.isAllStagesCompleted || compVal >= 85) {
+      riskLevel = "mastering";
+      struggleReason = s.isAllStagesCompleted
+        ? "Stage 5 Completed! All reading stages mastered with stellar comprehension."
+        : `High comprehension (${compVal}%) with consistent quiz mastery.`;
+      recommendedAction = "Challenge with Advanced Vocabulary & Story Exploration.";
+    } else if (
+      statusLower.includes("review") ||
+      statusLower.includes("critical") ||
+      statusLower.includes("practice") ||
+      compVal < 70
+    ) {
+      riskLevel = "critical";
+      struggleReason = `Low average comprehension (${compVal}%). Needs reading consistency support.`;
+      recommendedAction = "Assign Guided Starter Passage with Hint Narration & Review.";
+    } else {
+      riskLevel = "watchlist";
+      struggleReason = `Borderline score (${compVal}%). Needs reading consistency support.`;
+      recommendedAction = "Encourage Stage Final Review & Story Reading Rhythm.";
+    }
+
+    const resolvedId = s.supabaseUserId || s.id;
+    return {
+      studentId: resolvedId,
+      studentName: s.name,
+      avatar: s.avatar || (s.gender === "Female" ? "👧" : "👦"),
+      section: s.section,
+      comprehensionPct: Math.round(compVal),
+      quizzesPassed: passedCount,
+      failedAttemptsCount: Math.max(0, (s.accuracyRaw && s.accuracyRaw < 70) ? 1 : 0),
+      lastActiveDate: s.lastActiveIso || s.lastActive || new Date().toISOString(),
+      daysInactive: s.lastActive?.toLowerCase().includes("today") ? 0 : 1,
+      riskLevel,
+      struggleReason,
+      recommendedAction,
+    };
+  };
+
+  const handleOpenRecord = (s: EnrolledStudent) => {
+    const rawPrefix = s.id.replace(/^STU-/i, "").toLowerCase().trim();
+    const existingPupil = radarPupils.find((p) => {
+      const matchId =
+        (s.supabaseUserId && p.studentId === s.supabaseUserId) ||
+        p.studentId === s.id ||
+        (rawPrefix && p.studentId.toLowerCase().startsWith(rawPrefix));
+      const matchName = p.studentName.toLowerCase().trim() === s.name.toLowerCase().trim();
+      return matchId || matchName;
+    });
+
+    const pupilData: InterventionPupil = existingPupil
+      ? { ...existingPupil }
+      : enrolledStudentToInterventionPupil(s);
+
+    if (s.supabaseUserId) {
+      pupilData.studentId = s.supabaseUserId;
+    }
+
+    setSelectedPupilForRecord(pupilData);
+    setSelectedReportForRecord({
+      studentId: s.supabaseUserId || pupilData.studentId || s.id,
+      name: s.name,
+      section: s.section,
+      gender: s.gender,
+      currentBadge: s.currentBadge,
+      comprehensionPct: s.comprehension,
+      readingSpeed: s.readingSpeed,
+      quizzesPassed: s.quizzesPassed,
+      status: s.status as any,
+      lastActive: s.lastActive,
+      avatar: s.avatar,
+      totalXp: s.totalXp,
+      isAllStagesCompleted: s.isAllStagesCompleted,
+    });
+  };
+
+  const handleSendNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteMessage.trim() || !selectedPupilForNote) return;
+
+    setIsSendingNote(true);
+    const user = getCurrentUser();
+    const teacherName = user?.fullName || "Your Teacher";
+    const teacherId = user?.id || undefined;
+    const isPraise = selectedPupilForNote.riskLevel === "mastering";
+
+    await sendTeacherGuidanceNote({
+      studentId: selectedPupilForNote.studentId,
+      teacherId,
+      teacherName,
+      title: isPraise ? `Teacher Praise from ${teacherName} ⭐` : `Teacher Guidance Note from ${teacherName} 📝`,
+      message: noteMessage.trim(),
+      recommendation: selectedPupilForNote.recommendedAction,
+      type: isPraise ? "praise" : "guidance_note",
+    });
+
+    setIsSendingNote(false);
+    setNoteSentSuccess(true);
+    setTimeout(() => {
+      setSelectedPupilForNote(null);
+      setNoteSentSuccess(false);
+      setNoteMessage("");
+    }, 1500);
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header & Quick Enrollment Action */}
@@ -205,23 +273,20 @@ export default function TeacherStudentsPage() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
             Pupil Enrollment &amp; Section Roster
           </h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Create pupil accounts, assign them to specific class sections, and track reading mastery milestones in Supabase.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Button
-            size="sm"
-            onClick={() => {
-              setCreatedCredentials(null);
-              setIsEnrollModalOpen(true);
-            }}
-            className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5"
+          <Link
+            href={
+              selectedSection && selectedSection !== "all"
+                ? `/teacher/students/enroll?section=${encodeURIComponent(selectedSection)}`
+                : "/teacher/students/enroll"
+            }
+            className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5 cursor-pointer transition-colors"
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>Enroll New Student</span>
-          </Button>
+            <span>Enroll Pupils</span>
+          </Link>
 
           <Button
             variant="outline"
@@ -314,21 +379,70 @@ export default function TeacherStudentsPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-xs font-semibold text-slate-500 hidden sm:inline">
-            Mastery Status:
-          </span>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 outline-none"
+        {/* Status Filter Segmented Control (with DepEd passing criteria) */}
+        <div className="inline-flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs flex-wrap self-start sm:self-auto border border-slate-200/60">
+          <button
+            type="button"
+            onClick={() => setFilterStatus("all")}
+            className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+              filterStatus === "all"
+                ? "bg-white text-slate-900 shadow-2xs font-black"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
           >
-            <option value="all">All Mastery Statuses</option>
-            <option value="mastering">Mastering (≥85%)</option>
-            <option value="on track">On Track (70-84%)</option>
-            <option value="needs review">Needs Review (&lt;70%)</option>
-          </select>
+            All ({sectionStudents.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterStatus("mastering")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              filterStatus === "mastering"
+                ? "bg-emerald-600 text-white shadow-2xs font-black"
+                : "text-emerald-700 hover:bg-emerald-50 font-semibold"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                filterStatus === "mastering" ? "bg-white" : "bg-emerald-500"
+              }`}
+            />
+            <span>{masteringCount} Mastering (≥85%)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterStatus("on track")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              filterStatus === "on track"
+                ? "bg-blue-600 text-white shadow-2xs font-black"
+                : "text-blue-700 hover:bg-blue-50 font-semibold"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                filterStatus === "on track" ? "bg-white" : "bg-blue-500"
+              }`}
+            />
+            <span>{onTrackCount} On Track (70–84%)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterStatus("needs review")}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              filterStatus === "needs review"
+                ? "bg-rose-600 text-white shadow-2xs font-black"
+                : "text-rose-700 hover:bg-rose-50 font-semibold"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                filterStatus === "needs review" ? "bg-white" : "bg-rose-500"
+              }`}
+            />
+            <span>{needsReviewCount} Needs Review (&lt;70%)</span>
+          </button>
         </div>
       </div>
 
@@ -350,24 +464,26 @@ export default function TeacherStudentsPage() {
           <TableRosterSkeleton />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">              <thead>
-                <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                  <th className="pb-3">Pupil Name &amp; ID</th>
-                  <th className="pb-3">Enrolled Section</th>
-                  <th className="pb-3">Active Badge Milestone</th>
-                  <th className="pb-3">Comprehension %</th>
-                  <th className="pb-3">Reading Speed</th>
-                  <th className="pb-3">Quizzes Cleared</th>
-                  <th className="pb-3">Intervention Status</th>
-                  <th className="pb-3 text-center">Star Reader Award</th>
-                  <th className="pb-3 text-right">Last Session</th>
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200/80 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-4">Pupil Name &amp; ID</th>
+                  <th className="py-3 px-3">Enrolled Section</th>
+                  <th className="py-3 px-3">Active Badge Milestone</th>
+                  <th className="py-3 px-3">Comprehension %</th>
+                  <th className="py-3 px-3">Reading Speed</th>
+                  <th className="py-3 px-3">Quizzes Cleared</th>
+                  <th className="py-3 px-3">Intervention Status</th>
+                  <th className="py-3 px-3 text-center">Individual Record</th>
+                  <th className="py-3 px-3 text-center">Star Reader Award</th>
+                  <th className="py-3 px-4 text-right">Last Session</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-400">
-                      No students found in this section. Click <strong>&quot;Enroll New Student&quot;</strong> to add one.
+                    <td colSpan={10} className="py-12 text-center text-slate-400">
+                      No students found in this section. Click <strong>&quot;Enroll Pupils&quot;</strong> to add one.
                     </td>
                   </tr>
                 ) : (
@@ -375,86 +491,97 @@ export default function TeacherStudentsPage() {
                     const isCompletedAllStages = Boolean(s.isAllStagesCompleted);
 
                     return (
-                      <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 font-bold text-slate-900">
-                          <div className="flex items-center gap-2.5">
+                      <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-slate-900 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRecord(s)}
+                            className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-hidden"
+                            title={`View individual record for ${s.name}`}
+                          >
                             <StudentAvatar
                               avatar={s.avatar || (s.gender === "Female" ? "👧" : "👦")}
                               name={s.name}
                               size="xs"
-                              className="flex-shrink-0"
+                              className="flex-shrink-0 group-hover:ring-2 group-hover:ring-blue-400 transition-all"
                             />
                             <div>
-                              <div className="text-slate-900">{s.name}</div>
+                              <div className="text-slate-900 font-bold group-hover:text-blue-600 transition-colors">
+                                {s.name}
+                              </div>
                               <span className="text-[10px] text-slate-400 font-normal">
                                 {s.id} · {s.gender}
                               </span>
                             </div>
-                          </div>
+                          </button>
                         </td>
 
-                        <td className="py-3.5">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                            {s.section}
-                          </span>
+                        <td className="py-3.5 px-3 text-slate-700 font-semibold whitespace-nowrap">
+                          {s.section}
                         </td>
 
-                        <td className="py-3.5 font-semibold text-slate-800">
-                          <div>{s.currentBadge}</div>
-                          {isCompletedAllStages && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs mt-1">
-                              🎓 All 5 Stages Completed
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          {isCompletedAllStages ? (
+                            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                              <Trophy className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                              <span>Stage 5 Completed</span>
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-slate-800">
+                              {s.currentBadge}
                             </span>
                           )}
                         </td>
 
-                        <td className="py-3.5 font-bold text-slate-900">
+                        <td className="py-3.5 px-3 font-bold text-slate-900 whitespace-nowrap">
                           {s.comprehension}
                         </td>
 
-                        <td className="py-3.5 text-slate-600">
+                        <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap">
                           {s.readingSpeed}
                         </td>
 
-                        <td className="py-3.5 text-slate-600">
+                        <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap">
                           {s.quizzesPassed}
                         </td>
 
-                        <td className="py-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              s.status === "Mastering"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : s.status === "On Track"
-                                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                : "bg-rose-50 text-rose-700 border border-rose-200"
-                            }`}
-                          >
-                            {s.status}
-                          </span>
+                        <td className="py-3.5 px-3 font-semibold text-slate-700 whitespace-nowrap">
+                          {s.status}
                         </td>
 
-                        <td className="py-3.5 text-center">
+                        <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenRecord(s)}
+                            className="h-8 px-3 rounded-lg border-slate-200 hover:border-blue-400 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                            title={`View individual evaluation record and quiz attempts for ${s.name}`}
+                          >
+                            <FileText className="w-3.5 h-3.5 text-slate-500" />
+                            <span>View Record</span>
+                          </Button>
+                        </td>
+
+                        <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           {isCompletedAllStages ? (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => setSelectedCertificateStudent(s)}
-                              className="h-7 px-2.5 rounded-lg border-amber-200 bg-amber-50/50 hover:bg-amber-100 text-amber-900 font-semibold text-[10px] inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                              className="h-8 px-3 rounded-lg border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
                               title="View and Print Official Star Reader Certificate"
                             >
-                              <Trophy className="w-3 h-3 fill-amber-500 text-amber-600" />
+                              <Trophy className="w-3.5 h-3.5 fill-amber-500 text-amber-700" />
                               <span>View Award</span>
                             </Button>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-400 bg-slate-100 border border-slate-200">
-                              <Lock className="w-2.5 h-2.5" />
-                              <span>In Progress</span>
+                            <span className="text-xs font-medium text-slate-400">
+                              In Progress
                             </span>
                           )}
                         </td>
 
-                        <td className="py-3.5 text-right text-slate-400">
+                        <td className="py-3.5 px-4 text-right text-slate-400 whitespace-nowrap">
                           {s.lastActive}
                         </td>
                       </tr>
@@ -467,6 +594,99 @@ export default function TeacherStudentsPage() {
         )}
       </div>
 
+      {/* ── Student Individual Evaluation Record Modal ─────────────────── */}
+      <StudentRecordModal
+        isOpen={Boolean(selectedPupilForRecord)}
+        onClose={() => {
+          setSelectedPupilForRecord(null);
+          setSelectedReportForRecord(null);
+        }}
+        pupil={selectedPupilForRecord}
+        report={selectedReportForRecord}
+        onOpenGuidanceNote={(pupil) => {
+          setSelectedPupilForRecord(null);
+          setSelectedPupilForNote(pupil);
+        }}
+      />
+
+      {/* ── Teacher Guidance & Praise Dispatch Modal ──────────────────── */}
+      {selectedPupilForNote && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPupilForNote(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {selectedPupilForNote.riskLevel === "mastering"
+                    ? `Dispatch Praise to ${selectedPupilForNote.studentName}`
+                    : `Dispatch Guidance Note to ${selectedPupilForNote.studentName}`}
+                </h3>
+                <p className="text-xs text-slate-400">{selectedPupilForNote.section}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPupilForNote(null)}
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {noteSentSuccess ? (
+              <div className="py-8 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                <h4 className="text-sm font-black text-slate-900">Guidance Note Dispatched!</h4>
+                <p className="text-xs text-slate-500">The encouragement advice has been sent to the pupil.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSendNote} className="space-y-4">
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
+                  <strong>Intervention Recommendation:</strong> {selectedPupilForNote.recommendedAction}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Teacher Encouragement &amp; Hint Message</label>
+                  <textarea
+                    rows={3}
+                    value={noteMessage}
+                    onChange={(e) => setNoteMessage(e.target.value)}
+                    placeholder="e.g., Great job! Keep up the momentum or review challenging words."
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedPupilForNote(null)}
+                    className="rounded-xl text-xs font-bold"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isSendingNote}
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="w-3 h-3" />
+                    <span>{isSendingNote ? "Sending..." : "Send Note to Student"}</span>
+                  </Button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Star Reader Certificate Modal for Teachers */}
       <CertificateModal
         isOpen={!!selectedCertificateStudent}
@@ -476,224 +696,7 @@ export default function TeacherStudentsPage() {
         autoPlayAudio={false}
       />
 
-      {/* 5. Enroll Student Modal */}
-      <Dialog open={isEnrollModalOpen} onOpenChange={setIsEnrollModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-blue-600" />
-              <span>Enroll New Pupil Account</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Create a new pupil account directly in Supabase and assign them to your designated classroom section.
-            </DialogDescription>
-          </DialogHeader>
 
-          {createdCredentials ? (
-            /* Success Credentials Slip */
-            <div className="space-y-4 py-2">
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-xs text-emerald-800">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Pupil Successfully Enrolled!</span>
-                </div>
-                <p className="text-[11px] text-emerald-800/90 leading-relaxed">
-                  The account has been created in <strong>{createdCredentials.section}</strong> and initialized with <strong>Star Badge 1 (Reading Star)</strong>.
-                </p>
-              </div>
-
-              {/* Printable Slip Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <span className="font-bold text-slate-700 uppercase text-[10px]">Pupil Login Card</span>
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                    {createdCredentials.section}
-                  </span>
-                </div>
-                <div className="space-y-1.5 text-slate-800">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Name:</span>
-                    <span className="font-bold">{createdCredentials.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Email:</span>
-                    <span className="font-mono text-[11px] font-bold text-blue-700">{createdCredentials.email}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Password:</span>
-                    <span className="font-mono text-[11px] font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                      {createdCredentials.password}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCopyCredentials}
-                  className="flex-1 h-9 rounded-xl text-xs font-bold border-slate-200 flex items-center justify-center gap-1.5"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>{copied ? "Copied to Clipboard!" : "Copy Login Info"}</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setCreatedCredentials(null);
-                    setIsEnrollModalOpen(false);
-                  }}
-                  className="flex-1 h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs"
-                >
-                  Done
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* Enrollment Form */
-            <form onSubmit={handleEnrollStudent} className="space-y-4 py-2">
-              {/* Pupil Full Name */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Pupil Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Juanito Santos"
-                  value={newFullName}
-                  onChange={(e) => {
-                    setNewFullName(e.target.value);
-                    handleAutoSuggestEmail(e.target.value, customSectionInput || newSection);
-                  }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-                />
-              </div>
-
-              {/* Target Section Selection */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Assign to Specific Section *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {safeSections.map((sec) => (
-                    <button
-                      type="button"
-                      key={sec}
-                      onClick={() => {
-                        setNewSection(sec);
-                        setCustomSectionInput("");
-                        handleAutoSuggestEmail(newFullName, sec);
-                      }}
-                      className={`p-2 rounded-xl border text-xs font-bold text-center transition-all ${
-                        newSection === sec && !customSectionInput
-                          ? "bg-blue-50 border-blue-600 text-blue-700 ring-1 ring-blue-600"
-                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {sec}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="pt-1">
-                  <input
-                    type="text"
-                    placeholder="Or type a new section (e.g. Grade 3-C)..."
-                    value={customSectionInput}
-                    onChange={(e) => {
-                      setCustomSectionInput(e.target.value);
-                      handleAutoSuggestEmail(newFullName, e.target.value || newSection);
-                    }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-              </div>
-
-              {/* Student Email / Username */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">Student Email / Login ID *</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="e.g. juanito.santos.3a@readsmart.edu"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-mono text-[11px]"
-                />
-              </div>
-
-              {/* Password & Gender Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700">Password *</label>
-                    <button
-                      type="button"
-                      onClick={handleGeneratePassword}
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700"
-                    >
-                      Generate
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-8 py-2 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">Gender</label>
-                  <select
-                    value={newGender}
-                    onChange={(e) => setNewGender(e.target.value as "Female" | "Male")}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 outline-none"
-                  >
-                    <option value="Female">Female 👧</option>
-                    <option value="Male">Male 👦</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Automatic Badge Initialization Notice */}
-              <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl text-[11px] text-blue-900 flex items-start gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <span>
-                  This pupil will be enrolled in <strong>{customSectionInput || newSection}</strong> and automatically initialized on <strong>Star Badge 1 (Reading Star)</strong>.
-                </span>
-              </div>
-
-              <DialogFooter className="pt-2 gap-2 sm:gap-0">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsEnrollModalOpen(false)}
-                  className="h-9 rounded-xl text-xs font-semibold"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200"
-                >
-                  {isSubmitting ? "Enrolling in Supabase..." : "Enroll Pupil"}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

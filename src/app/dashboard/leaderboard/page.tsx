@@ -57,19 +57,22 @@ export default function LeaderboardPage() {
   const [scopeMode, setScopeMode] = useState<"class" | "world">("class");
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mySection, setMySection] = useState("Grade 3-A");
+  const [mySection, setMySection] = useState("");
   const [myTeacherId, setMyTeacherId] = useState<string | null>(null);
   const [teacherName, setTeacherName] = useState("Teacher");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isUnassigned = useMemo(() => {
+    return !mySection || mySection === "Unassigned" || mySection.toLowerCase() === "unassigned";
+  }, [mySection]);
+
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       const user = getCurrentUser();
-      const studentSection = user?.section || "Grade 3-A";
+      const studentSection = user?.section || "";
       const teacherId = user?.teacherId || null;
-      setMySection(studentSection);
       setMyTeacherId(teacherId);
       setCurrentUserId(user?.id || null);
 
@@ -88,7 +91,6 @@ export default function LeaderboardPage() {
 
           if (prof) {
             if (prof.section) {
-              setMySection(prof.section);
               effectiveSection = prof.section;
             }
             if (prof.teacher_id) {
@@ -103,7 +105,21 @@ export default function LeaderboardPage() {
         }
       }
 
-      const entries = await fetchClassroomLeaderboard(effectiveSection, effectiveTeacherId || undefined);
+      setMySection(effectiveSection);
+
+      const isStudentUnassigned =
+        !effectiveSection ||
+        effectiveSection === "Unassigned" ||
+        effectiveSection.toLowerCase() === "unassigned";
+
+      // If student is not assigned to a section yet, default to School-wide
+      // because they do not have a classroom cohort.
+      const initialScope = isStudentUnassigned ? "world" : "class";
+      setScopeMode(initialScope);
+
+      const entries = isStudentUnassigned
+        ? await fetchClassroomLeaderboard("all")
+        : await fetchClassroomLeaderboard(effectiveSection, effectiveTeacherId || undefined);
 
       setLeaderboard(entries);
       setLoading(false);
@@ -118,7 +134,12 @@ export default function LeaderboardPage() {
     let entries: LeaderboardEntry[] = [];
 
     if (mode === "class") {
-      entries = await fetchClassroomLeaderboard(mySection, myTeacherId || undefined);
+      if (isUnassigned) {
+        // Unassigned students have no classroom section
+        entries = [];
+      } else {
+        entries = await fetchClassroomLeaderboard(mySection, myTeacherId || undefined);
+      }
     } else {
       entries = await fetchClassroomLeaderboard("all");
     }
@@ -177,7 +198,7 @@ export default function LeaderboardPage() {
             className={'px-4 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ' + (scopeMode === 'class' ? 'bg-white text-blue-700 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900')}
           >
             <GraduationCap className="w-3.5 h-3.5" />
-            <span>Classroom ({mySection})</span>
+            <span>{isUnassigned ? "Classroom (Not Assigned)" : `Classroom (${mySection})`}</span>
           </button>
           <button
             type="button"
@@ -190,13 +211,40 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
-      {/* ── 2. Your Highlighted Rank Banner (Sleek Gradient) ─────────── */}
-      {myRankEntry && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-md shadow-blue-500/15 flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
-          <div className="flex items-center gap-3.5 relative">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white font-black text-lg flex items-center justify-center border border-white/30 shadow-inner">
-              #{myRankEntry.rank}
-            </div>
+      {/* ── Unassigned State: No Classroom Section ─────────────────── */}
+      {scopeMode === "class" && isUnassigned ? (
+        <div className="dashboard-card p-8 sm:p-12 text-center space-y-4 max-w-lg mx-auto bg-gradient-to-b from-white via-amber-50/20 to-white border-2 border-amber-200/80 shadow-sm mt-4 anim-pop-bounce">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100/70 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto shadow-xs">
+            <GraduationCap className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-black text-slate-900">
+              No Classroom Section Assigned Yet
+            </h3>
+            <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+              You haven&apos;t been enrolled in a classroom section yet. Once your teacher assigns you to your section (e.g. Diamond or Emerald), your classroom leaderboard and classmates will appear here!
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => handleScopeChange("world")}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-all shadow-md shadow-blue-500/25 cursor-pointer"
+            >
+              <Trophy className="w-4 h-4 text-amber-300" />
+              <span>View School-wide Leaderboard</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ── 2. Your Highlighted Rank Banner (Sleek Gradient) ─────────── */}
+          {myRankEntry && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-md shadow-blue-500/15 flex flex-col md:flex-row md:items-center justify-between gap-4 relative overflow-hidden">
+              <div className="flex items-center gap-3.5 relative">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white font-black text-lg flex items-center justify-center border border-white/30 shadow-inner">
+                  #{myRankEntry.rank}
+                </div>
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-blue-200 block">
                 Your Current Standing
@@ -422,6 +470,11 @@ export default function LeaderboardPage() {
                         YOU
                       </span>
                     )}
+                    {scopeMode === "world" && entry.section && entry.section !== "Unassigned" && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 hidden xs:inline-flex">
+                        {entry.section}
+                      </span>
+                    )}
                     <span
                       className={'text-[9px] font-bold px-2 py-0.5 rounded-full border hidden sm:inline-flex items-center gap-1 ' + tierConfig.bg + ' ' + tierConfig.text + ' ' + tierConfig.border}
                     >
@@ -470,6 +523,8 @@ export default function LeaderboardPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

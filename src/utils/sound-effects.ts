@@ -5,6 +5,8 @@
  * ("Correct! Great job! ✨", "Nice try, keep it up! 💪") with neural voice selection.
  */
 
+import { getMatchingVoice, getVoicePreferences } from "./voice-settings";
+
 class SoundSynthesizer {
   private ctx: AudioContext | null = null;
   private naturalVoice: SpeechSynthesisVoice | null = null;
@@ -20,33 +22,44 @@ class SoundSynthesizer {
   }
 
   /**
-   * Intelligently selects the highest-quality natural / neural English voice available
+   * Intelligently selects the highest-quality natural / neural US English voice available
    */
   private initVoiceSelection() {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const voices = window.speechSynthesis.getVoices();
     if (!voices || voices.length === 0) return;
 
-    // Filter for English voices
-    const enVoices = voices.filter((v) => v.lang.startsWith("en"));
+    // Check user preference first from Settings Hub
+    const prefs = getVoicePreferences();
+    const prefVoice = getMatchingVoice(prefs.gender);
+    if (prefVoice) {
+      this.naturalVoice = prefVoice;
+      this.voicesLoaded = true;
+      return;
+    }
 
-    // Rank voices by natural human-like quality
+    // Filter for US English voices first (standard for DepEd Philippine curriculum)
+    const usVoices = voices.filter(
+      (v) => v.lang === "en-US" || v.lang.replace(/_/g, "-").startsWith("en-US")
+    );
+    const generalEnVoices = voices.filter((v) => v.lang.startsWith("en"));
+    const pool = usVoices.length > 0 ? usVoices : generalEnVoices;
+
+    // Rank voices by natural human-like US English quality
     const priorityKeywords = [
+      "Microsoft Jenny",
+      "Microsoft Aria",
+      "Microsoft Guy",
+      "Google US English",
       "Natural",
       "Online (Natural)",
-      "Google US English",
-      "Microsoft Jenny",
-      "Microsoft Guy",
-      "Microsoft Aria",
-      "Neural",
       "Samantha",
       "Alex",
       "en-US",
-      "en-GB",
     ];
 
     for (const keyword of priorityKeywords) {
-      const match = enVoices.find(
+      const match = pool.find(
         (v) =>
           v.name.includes(keyword) ||
           v.voiceURI.includes(keyword) ||
@@ -60,8 +73,8 @@ class SoundSynthesizer {
     }
 
     // Fallback to first available English voice
-    if (enVoices.length > 0) {
-      this.naturalVoice = enVoices[0];
+    if (pool.length > 0) {
+      this.naturalVoice = pool[0];
       this.voicesLoaded = true;
     }
   }
@@ -97,9 +110,12 @@ class SoundSynthesizer {
           this.initVoiceSelection();
         }
 
+        const prefs = getVoicePreferences();
+        const activeVoice = getMatchingVoice(prefs.gender) || this.naturalVoice;
+
         const utterance = new SpeechSynthesisUtterance(text);
-        if (this.naturalVoice) {
-          utterance.voice = this.naturalVoice;
+        if (activeVoice) {
+          utterance.voice = activeVoice;
         }
         utterance.rate = rate;
         utterance.pitch = pitch;
@@ -122,23 +138,26 @@ class SoundSynthesizer {
           this.initVoiceSelection();
         }
 
+        const prefs = getVoicePreferences();
+        const activeVoice = getMatchingVoice(prefs.gender) || this.naturalVoice;
+
         const utterance = new SpeechSynthesisUtterance(word);
-        if (this.naturalVoice) {
-          utterance.voice = this.naturalVoice;
+        if (activeVoice) {
+          utterance.voice = activeVoice;
         }
         utterance.rate = 0.82; // slightly slower for clear phonetic pronunciation
-        utterance.pitch = 1.0;
+        utterance.pitch = prefs.pitch || 1.0;
         utterance.lang = "en-US";
 
         if (exampleSentence) {
           utterance.onend = () => {
             setTimeout(() => {
               const sentenceUtterance = new SpeechSynthesisUtterance(exampleSentence);
-              if (this.naturalVoice) {
-                sentenceUtterance.voice = this.naturalVoice;
+              if (activeVoice) {
+                sentenceUtterance.voice = activeVoice;
               }
               sentenceUtterance.rate = 0.88;
-              sentenceUtterance.pitch = 1.0;
+              sentenceUtterance.pitch = prefs.pitch || 1.0;
               sentenceUtterance.lang = "en-US";
               window.speechSynthesis.speak(sentenceUtterance);
             }, 300);
