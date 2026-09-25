@@ -14,7 +14,6 @@ import {
   Smile,
   Settings,
   Info,
-  Sparkles,
   MessageSquare,
   CheckCircle2,
 } from "lucide-react";
@@ -532,7 +531,7 @@ export function DashboardHeader() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
                   {selectedTeacherMessage.type === "praise" ? (
-                    <Sparkles className="w-5 h-5 text-amber-500 fill-amber-400" />
+                    <Award className="w-5 h-5 text-amber-500 fill-amber-400" />
                   ) : (
                     <MessageSquare className="w-5 h-5 text-blue-600" />
                   )}
@@ -570,7 +569,7 @@ export function DashboardHeader() {
             {selectedTeacherMessage.recommendation && (
               <div className="p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-1">
                 <div className="flex items-center gap-1.5 font-black text-amber-900 text-[11px]">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <Info className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   <span>Teacher's Learning Advice:</span>
                 </div>
                 <p className="text-[11px] font-medium leading-relaxed pl-5">

@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   ChevronRight,
   Map,
-  Sparkles,
   Award,
   Lock,
   AlertCircle,
@@ -698,7 +697,7 @@ function LessonReaderContent() {
                     disabled={pageFlipDirection !== null}
                     className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-pointer z-10"
                   >
-                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     <span>Take Quiz</span>
                     <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Button>

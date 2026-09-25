@@ -12,7 +12,6 @@ import {
   ChevronRight,
   BookOpen,
   Map,
-  Sparkles,
   Star,
   PartyPopper,
   Volume2,
@@ -404,7 +403,7 @@ function QuizContent() {
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-black uppercase tracking-widest mb-2 shadow-xs">
               <PartyPopper className="w-4 h-4 text-amber-600" />
               <span>STAGE {badgeId} MASTERY ASSESSMENT PASSED!</span>
-              <Sparkles className="w-4 h-4 text-amber-600" />
+              <Star className="w-4 h-4 text-amber-600" />
             </span>
             <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
               Magical Achievement Seal Mastered!
@@ -705,7 +704,7 @@ function QuizContent() {
                     className="w-full sm:w-auto"
                   >
                     <Button className="w-full sm:w-auto h-12 px-7 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 animate-bounce">
-                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <Award className="w-4 h-4 text-amber-300" />
                       <span>Take Stage Final Mastery Quiz ⭐</span>
                       <ArrowRight className="w-4 h-4" />
                     </Button>
@@ -1033,7 +1032,7 @@ function QuizContent() {
                 </button>
               ) : (
                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-900 flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <HelpCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold block">Hint:</span>
                     <span className="text-[11px]">{currentQuestion.hint}</span>

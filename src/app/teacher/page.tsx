@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Award,
   Layers,
-  AlertTriangle,
   Trophy,
   Flame,
   CheckCircle2,
@@ -29,15 +28,32 @@ import {
   fetchAllLessons,
   fetchBadgesFromSupabase,
   fetchMasteryStageDistribution,
-  fetchTeacherInterventionRadar,
+  fetchClassroomActivityFeed,
   fetchClassroomLeaderboard,
   sendTeacherGuidanceNote,
   type TeacherReportRow,
   type MasteryStageDistribution,
+  type ClassroomActivityItem,
 } from "@/utils/supabase-queries";
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
 import { TeacherDashboardSkeleton } from "@/components/page-skeletons";
-import type { InterventionRadarSummary, InterventionPupil, LeaderboardEntry, Badge } from "@/lib/types";
+import type { InterventionPupil, LeaderboardEntry, Badge } from "@/lib/types";
+
+function formatTimeAgo(timestamp: string): string {
+  try {
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays}d ago`;
+  } catch {
+    return "Recent";
+  }
+}
 
 export default function TeacherDashboard() {
   const [reports, setReports] = useState<TeacherReportRow[]>([]);
@@ -55,13 +71,8 @@ export default function TeacherDashboard() {
     medalPct: 0,
     totalStudents: 0,
   });
-  const [radar, setRadar] = useState<InterventionRadarSummary>({
-    criticalCount: 0,
-    watchlistCount: 0,
-    masteringCount: 0,
-    totalEnrolled: 0,
-    pupils: [],
-  });
+  const [activityFeed, setActivityFeed] = useState<ClassroomActivityItem[]>([]);
+  const [feedFilter, setFeedFilter] = useState<"all" | "quiz" | "badge">("all");
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,13 +91,13 @@ export default function TeacherDashboard() {
       const user = getCurrentUser();
       const teacherId = user?.id || "";
 
-      const [roster, lessons, liveSections, badges, dist, radarData, topLeaderboard] = await Promise.all([
+      const [roster, lessons, liveSections, badges, dist, feed, topLeaderboard] = await Promise.all([
         fetchClassRosterReports(selectedSection, teacherId),
         fetchAllLessons(),
         fetchTeacherSectionsFromSupabase(teacherId),
         fetchBadgesFromSupabase(),
         fetchMasteryStageDistribution(selectedSection, teacherId),
-        fetchTeacherInterventionRadar(teacherId, selectedSection),
+        fetchClassroomActivityFeed(selectedSection, teacherId),
         fetchClassroomLeaderboard(selectedSection, teacherId),
       ]);
 
@@ -98,7 +109,7 @@ export default function TeacherDashboard() {
         setSections(liveSections);
       }
       setDistribution(dist);
-      setRadar(radarData);
+      setActivityFeed(feed);
       setLeaderboard(topLeaderboard.slice(0, 5));
       setLoading(false);
     }
@@ -107,14 +118,24 @@ export default function TeacherDashboard() {
 
   const studentCount = reports.length;
 
-  const validScores = reports
-    .map((r) => Number.parseFloat(r.comprehensionPct))
-    .filter((n) => !Number.isNaN(n) && n > 0);
+  // Active Readers: pupils who have logged activity in the curriculum
+  const activeReadersCount = reports.filter((r) => {
+    const passed = Number.parseInt(r.quizzesPassed?.split("/")[0] || "0", 10);
+    const total = Number.parseInt(r.quizzesPassed?.split("/")[1] || "0", 10);
+    return (r.totalXp || 0) > 0 || total > 0 || passed > 0;
+  }).length;
 
-  const avgScore =
-    validScores.length > 0
-      ? Math.round(validScores.reduce((acc, curr) => acc + curr, 0) / validScores.length)
-      : 0;
+  const activeReadersPct =
+    studentCount > 0 ? Math.round((activeReadersCount / studentCount) * 100) : 0;
+
+  // Target stories in curriculum
+  const targetStoriesPerPupil = lessonsCount > 0 ? lessonsCount : 16;
+
+  // Pupils who completed the curriculum stories goal
+  const pupilsCompletedGoal = reports.filter((r) => {
+    const passed = Number.parseInt(r.quizzesPassed?.split("/")[0] || "0", 10);
+    return r.isAllStagesCompleted || (!Number.isNaN(passed) && passed >= targetStoriesPerPupil);
+  }).length;
 
   const handleSendNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,11 +166,11 @@ export default function TeacherDashboard() {
     }, 1500);
   };
 
-  const [radarFilter, setRadarFilter] = useState<"all" | "critical" | "watchlist" | "mastering">("all");
-
-  const displayedRadarPupils = radar.pupils.filter((p) => {
-    if (radarFilter === "all") return true;
-    return p.riskLevel === radarFilter;
+  const displayedActivities = activityFeed.filter((act) => {
+    if (feedFilter === "all") return true;
+    if (feedFilter === "quiz") return act.type === "quiz_pass" || act.type === "quiz_attempt";
+    if (feedFilter === "badge") return act.type === "badge_earned";
+    return true;
   });
 
   // Effective champions list strictly driven by live database leaderboard
@@ -170,34 +191,34 @@ export default function TeacherDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="dashboard-card p-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Total Enrolled Pupils
+            Active Readers
           </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900">{studentCount}</span>
-            <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-              {sections.length} Section{sections.length > 1 ? "s" : ""}
+            <span className="text-2xl font-black text-slate-900">
+              {activeReadersCount} / {studentCount}
+            </span>
+            <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+              {activeReadersPct}% Active
             </span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">Active database accounts</p>
+          <p className="text-[10px] text-slate-400 mt-1">Pupils logged in & reading</p>
         </div>
 
         <div className="dashboard-card p-4">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-            Class Comprehension
+            Goal Completed
           </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900">{avgScore}%</span>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                avgScore >= 70
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              Target ≥70%
+            <span className="text-2xl font-black text-slate-900">
+              {pupilsCompletedGoal} / {studentCount}
+            </span>
+            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+              Pupils on Track
             </span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">DepEd Grade 3 benchmark</p>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Cleared all {targetStoriesPerPupil} stories
+          </p>
         </div>
 
         <div className="dashboard-card p-4">
@@ -206,7 +227,7 @@ export default function TeacherDashboard() {
           </span>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-black text-slate-900">{lessonsCount}</span>
-            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
               Passages
             </span>
           </div>
@@ -219,7 +240,7 @@ export default function TeacherDashboard() {
           </span>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-black text-slate-900">{badgesCount}</span>
-            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
               Badges
             </span>
           </div>
@@ -269,197 +290,114 @@ export default function TeacherDashboard() {
         </Link>
       </div>
 
-      {/* ── 4. 🚨 Student Support Radar ─────────────────────────────── */}
-      <div className="dashboard-card p-5 border border-slate-200/80 bg-white space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      {/* ── 4. Recent Classroom Activity (Scrollable, Minimal) ─────────── */}
+      <div className="dashboard-card p-5 border border-slate-200 bg-white space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
           <div>
-            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-500" />
-              <span>Student Support Radar</span>
+            <h3 className="text-sm font-bold text-slate-900">
+              Recent Classroom Activity
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pupils who may need extra reading guidance or phonics assistance.
-            </p>
           </div>
 
-          {/* Interactive Radar Filter Pills - Sleek Segmented Control */}
-          <div className="inline-flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl text-xs font-bold shrink-0 overflow-x-auto scrollbar-none self-start sm:self-center">
+          {/* Minimal Neutral Filter */}
+          <div className="inline-flex items-center gap-1 text-xs">
             <button
               type="button"
-              onClick={() => setRadarFilter("all")}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                radarFilter === "all"
-                  ? "bg-white text-slate-900 shadow-2xs font-black"
-                  : "text-slate-600 hover:text-slate-900 font-semibold"
+              onClick={() => setFeedFilter("all")}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                feedFilter === "all"
+                  ? "bg-slate-900 text-white font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              All ({radar.pupils.length})
+              All ({activityFeed.length})
             </button>
             <button
               type="button"
-              onClick={() => setRadarFilter("critical")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                radarFilter === "critical"
-                  ? "bg-rose-600 text-white shadow-2xs font-black"
-                  : "text-rose-700 hover:bg-rose-50 font-semibold"
+              onClick={() => setFeedFilter("quiz")}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                feedFilter === "quiz"
+                  ? "bg-slate-900 text-white font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${radarFilter === "critical" ? "bg-white" : "bg-rose-500"}`} />
-              <span>{radar.criticalCount} Critical</span>
+              Quizzes ({activityFeed.filter((a) => a.type === "quiz_pass" || a.type === "quiz_attempt").length})
             </button>
             <button
               type="button"
-              onClick={() => setRadarFilter("watchlist")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                radarFilter === "watchlist"
-                  ? "bg-amber-500 text-white shadow-2xs font-black"
-                  : "text-amber-700 hover:bg-amber-50 font-semibold"
+              onClick={() => setFeedFilter("badge")}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                feedFilter === "badge"
+                  ? "bg-slate-900 text-white font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${radarFilter === "watchlist" ? "bg-white" : "bg-amber-500"}`} />
-              <span>{radar.watchlistCount} Watchlist</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRadarFilter("mastering")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                radarFilter === "mastering"
-                  ? "bg-emerald-600 text-white shadow-2xs font-black"
-                  : "text-emerald-700 hover:bg-emerald-50 font-semibold"
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${radarFilter === "mastering" ? "bg-white" : "bg-emerald-500"}`} />
-              <span>{radar.masteringCount} On Track</span>
+              Badges ({activityFeed.filter((a) => a.type === "badge_earned").length})
             </button>
           </div>
         </div>
 
         {loading ? (
-          <div className="py-6 text-center text-xs text-slate-400">Evaluating classroom progress factors...</div>
-        ) : displayedRadarPupils.length === 0 ? (
-          <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 text-emerald-900 flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-            <div className="text-xs">
-              <strong>All enrolled pupils are on track!</strong> No pupils in this filter view.
-            </div>
+          <div className="py-6 text-center text-xs text-slate-400">Loading activity...</div>
+        ) : displayedActivities.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            No recent activity recorded for this section.
           </div>
         ) : (
-          <div className="border border-slate-200/80 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-3.5 min-w-[160px]">Pupil</th>
-                    <th className="py-2.5 px-3.5">Status</th>
-                    <th className="py-2.5 px-3.5 text-center">Score</th>
-                    <th className="py-2.5 px-3.5 hidden md:table-cell min-w-[220px]">Insight &amp; Guidance</th>
-                    <th className="py-2.5 px-3.5 text-right min-w-[140px]">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-normal">
-                  {displayedRadarPupils.map((p) => {
-                    const isCritical = p.riskLevel === "critical";
-                    const isWatchlist = p.riskLevel === "watchlist";
+          <div className="max-h-64 sm:max-h-72 overflow-y-auto divide-y divide-slate-100 pr-1">
+            {displayedActivities.map((act) => (
+              <div
+                key={act.id}
+                className="py-2.5 px-1 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 rounded-lg transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-slate-900">
+                      {act.studentName}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {act.section}
+                    </span>
+                  </div>
+                  <p className="text-slate-600 truncate mt-0.5">
+                    {act.title}
+                    {act.percentage !== undefined && (
+                      <span className="text-slate-500 font-mono ml-1">
+                        · {act.percentage}%
+                      </span>
+                    )}
+                  </p>
+                </div>
 
-                    return (
-                      <tr
-                        key={p.studentId}
-                        className={`transition-colors ${
-                          isCritical
-                            ? "bg-rose-50/30 hover:bg-rose-50/50"
-                            : isWatchlist
-                            ? "bg-amber-50/30 hover:bg-amber-50/50"
-                            : "hover:bg-slate-50/70"
-                        }`}
-                      >
-                        {/* Pupil Avatar & Name */}
-                        <td className="py-2.5 px-3.5">
-                          <div className="flex items-center gap-2">
-                            <StudentAvatar avatar={p.avatar} name={p.studentName} size="xs" className="flex-shrink-0" />
-                            <div className="min-w-0">
-                              <span className="font-bold text-slate-900 truncate block text-xs">
-                                {p.studentName}
-                              </span>
-                              <span className="text-[10px] text-slate-400 block">
-                                {p.section}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Status Chip */}
-                        <td className="py-2.5 px-3.5">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                              isCritical
-                                ? "bg-rose-50 text-rose-700 border-rose-200"
-                                : isWatchlist
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            }`}
-                          >
-                            <span>{isCritical ? "🔴" : isWatchlist ? "🟡" : "🟢"}</span>
-                            <span>{isCritical ? "Needs Attention" : isWatchlist ? "Watchlist" : "On Track"}</span>
-                          </span>
-                        </td>
-
-                        {/* Score & Quizzes */}
-                        <td className="py-2.5 px-3.5 text-center">
-                          <span className="font-bold text-slate-900 block text-xs">
-                            {p.comprehensionPct}%
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            {p.quizzesPassed} Passed
-                          </span>
-                        </td>
-
-                        {/* Insight & Recommended Action */}
-                        <td className="py-2.5 px-3.5 hidden md:table-cell">
-                          <div className="text-[11px] leading-snug">
-                            <span className={`font-semibold ${isCritical ? "text-rose-900" : isWatchlist ? "text-amber-900" : "text-emerald-900"}`}>
-                              {p.struggleReason}
-                            </span>
-                            <span className="text-[10px] text-slate-500 flex items-center gap-1 truncate">
-                              <ArrowRight className="w-2.5 h-2.5 text-amber-500 shrink-0" />
-                              <span className="truncate">{p.recommendedAction}</span>
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* Quick Actions */}
-                        <td className="py-2.5 px-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              onClick={() => setSelectedPupilForNote(p)}
-                              className={`h-6 px-2 rounded-lg font-bold text-[10px] flex items-center gap-1 cursor-pointer ${
-                                isCritical
-                                  ? "bg-rose-600 hover:bg-rose-700 text-white"
-                                  : isWatchlist
-                                  ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                  : "bg-blue-600 hover:bg-blue-700 text-white"
-                              }`}
-                            >
-                              <MessageSquare className="w-2.5 h-2.5" />
-                              <span>{p.riskLevel === "mastering" ? "Praise" : "Guidance"}</span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedPupilForRecord(p)}
-                              className="h-6 px-2 rounded-lg text-slate-700 hover:text-blue-700 hover:border-blue-300 font-bold text-[10px] cursor-pointer"
-                              title={`View evaluation record for ${p.studentName}`}
-                            >
-                              Record
-                            </Button>
-                          </div>
-                        </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {formatTimeAgo(act.timestamp)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedPupilForNote({
+                        studentId: act.studentId,
+                        studentName: act.studentName,
+                        avatar: act.avatar,
+                        section: act.section,
+                        comprehensionPct: act.percentage || 100,
+                        quizzesPassed: 1,
+                        failedAttemptsCount: 0,
+                        lastActiveDate: act.timestamp,
+                        daysInactive: 0,
+                        riskLevel: "mastering",
+                        struggleReason: act.title,
+                        recommendedAction: "Great reading achievement! Keep up the momentum.",
+                      })
+                    }
+                    className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+                  >
+                    Note
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

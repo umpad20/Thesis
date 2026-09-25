@@ -11,7 +11,6 @@ import {
   Award,
   Trophy,
   Flame,
-  Sparkles,
   BookOpen,
   GraduationCap,
 } from "lucide-react";
@@ -233,7 +232,7 @@ export default function AchievementsPage() {
               {/* Bottom Card Footer */}
               <div className="pt-3 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="font-black text-amber-600 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <Star className="w-3 h-3 text-amber-500" />
                   +{badge.xp_reward} XP
                 </span>
                 <span className="text-[10px] font-bold text-slate-400">

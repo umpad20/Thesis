@@ -7,7 +7,6 @@ import {
   Printer,
   X,
   Award,
-  Sparkles,
   Calendar,
   CheckCircle2,
   BookmarkCheck,
@@ -275,7 +274,7 @@ export function CertificateModal({
             </h2>
             <div className="flex items-center justify-center gap-2">
               <span className="h-0.5 w-10 sm:w-16 bg-amber-400 rounded-full" />
-              <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <Award className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
               <span className="h-0.5 w-10 sm:w-16 bg-amber-400 rounded-full" />
             </div>
 

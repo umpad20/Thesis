@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Bookmark,
   Lock,
-  Sparkles,
   BookOpen,
   Info,
 } from "lucide-react";
@@ -213,7 +212,7 @@ export default function VocabularyPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* My Discovered Words Label */}
           <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-black self-start sm:self-center">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
             <span>My Discovered Words ({unlockedCount} / {totalCount} Unlocked)</span>
           </div>
 

@@ -7,7 +7,6 @@ import {
   Flame,
   GraduationCap,
   Crown,
-  Sparkles,
   Award,
   Star,
   CheckCircle2,
@@ -113,7 +112,7 @@ export default function LeaderboardPage() {
         effectiveSection.toLowerCase() === "unassigned";
 
       // If student is not assigned to a section yet, default to School-wide
-      // because they do not have a classroom cohort.
+      // because they do not have a classroom section.
       const initialScope = isStudentUnassigned ? "world" : "class";
       setScopeMode(initialScope);
 
