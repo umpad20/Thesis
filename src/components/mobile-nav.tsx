@@ -62,14 +62,14 @@ export function StudentMobileNav() {
           );
         })}
 
-        {/* Center Elevated Hero Action: Adventure Map (Bank App QR-style) */}
-        <div className="relative flex-1 flex flex-col items-center justify-center">
+        {/* Center Elevated Hero Action: Main Reading / Adventure Map */}
+        <div className="flex-1 flex flex-col items-center justify-center relative h-full">
           <Link
             href="/dashboard/badges"
-            className="group -top-5 absolute flex flex-col items-center cursor-pointer select-none"
+            className="group -translate-y-4 flex flex-col items-center cursor-pointer select-none"
           >
             <div
-              className={`w-14 h-14 rounded-full flex items-center justify-center border-4 border-white transition-all duration-300 ${
+              className={`w-14 h-14 rounded-full flex items-center justify-center border-4 border-white transition-all duration-300 shadow-[0_4px_16px_rgba(0,0,0,0.16)] ${
                 isMapActive
                   ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.45)] scale-105 ring-2 ring-blue-500/30"
                   : "bg-slate-900 text-white hover:bg-blue-600 shadow-[0_6px_16px_rgba(15,23,42,0.3)] hover:scale-105"
@@ -79,10 +79,10 @@ export function StudentMobileNav() {
             </div>
             <span
               className={`text-[10px] font-bold tracking-tight mt-0.5 transition-colors ${
-                isMapActive ? "text-blue-600" : "text-slate-500"
+                isMapActive ? "text-blue-600" : "text-slate-600"
               }`}
             >
-              Map
+              Reading
             </span>
           </Link>
         </div>

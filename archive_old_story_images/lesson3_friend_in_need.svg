@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_lesson3_friend_in_need" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ECFDF5" />
+      <stop offset="100%" stop-color="#D1FAE5" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="500" height="280" rx="16" fill="url(#grad_lesson3_friend_in_need)" />
+  
+  <!-- Story Visual Elements -->
+  
+      <!-- Library Floor & Bookshelves -->
+      <rect x="40" y="60" width="100" height="180" rx="6" fill="#92400E" />
+      <rect x="360" y="60" width="100" height="180" rx="6" fill="#92400E" />
+      <!-- Books on Shelves -->
+      <rect x="50" y="80" width="16" height="40" fill="#EF4444" />
+      <rect x="70" y="80" width="18" height="40" fill="#3B82F6" />
+      <rect x="92" y="80" width="16" height="40" fill="#10B981" />
+      <!-- Ella carrying stack -->
+      <circle cx="210" cy="130" r="18" fill="#FDE68A" />
+      <rect x="195" y="148" width="30" height="42" rx="8" fill="#8B5CF6" />
+      <!-- Stack of colorful books -->
+      <rect x="220" y="145" width="30" height="10" rx="2" fill="#EF4444" />
+      <rect x="218" y="157" width="34" height="10" rx="2" fill="#3B82F6" />
+      <rect x="222" y="169" width="28" height="10" rx="2" fill="#F59E0B" />
+      <!-- Sofia helping carry -->
+      <circle cx="290" cy="130" r="18" fill="#FDE68A" />
+      <rect x="275" y="148" width="30" height="42" rx="8" fill="#EC4899" />
+      <!-- Sofia's arms helping -->
+      <path d="M 275,160 L 250,160" stroke="#FDE68A" stroke-width="5" stroke-linecap="round" />
+      <!-- Math symbol & stars -->
+      <text x="240" y="110" font-size="22">📚</text>
+      <text x="270" y="90" font-size="18">✨</text>
+    
+
+  <!-- Title Watermark Badge -->
+  <g transform="translate(16, 16)">
+    <rect width="180" height="26" rx="8" fill="#FFFFFF" opacity="0.9" filter="url(#shadow)" />
+    <text x="10" y="17" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" fill="#10B981">
+      ⭐ Star Badge
+    </text>
+  </g>
+</svg>

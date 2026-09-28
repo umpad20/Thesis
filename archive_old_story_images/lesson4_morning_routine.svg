@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_lesson4_morning_routine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EFF6FF" />
+      <stop offset="100%" stop-color="#E0E7FF" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="500" height="280" rx="16" fill="url(#grad_lesson4_morning_routine)" />
+  
+  <!-- Story Visual Elements -->
+  
+      <!-- Bedroom / Morning Sun Window -->
+      <rect x="320" y="50" width="110" height="110" rx="10" fill="#BAE6FD" stroke="#0284C7" stroke-width="4" />
+      <circle cx="390" cy="85" r="24" fill="#F59E0B" />
+      <!-- Neat Made Bed -->
+      <rect x="50" y="160" width="160" height="70" rx="8" fill="#60A5FA" />
+      <rect x="60" y="145" width="45" height="25" rx="6" fill="#FFFFFF" /> <!-- Pillow -->
+      <!-- Carlo in Uniform checking backpack -->
+      <circle cx="250" cy="110" r="22" fill="#FCD34D" />
+      <path d="M 230,100 Q 250,85 270,100" stroke="#1E293B" stroke-width="6" fill="none" />
+      <rect x="230" y="132" width="40" height="50" rx="8" fill="#1E40AF" /> <!-- Blue Uniform Shirt -->
+      <!-- School Bag & Notebooks Checklist -->
+      <rect x="280" y="150" width="35" height="45" rx="8" fill="#DC2626" />
+      <rect x="290" y="140" width="16" height="22" rx="3" fill="#FEF08A" /> <!-- English Notebook -->
+      <!-- Checkmark -->
+      <circle cx="285" cy="110" r="14" fill="#10B981" />
+      <path d="M 278,110 L 283,115 L 292,104" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round" />
+      <text x="240" y="70" font-size="24">⏰ 6:00 AM</text>
+    
+
+  <!-- Title Watermark Badge -->
+  <g transform="translate(16, 16)">
+    <rect width="180" height="26" rx="8" fill="#FFFFFF" opacity="0.9" filter="url(#shadow)" />
+    <text x="10" y="17" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" fill="#3B82F6">
+      🎗️ Ribbon Badge
+    </text>
+  </g>
+</svg>

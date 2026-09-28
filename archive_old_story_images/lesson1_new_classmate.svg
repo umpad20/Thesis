@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_lesson1_new_classmate" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EFF6FF" />
+      <stop offset="100%" stop-color="#DBEAFE" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="500" height="280" rx="16" fill="url(#grad_lesson1_new_classmate)" />
+  
+  <!-- Story Visual Elements -->
+  
+      <!-- Schoolyard & Tree -->
+      <path d="M 0,220 Q 200,180 400,200 L 400,280 L 0,280 Z" fill="#86EFAC" />
+      <path d="M 0,240 Q 250,210 500,230 L 500,280 L 0,280 Z" fill="#4ADE80" />
+      <!-- Tree Trunk & Foliage -->
+      <path d="M 80,140 Q 90,200 90,250 L 110,250 Q 110,200 120,140 Z" fill="#92400E" />
+      <circle cx="100" cy="110" r="50" fill="#16A34A" />
+      <circle cx="70" cy="125" r="35" fill="#22C55E" />
+      <circle cx="130" cy="120" r="38" fill="#15803D" />
+      <!-- Characters: Mia (sitting under tree) & Anna (approaching with smile) -->
+      <!-- Mia -->
+      <circle cx="140" cy="180" r="14" fill="#FBBF24" />
+      <path d="M 126,174 Q 140,162 154,174" stroke="#78350F" stroke-width="4" fill="none" />
+      <rect x="130" y="194" width="20" height="28" rx="6" fill="#EC4899" />
+      <rect x="122" y="200" width="12" height="16" rx="3" fill="#F59E0B" /> <!-- Backpack -->
+      <!-- Anna -->
+      <circle cx="240" cy="170" r="15" fill="#FBBF24" />
+      <path d="M 225,162 Q 240,150 255,162" stroke="#451A03" stroke-width="4" fill="none" />
+      <rect x="228" y="185" width="24" height="34" rx="8" fill="#3B82F6" />
+      <!-- Welcoming Hand Gesture -->
+      <path d="M 228,195 Q 190,190 170,185" stroke="#FBBF24" stroke-width="5" stroke-linecap="round" fill="none" />
+      <!-- Friendship Sparkles -->
+      <text x="180" y="160" font-size="22">✨</text>
+      <text x="210" y="145" font-size="18">💖</text>
+      <!-- School Building in Background -->
+      <rect x="330" y="110" width="130" height="110" rx="8" fill="#FCA5A5" />
+      <polygon points="320,110 395,65 470,110" fill="#DC2626" />
+      <rect x="375" y="170" width="30" height="50" rx="4" fill="#991B1B" />
+      <circle cx="395" cy="90" r="10" fill="#FEF08A" /> <!-- School Clock -->
+    
+
+  <!-- Title Watermark Badge -->
+  <g transform="translate(16, 16)">
+    <rect width="180" height="26" rx="8" fill="#FFFFFF" opacity="0.9" filter="url(#shadow)" />
+    <text x="10" y="17" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" fill="#3B82F6">
+      ⭐ Star Badge
+    </text>
+  </g>
+</svg>

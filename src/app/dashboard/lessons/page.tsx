@@ -35,12 +35,54 @@ interface StorySlide {
   slideIndex: number;
   pageNumber: number;
   sentences: string[];
+  sentenceImages?: string[];
   paragraphText: string;
   speaker: string;
   speakerAvatar: string;
   actionTag: string;
   sceneTitle: string;
   sceneImageUrl: string;
+}
+
+function StorybookSceneImage({
+  src,
+  alt,
+  title,
+}: {
+  src: string;
+  alt: string;
+  title: string;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  if (hasError) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-amber-50 to-orange-50/60 p-6 text-center select-none">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-100/90 border border-amber-300/70 flex items-center justify-center text-2xl sm:text-3xl mb-3 shadow-inner">
+          📖
+        </div>
+        <h4 className="text-sm sm:text-base font-bold text-slate-800 tracking-tight font-serif mb-1 px-4 line-clamp-2">
+          {title}
+        </h4>
+        <span className="text-[11px] font-semibold text-amber-800/80 bg-amber-100/70 px-2.5 py-0.5 rounded-full border border-amber-200">
+          Awaiting Story Illustration
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setHasError(true)}
+      className="w-full h-full object-cover group-hover:scale-102 transition-all duration-300 animate-in fade-in-50"
+    />
+  );
 }
 
 function LessonReaderContent() {
@@ -59,6 +101,7 @@ function LessonReaderContent() {
   const [loading, setLoading] = useState(true);
 
   const [currentSlideIndex, setCurrentSlideIndex] = useState<number>(0);
+  const [activeSentenceIndex, setActiveSentenceIndex] = useState<number>(0);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [pageFlipDirection, setPageFlipDirection] = useState<"forward" | "backward" | null>(null);
   const [targetSlideIndex, setTargetSlideIndex] = useState<number | null>(null);
@@ -188,6 +231,9 @@ function LessonReaderContent() {
     for (let i = 0; i < allCues.length; i += CHUNK_SIZE) {
       const chunk = allCues.slice(i, i + CHUNK_SIZE);
       const sentences = chunk.map((c) => c.sentence_text);
+      const sentenceImages = chunk.map(
+        (c) => c.scene_image_url || displayPages[0]?.image_url || "/images/stories/lesson1_new_classmate.jpg"
+      );
       const paragraphText = sentences.join(" ");
       const leadCue = chunk[0];
 
@@ -196,6 +242,7 @@ function LessonReaderContent() {
         slideIndex: slideCount,
         pageNumber: slideCount + 1,
         sentences,
+        sentenceImages,
         paragraphText,
         speaker: leadCue.speaker || "Story Narrator",
         speakerAvatar: leadCue.speaker_avatar || "📖",
@@ -286,6 +333,7 @@ function LessonReaderContent() {
 
     setTimeout(() => {
       setCurrentSlideIndex(newIndex);
+      setActiveSentenceIndex(0);
       setPageFlipDirection(null);
       setTargetSlideIndex(null);
     }, 620);
@@ -610,11 +658,19 @@ function LessonReaderContent() {
           >
             {/* Story Illustration Photo (Size matches the Sentence Box below) */}
             <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center group">
-              <img
-                src={displayLeftSlide.sceneImageUrl}
-                alt={displayLeftSlide.sceneTitle}
-                className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
-              />
+              {(() => {
+                const activeImageUrl =
+                  displayLeftSlide.sentenceImages?.[activeSentenceIndex] ||
+                  displayLeftSlide.sceneImageUrl;
+                return (
+                  <StorybookSceneImage
+                    key={activeImageUrl}
+                    src={activeImageUrl}
+                    alt={displayLeftSlide.sceneTitle}
+                    title={displayLeftSlide.sceneTitle}
+                  />
+                );
+              })()}
             </div>
           </div>
 
@@ -632,18 +688,29 @@ function LessonReaderContent() {
           >
             {/* 3-Sentence Reading Box (Organized sentence-by-sentence with clean spacing) */}
             <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-y-auto">
-              <div className="space-y-2.5 sm:space-y-3.5 lg:space-y-4">
-                {displayRightSentences.map((sentence, sIdx) => (
-                  <p
-                    key={sIdx}
-                    className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
-                  >
-                    <VocabularyHighlightedText
-                      text={sentence}
-                      vocabularyList={vocabulary}
-                    />
-                  </p>
-                ))}
+              <div className="space-y-2 sm:space-y-3">
+                {displayRightSentences.map((sentence, sIdx) => {
+                  const isSelected = activeSentenceIndex === sIdx;
+                  return (
+                    <div
+                      key={sIdx}
+                      onClick={() => setActiveSentenceIndex(sIdx)}
+                      className={`cursor-pointer transition-all p-2 rounded-xl border select-none ${
+                        isSelected
+                          ? "bg-amber-100/70 border-amber-300 shadow-2xs"
+                          : "border-transparent hover:bg-amber-100/30"
+                      }`}
+                      title="Click to view picture for this sentence"
+                    >
+                      <p className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left">
+                        <VocabularyHighlightedText
+                          text={sentence}
+                          vocabularyList={vocabulary}
+                        />
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

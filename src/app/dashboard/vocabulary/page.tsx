@@ -6,6 +6,7 @@ import {
   Search,
   Volume2,
   ChevronRight,
+  ChevronDown,
   Bookmark,
   Lock,
   BookOpen,
@@ -197,86 +198,56 @@ export default function VocabularyPage() {
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* ── 1. Clean Minimal Header ───────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Vocabulary Vault
-          </h1>
-          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-            {unlockedCount} / {totalCount} Words Unlocked
-          </span>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          Vocabulary Vault
+        </h1>
       </div>
 
-      {/* ── 2. Discovery Header & Quick Badge Filter Pills ─────────────── */}
-      <div className="dashboard-card p-4 space-y-3">
+      {/* ── 2. Discovery Header & Quick Badge Filter Dropdown + Search ─────────────── */}
+      <div className="dashboard-card p-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* My Discovered Words Label */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-black self-start sm:self-center">
+          {/* Unlocked Progress Pill */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-black self-start sm:self-center shrink-0">
             <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span>My Discovered Words ({unlockedCount} / {totalCount} Unlocked)</span>
+            <span>({unlockedCount} / {totalCount}) Unlocked</span>
           </div>
 
-          {/* Search Input (Dropdown filter removed) */}
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search word, meaning, synonym..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50/80 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
-            />
-          </div>
-        </div>
-
-        {/* Quick Badge Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-0.5 scrollbar-none">
-          <button
-            type="button"
-            onClick={() => setSelectedBadgeId("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-              selectedBadgeId === "all"
-                ? "bg-blue-600 text-white shadow-2xs"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            All Badges
-          </button>
-          {sortedBadges.map((b) => {
-            const isSelected = selectedBadgeId === b.badge_id.toString();
-            const bWords = enrichedWordsList.filter((w) => w.badgeId === b.badge_id);
-            const bUnlocked = bWords.filter((w) => w.isUnlocked).length;
-            if (bWords.length === 0) return null;
-
-            return (
-              <button
-                key={b.badge_id}
-                type="button"
-                onClick={() => setSelectedBadgeId(isSelected ? "all" : b.badge_id.toString())}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer border ${
-                  isSelected
-                    ? "bg-blue-50 text-blue-700 border-blue-300 ring-2 ring-blue-500/20"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                }`}
+          {/* Right Controls: Badge Filter Dropdown + Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 sm:max-w-md sm:justify-end">
+            {/* Badge Filter Dropdown */}
+            <div className="relative shrink-0">
+              <select
+                value={selectedBadgeId}
+                onChange={(e) => setSelectedBadgeId(e.target.value)}
+                className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-8 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all cursor-pointer appearance-none shadow-2xs"
               >
-                <BadgeGraphic
-                  type={b.badge_type}
-                  medalType={b.medal_type}
-                  badgeIconUrl={b.badge_icon_url}
-                  size="xs"
-                  status={bUnlocked > 0 ? "completed" : "locked"}
-                />
-                <span>{b.badge_name}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-md font-extrabold ${
-                    isSelected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {bWords.length}
-                </span>
-              </button>
-            );
-          })}
+                <option value="all">All Badges ({totalCount})</option>
+                {sortedBadges.map((b) => {
+                  const bWords = enrichedWordsList.filter((w) => w.badgeId === b.badge_id);
+                  if (bWords.length === 0) return null;
+                  const cleanName = b.badge_name.replace(/\s*Badge\b/i, "");
+                  return (
+                    <option key={b.badge_id} value={b.badge_id.toString()}>
+                      {cleanName} ({bWords.length})
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search word, meaning, synonym..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all shadow-2xs"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

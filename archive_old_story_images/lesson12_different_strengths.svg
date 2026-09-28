@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 280" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad_lesson12_different_strengths" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="500" height="280" rx="16" fill="url(#grad_lesson12_different_strengths)" />
+  
+  <!-- Story Visual Elements -->
+  
+      <!-- Community Model Project Display -->
+      <rect x="100" y="140" width="300" height="20" rx="4" fill="#78350F" />
+      <!-- Miniature School & Trees on Table -->
+      <rect x="220" y="90" width="60" height="50" rx="4" fill="#F87171" />
+      <polygon points="215,90 250,65 285,90" fill="#DC2626" />
+      <circle cx="195" cy="115" r="16" fill="#22C55E" />
+      <circle cx="305" cy="115" r="16" fill="#22C55E" />
+      <!-- 4 Friends Standing Together (Ana, Miguel, Samantha, Noah) -->
+      <circle cx="80" cy="95" r="14" fill="#FCD34D" /> <!-- Ana -->
+      <rect x="70" y="109" width="20" height="35" rx="4" fill="#EC4899" />
+      <circle cx="140" cy="95" r="14" fill="#FCD34D" /> <!-- Miguel -->
+      <rect x="130" y="109" width="20" height="35" rx="4" fill="#3B82F6" />
+      <circle cx="360" cy="95" r="14" fill="#FCD34D" /> <!-- Samantha -->
+      <rect x="350" y="109" width="20" height="35" rx="4" fill="#8B5CF6" />
+      <circle cx="420" cy="95" r="14" fill="#FCD34D" /> <!-- Noah -->
+      <rect x="410" y="109" width="20" height="35" rx="4" fill="#10B981" />
+      <!-- Synergy Sparkles -->
+      <text x="235" y="45" font-size="24">🎨 ⚽ 📖 🧱</text>
+    
+
+  <!-- Title Watermark Badge -->
+  <g transform="translate(16, 16)">
+    <rect width="180" height="26" rx="8" fill="#FFFFFF" opacity="0.9" filter="url(#shadow)" />
+    <text x="10" y="17" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="bold" fill="#64748B">
+      🥈 Silver Medal
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ecfdf5" />
+      <stop offset="100%" stop-color="#fffdf8" />
+    </linearGradient>
+    <linearGradient id="bubbleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#475569" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="800" height="600" fill="url(#bgGrad)" />
+
+  <!-- Cozy Room / Setting Background Shapes -->
+  <g opacity="0.35">
+    <circle cx="700" cy="120" r="140" fill="#10b981" />
+    <circle cx="100" cy="480" r="160" fill="#10b981" />
+    <path d="M-50,380 Q200,320 400,380 T850,350 L850,600 L-50,600 Z" fill="#e2e8f0" opacity="0.4" />
+  </g>
+
+  <!-- Window / Classroom / Setting Frame -->
+  <rect x="80" y="70" width="640" height="380" rx="28" fill="#ffffff" stroke="#e2e8f0" stroke-width="4" filter="url(#softShadow)" />
+
+  <!-- Scene Setting Elements -->
+  <g transform="translate(110, 95)">
+    <!-- Setting Tag -->
+    <rect x="0" y="0" width="220" height="32" rx="16" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5" />
+    <text x="14" y="21" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="800" fill="#1d4ed8" letter-spacing="0.5">
+      STAGE 4 · LESSON 12
+    </text>
+
+    <!-- Scene Description -->
+    <text x="580" y="22" text-anchor="end" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#64748b">
+      Team Workshop
+    </text>
+  </g>
+
+  <!-- Character Center Stage Illustration -->
+  <g transform="translate(400, 260)">
+    <!-- Soft Glow Backdrop -->
+    <circle cx="0" cy="0" r="105" fill="#10b981" opacity="0.18" />
+    <circle cx="0" cy="0" r="85" fill="#ffffff" stroke="#10b981" stroke-width="6" filter="url(#softShadow)" />
+
+    <!-- Big Character Icon / Avatar -->
+    <text x="0" y="32" text-anchor="middle" font-size="74">
+      🧩
+    </text>
+  </g>
+
+  <!-- Bottom Subtitle / Sentence Action Banner -->
+  <g transform="translate(120, 480)">
+    <rect x="0" y="0" width="560" height="85" rx="22" fill="url(#bubbleGrad)" stroke="#cbd5e1" stroke-width="2" filter="url(#softShadow)" />
+    
+    <!-- Action Tag -->
+    <text x="280" y="32" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="900" fill="#0f172a">
+      Combining Talents for the Project
+    </text>
+
+    <!-- Sentence Text Preview -->
+    <text x="280" y="60" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-style="italic" font-weight="500" fill="#475569">
+      "Ana drew pictures, Samantha wrote, Noah built, Miguel presented."
+    </text>
+  </g>
+</svg>

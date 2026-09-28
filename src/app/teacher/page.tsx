@@ -197,7 +197,7 @@ export default function TeacherDashboard() {
             <span className="text-2xl font-black text-slate-900">
               {activeReadersCount} / {studentCount}
             </span>
-            <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
               {activeReadersPct}% Active
             </span>
           </div>
@@ -209,10 +209,10 @@ export default function TeacherDashboard() {
             Goal Completed
           </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900">
+            <span className="text-2xl font-black text-emerald-800">
               {pupilsCompletedGoal} / {studentCount}
             </span>
-            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
               Pupils on Track
             </span>
           </div>
@@ -227,7 +227,7 @@ export default function TeacherDashboard() {
           </span>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-black text-slate-900">{lessonsCount}</span>
-            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
               Passages
             </span>
           </div>
@@ -239,8 +239,8 @@ export default function TeacherDashboard() {
             Active Accolades
           </span>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900">{badgesCount}</span>
-            <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="text-2xl font-black text-purple-900">{badgesCount}</span>
+            <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">
               Badges
             </span>
           </div>
@@ -249,19 +249,19 @@ export default function TeacherDashboard() {
       </div>
 
       {/* 3. Section Filter Chips */}
-      <div className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex-wrap">
+      <div className="dashboard-card p-3 bg-slate-50/90 border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-bold text-slate-500 mr-2 flex items-center gap-1">
-            <BookOpen className="w-3.5 h-3.5" />
+          <span className="text-xs font-bold text-slate-700 mr-2 flex items-center gap-1.5">
+            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
             <span>Class Section:</span>
           </span>
           <button
             type="button"
             onClick={() => setSelectedSection("all")}
-            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               selectedSection === "all"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
             }`}
           >
             All Sections ({studentCount})
@@ -271,10 +271,10 @@ export default function TeacherDashboard() {
               key={sec}
               type="button"
               onClick={() => setSelectedSection(sec)}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 selectedSection === sec
                   ? "bg-blue-600 text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
               }`}
             >
               {sec}
@@ -284,7 +284,7 @@ export default function TeacherDashboard() {
 
         <Link
           href="/teacher/students"
-          className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 px-3 py-1 rounded-xl hover:bg-blue-50"
+          className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 px-3 py-1 rounded-xl hover:bg-blue-50 transition-colors"
         >
           <span>Manage Sections →</span>
         </Link>
@@ -355,15 +355,23 @@ export default function TeacherDashboard() {
                     <span className="font-semibold text-slate-900">
                       {act.studentName}
                     </span>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded">
                       {act.section}
                     </span>
                   </div>
-                  <p className="text-slate-600 truncate mt-0.5">
-                    {act.title}
+                  <p className="text-slate-600 truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span>{act.title}</span>
                     {act.percentage !== undefined && (
-                      <span className="text-slate-500 font-mono ml-1">
-                        · {act.percentage}%
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded border font-mono ${
+                          act.percentage >= 80
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200/70"
+                            : act.percentage >= 70
+                            ? "bg-blue-50 text-blue-800 border-blue-200/70"
+                            : "bg-rose-50 text-rose-800 border-rose-200/70"
+                        }`}
+                      >
+                        {act.percentage}%
                       </span>
                     )}
                   </p>
@@ -391,7 +399,7 @@ export default function TeacherDashboard() {
                         recommendedAction: "Great reading achievement! Keep up the momentum.",
                       })
                     }
-                    className="text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                   >
                     Note
                   </button>
@@ -471,31 +479,46 @@ export default function TeacherDashboard() {
               <div>
                 <div className="flex items-center justify-between text-xs font-bold mb-1">
                   <span className="text-slate-700">⭐ Star Badges (Lesson Mastery Stage)</span>
-                  <span className="text-slate-900">
+                  <span className="text-slate-900 font-mono">
                     {distribution.starCount} Pupils ({distribution.starPct}%)
                   </span>
                 </div>
-                <Progress value={distribution.starPct} className="h-2 bg-slate-100" />
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${distribution.starPct}%` }}
+                    className="h-full bg-sky-400 rounded-full transition-all duration-500"
+                  />
+                </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between text-xs font-bold mb-1">
                   <span className="text-blue-700">🎗️ Ribbon Badges (Cumulative Checkpoint)</span>
-                  <span className="text-blue-700 font-bold">
+                  <span className="text-blue-700 font-bold font-mono">
                     {distribution.ribbonCount} Pupils ({distribution.ribbonPct}%)
                   </span>
                 </div>
-                <Progress value={distribution.ribbonPct} className="h-2 bg-slate-100" />
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${distribution.ribbonPct}%` }}
+                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                  />
+                </div>
               </div>
 
               <div>
                 <div className="flex items-center justify-between text-xs font-bold mb-1">
-                  <span className="text-emerald-700">🏅 Medal Badges (Bronze, Silver &amp; Gold)</span>
-                  <span className="text-emerald-700 font-bold">
+                  <span className="text-amber-800">🏅 Medal Badges (Bronze, Silver &amp; Gold)</span>
+                  <span className="text-amber-800 font-bold font-mono">
                     {distribution.medalCount} Pupils ({distribution.medalPct}%)
                   </span>
                 </div>
-                <Progress value={distribution.medalPct} className="h-2 bg-slate-100" />
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${distribution.medalPct}%` }}
+                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                  />
+                </div>
               </div>
             </div>
           )}
