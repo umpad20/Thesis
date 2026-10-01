@@ -258,7 +258,7 @@ function EnrollPupilsForm() {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-500">
                   <th className="py-3 px-4 text-center w-14">#</th>
-                  <th className="py-3 px-4">Pupil Full Name</th>
+                  <th className="py-3 px-4">Student Full Name</th>
                   <th className="py-3 px-4 w-32">Gender</th>
                   <th className="py-3 px-4">Student Email / Login ID</th>
                   <th className="py-3 px-4">Password</th>
@@ -306,7 +306,7 @@ function EnrollPupilsForm() {
               }}
               className="h-11 px-5 rounded-xl font-bold text-sm text-slate-700 cursor-pointer"
             >
-              + Enroll More Pupils
+              + Enroll More Students
             </Button>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -352,7 +352,7 @@ function EnrollPupilsForm() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                    Enroll Pupils
+                    Enroll Students
                   </h1>
                 </div>
               </div>
@@ -425,7 +425,7 @@ function EnrollPupilsForm() {
               <div className="hidden lg:flex items-center gap-3 px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-500">
                 <div className="w-8 text-center flex-shrink-0">#</div>
                 <div className="flex-[3] min-w-[200px]">
-                  Pupil Full Name <span className="text-blue-600">*</span>
+                  Student Full Name <span className="text-blue-600">*</span>
                 </div>
                 <div className="w-40 flex-shrink-0">Gender</div>
                 <div className="flex-[3] min-w-[220px]">
@@ -595,7 +595,7 @@ function EnrollPupilsForm() {
                 <div className="w-5 h-5 rounded-full bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
                   <Plus className="w-3.5 h-3.5 text-blue-700" />
                 </div>
-                <span>+ Add Another Pupil Row</span>
+                <span>+ Add Another Student Row</span>
               </button>
             </div>
 
@@ -609,7 +609,7 @@ function EnrollPupilsForm() {
                   </div>
                 ) : (
                   <span>
-                    Ready to enroll <strong>{validCount}</strong> {validCount === 1 ? "pupil" : "pupils"} in <strong>{selectedSection}</strong>
+                    Ready to enroll <strong>{validCount}</strong> {validCount === 1 ? "student" : "students"} in <strong>{selectedSection}</strong>
                   </span>
                 )}
               </div>
@@ -628,7 +628,7 @@ function EnrollPupilsForm() {
                   disabled={isSubmitting || validCount === 0}
                   className="flex-1 sm:flex-initial h-11 px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? "Enrolling..." : `Enroll ${validCount} Pupils`}
+                  {isSubmitting ? "Enrolling..." : `Enroll ${validCount} ${validCount === 1 ? "Student" : "Students"}`}
                 </Button>
               </div>
             </div>

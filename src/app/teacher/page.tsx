@@ -17,6 +17,8 @@ import {
   Send,
   X,
   MessageSquare,
+  Crown,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -38,6 +40,40 @@ import {
 import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-helpers";
 import { TeacherDashboardSkeleton } from "@/components/page-skeletons";
 import type { InterventionPupil, LeaderboardEntry, Badge } from "@/lib/types";
+
+const TIER_CONFIG: Record<
+  string,
+  { label: string; icon: string; bg: string; text: string; border: string }
+> = {
+  grand_scholar: {
+    label: "Grand Scholar",
+    icon: "👑",
+    bg: "bg-amber-50",
+    text: "text-amber-800",
+    border: "border-amber-300",
+  },
+  star_explorer: {
+    label: "Star Explorer",
+    icon: "⭐",
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-200",
+  },
+  rising_reader: {
+    label: "Rising Reader",
+    icon: "🚀",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+  },
+  story_starter: {
+    label: "Story Starter",
+    icon: "📖",
+    bg: "bg-slate-50",
+    text: "text-slate-600",
+    border: "border-slate-200",
+  },
+};
 
 function formatTimeAgo(timestamp: string): string {
   try {
@@ -74,7 +110,10 @@ export default function TeacherDashboard() {
   const [activityFeed, setActivityFeed] = useState<ClassroomActivityItem[]>([]);
   const [feedFilter, setFeedFilter] = useState<"all" | "quiz" | "badge">("all");
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardSearch, setLeaderboardSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [totalAllCount, setTotalAllCount] = useState<number | null>(null);
 
   // Guidance Note Modal State
   const [selectedPupilForNote, setSelectedPupilForNote] = useState<InterventionPupil | null>(null);
@@ -91,7 +130,8 @@ export default function TeacherDashboard() {
       const user = getCurrentUser();
       const teacherId = user?.id || "";
 
-      const [roster, lessons, liveSections, badges, dist, feed, topLeaderboard] = await Promise.all([
+      const [allRoster, roster, lessons, liveSections, badges, dist, feed, topLeaderboard] = await Promise.all([
+        selectedSection === "all" ? Promise.resolve([]) : fetchClassRosterReports("all", teacherId),
         fetchClassRosterReports(selectedSection, teacherId),
         fetchAllLessons(),
         fetchTeacherSectionsFromSupabase(teacherId),
@@ -102,6 +142,11 @@ export default function TeacherDashboard() {
       ]);
 
       setReports(roster);
+      if (selectedSection === "all") {
+        setTotalAllCount(roster.length);
+      } else if (allRoster.length > 0) {
+        setTotalAllCount(allRoster.length);
+      }
       setLessonsCount(lessons.length);
       setBadgesCount(badges.length);
       setBadgesList(badges);
@@ -110,7 +155,7 @@ export default function TeacherDashboard() {
       }
       setDistribution(dist);
       setActivityFeed(feed);
-      setLeaderboard(topLeaderboard.slice(0, 5));
+      setLeaderboard(topLeaderboard);
       setLoading(false);
     }
     loadStats();
@@ -174,7 +219,20 @@ export default function TeacherDashboard() {
   });
 
   // Effective champions list strictly driven by live database leaderboard
-  const displayChampions: LeaderboardEntry[] = leaderboard;
+  const top1 = leaderboard[0];
+  const top2 = leaderboard[1];
+  const top3 = leaderboard[2];
+  const maxLeaderboardXp = Math.max(...leaderboard.map((e) => e.totalXp || 0), 1);
+
+  const filteredLeaderboard = leaderboard.filter((entry) => {
+    if (!leaderboardSearch.trim()) return true;
+    const q = leaderboardSearch.toLowerCase();
+    return (
+      entry.studentName.toLowerCase().includes(q) ||
+      (entry.section && entry.section.toLowerCase().includes(q)) ||
+      (entry.rankTierLabel && entry.rankTierLabel.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -264,7 +322,7 @@ export default function TeacherDashboard() {
                 : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
             }`}
           >
-            All Sections ({studentCount})
+            All Sections ({totalAllCount ?? studentCount})
           </button>
           {sections.map((sec) => (
             <button
@@ -290,171 +348,391 @@ export default function TeacherDashboard() {
         </Link>
       </div>
 
-      {/* ── 4. Recent Classroom Activity (Scrollable, Minimal) ─────────── */}
-      <div className="dashboard-card p-5 border border-slate-200 bg-white space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">
-              Recent Classroom Activity
-            </h3>
-          </div>
-
-          {/* Minimal Neutral Filter */}
-          <div className="inline-flex items-center gap-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setFeedFilter("all")}
-              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                feedFilter === "all"
-                  ? "bg-slate-900 text-white font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              All ({activityFeed.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFeedFilter("quiz")}
-              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                feedFilter === "quiz"
-                  ? "bg-slate-900 text-white font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Quizzes ({activityFeed.filter((a) => a.type === "quiz_pass" || a.type === "quiz_attempt").length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFeedFilter("badge")}
-              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                feedFilter === "badge"
-                  ? "bg-slate-900 text-white font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Badges ({activityFeed.filter((a) => a.type === "badge_earned").length})
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="py-6 text-center text-xs text-slate-400">Loading activity...</div>
-        ) : displayedActivities.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-400">
-            No recent activity recorded for this section.
-          </div>
-        ) : (
-          <div className="max-h-64 sm:max-h-72 overflow-y-auto divide-y divide-slate-100 pr-1">
-            {displayedActivities.map((act) => (
-              <div
-                key={act.id}
-                className="py-2.5 px-1 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 rounded-lg transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-slate-900">
-                      {act.studentName}
-                    </span>
-                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded">
-                      {act.section}
-                    </span>
-                  </div>
-                  <p className="text-slate-600 truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
-                    <span>{act.title}</span>
-                    {act.percentage !== undefined && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.2 rounded border font-mono ${
-                          act.percentage >= 80
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200/70"
-                            : act.percentage >= 70
-                            ? "bg-blue-50 text-blue-800 border-blue-200/70"
-                            : "bg-rose-50 text-rose-800 border-rose-200/70"
-                        }`}
-                      >
-                        {act.percentage}%
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    {formatTimeAgo(act.timestamp)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedPupilForNote({
-                        studentId: act.studentId,
-                        studentName: act.studentName,
-                        avatar: act.avatar,
-                        section: act.section,
-                        comprehensionPct: act.percentage || 100,
-                        quizzesPassed: 1,
-                        failedAttemptsCount: 0,
-                        lastActiveDate: act.timestamp,
-                        daysInactive: 0,
-                        riskLevel: "mastering",
-                        struggleReason: act.title,
-                        recommendedAction: "Great reading achievement! Keep up the momentum.",
-                      })
-                    }
-                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                  >
-                    Note
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── 5. 🏆 Classroom Champions & Live Mastery Progression ──────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Champions Leaderboard Snapshot */}
-        <div className="dashboard-card p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-amber-500 fill-amber-400" />
-              <span>Classroom Reading Champions</span>
-            </h3>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Top XP Ranks</span>
-          </div>
-
-          {displayChampions.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400">No pupil quiz attempts recorded yet.</div>
-          ) : (
-            <div className="space-y-2">
-              {displayChampions.map((entry) => (
-                <div
-                  key={entry.studentId}
-                  className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-slate-100 rounded-xl transition-colors text-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className={`w-6 h-6 rounded-lg font-black text-[11px] flex items-center justify-center ${
-                        entry.rank === 1
-                          ? "bg-amber-400 text-amber-950 font-bold"
-                          : entry.rank === 2
-                          ? "bg-slate-300 text-slate-900"
-                          : entry.rank === 3
-                          ? "bg-amber-700 text-white"
-                          : "bg-slate-200 text-slate-600"
-                      }`}
-                    >
-                      #{entry.rank}
-                    </span>
-                    <StudentAvatar avatar={entry.avatar} name={entry.studentName} size="xs" className="flex-shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-slate-900 leading-tight">{entry.studentName}</h4>
-                      <span className="text-[10px] text-slate-400">{entry.section} · {entry.rankTierLabel}</span>
+      {/* ── 4. 🏆 Student Champions Podium & Standings Leaderboard (Matching Photo 2) ── */}
+      <div className="space-y-4">
+        {/* Champions Podium */}
+        {leaderboard.length >= 1 && (
+          <div className="dashboard-card px-2.5 py-4 sm:p-6 lg:p-7 bg-gradient-to-b from-slate-50/80 via-white to-amber-50/40 border-2 border-amber-200/80 relative overflow-hidden shadow-xs">
+            <div className="flex items-end justify-center gap-2 sm:gap-4 lg:gap-6 pt-1 pb-1 max-w-2xl mx-auto w-full">
+              {/* #2 Silver Podium */}
+              {top2 ? (
+                <div className="flex-1 max-w-[190px] min-w-0 flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
+                  <div className="relative mb-2">
+                    <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 p-1 ring-3 ring-slate-300 shadow-sm flex items-center justify-center">
+                      <StudentAvatar
+                        avatar={top2.avatar}
+                        name={top2.studentName}
+                        size="lg"
+                        className="w-11 h-11 sm:w-14 sm:h-14 shadow-sm"
+                      />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                      2
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <span className="font-black text-blue-600 font-mono block">{entry.totalXp} XP</span>
-                    <span className="text-[10px] font-bold text-emerald-600">{entry.comprehensionPct}% Acc</span>
+                  <div className="w-full bg-gradient-to-t from-slate-200/90 via-slate-100/80 to-white rounded-2xl p-2.5 sm:p-3 text-center border-2 border-slate-300/80 min-h-[85px] sm:min-h-[95px] flex flex-col justify-end shadow-xs">
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate" title={top2.studentName}>
+                      {top2.studentName}
+                    </h3>
+                    <span className="text-[11px] sm:text-xs font-black text-blue-600 mt-0.5">
+                      +{top2.totalXp} XP
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-0.5 block truncate">
+                      🥈 {top2.rankTierLabel}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 max-w-[190px]" />
+              )}
+
+              {/* #1 Gold Podium (Elevated) */}
+              {top1 && (
+                <div className="flex-1 max-w-[210px] min-w-0 flex flex-col items-center -mt-4 sm:-mt-5 group transition-transform hover:-translate-y-1.5 duration-200 z-10">
+                  <div className="relative mb-2">
+                    <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 fill-amber-400 mx-auto mb-0.5 animate-bounce" />
+                    <div className="w-15 h-15 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-300 via-yellow-200 to-amber-400 p-1.5 ring-3 ring-amber-400 ring-offset-2 ring-offset-white shadow-lg shadow-amber-400/30 flex items-center justify-center relative">
+                      <StudentAvatar
+                        avatar={top1.avatar}
+                        name={top1.studentName}
+                        size="xl"
+                        className="w-12 h-12 sm:w-16 sm:h-16 shadow-md"
+                      />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center justify-center border-2 border-white shadow-xs">
+                      1
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-gradient-to-t from-amber-200/90 via-amber-100/70 to-white rounded-2xl p-2.5 sm:p-3.5 text-center border-2 border-amber-400 min-h-[105px] sm:min-h-[120px] flex flex-col justify-end shadow-md shadow-amber-300/30 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.2)_0%,_transparent_70%)] pointer-events-none" />
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate relative" title={top1.studentName}>
+                      {top1.studentName}
+                    </h3>
+                    <span className="text-xs sm:text-sm font-black text-amber-700 mt-0.5 relative">
+                      +{top1.totalXp} XP
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-amber-800/90 mt-0.5 block relative truncate">
+                      🏆 {top1.rankTierLabel}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* #3 Bronze Podium */}
+              {top3 ? (
+                <div className="flex-1 max-w-[190px] min-w-0 flex flex-col items-center group transition-transform hover:-translate-y-1 duration-200">
+                  <div className="relative mb-2">
+                    <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-100 via-orange-100 to-amber-200 p-1 ring-3 ring-amber-400/80 shadow-sm flex items-center justify-center">
+                      <StudentAvatar
+                        avatar={top3.avatar}
+                        name={top3.studentName}
+                        size="lg"
+                        className="w-11 h-11 sm:w-14 sm:h-14 shadow-sm"
+                      />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-amber-700 to-amber-900 text-white font-black text-[10px] flex items-center justify-center border-2 border-white shadow-xs">
+                      3
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-gradient-to-t from-amber-100/90 via-orange-50/60 to-white rounded-2xl p-2.5 sm:p-3 text-center border-2 border-amber-300/80 min-h-[75px] sm:min-h-[85px] flex flex-col justify-end shadow-xs">
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate" title={top3.studentName}>
+                      {top3.studentName}
+                    </h3>
+                    <span className="text-[11px] sm:text-xs font-black text-blue-600 mt-0.5">
+                      +{top3.totalXp} XP
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 mt-0.5 block truncate">
+                      🥉 {top3.rankTierLabel}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 max-w-[190px]" />
+              )}
+            </div>
+
+            {/* Unified Champion Stage Base */}
+            <div className="w-full max-w-2xl mx-auto h-2 sm:h-2.5 rounded-full bg-gradient-to-r from-slate-200 via-amber-300 to-slate-200 shadow-inner mt-1.5 opacity-90" />
+          </div>
+        )}
+
+        {/* Full-Width Standings Roster Table with Search */}
+        <div className="dashboard-card overflow-hidden border border-slate-200/80 bg-white">
+          {/* Table Header Bar with Search */}
+          <div className="px-5 py-3 bg-slate-50/80 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-blue-600" />
+              <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                {selectedSection === "all" ? "School-wide Rankings" : `${selectedSection} Standings`}
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">({leaderboard.length} Readers)</span>
+            </div>
+
+            <div className="relative w-full sm:w-56">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={leaderboardSearch}
+                onChange={(e) => setLeaderboardSearch(e.target.value)}
+                placeholder="Search reader..."
+                className="w-full pl-8 pr-3 py-1 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {filteredLeaderboard.map((entry) => {
+              const xpPct = Math.round((entry.totalXp / maxLeaderboardXp) * 100);
+              const tierConfig = TIER_CONFIG[entry.rankTier] || TIER_CONFIG.story_starter;
+
+              return (
+                <div
+                  key={entry.studentId}
+                  onClick={() => {
+                    const pupil = reports.find((r) => r.studentId === entry.studentId);
+                    if (pupil) {
+                      const numScore =
+                        Number.parseInt(pupil.comprehensionPct?.replace("%", "") || "0", 10) ||
+                        entry.comprehensionPct ||
+                        100;
+                      setSelectedPupilForRecord({
+                        studentId: pupil.studentId,
+                        studentName: pupil.name,
+                        avatar: pupil.avatar || entry.avatar || "👧",
+                        section: pupil.section || entry.section || "Grade 3-A",
+                        comprehensionPct: numScore,
+                        quizzesPassed:
+                          Number.parseInt(pupil.quizzesPassed?.split("/")[0] || "0", 10) ||
+                          entry.quizzesPassed,
+                        failedAttemptsCount: 0,
+                        lastActiveDate: pupil.lastActive,
+                        daysInactive: 0,
+                        riskLevel: pupil.status === "Needs Review" ? "critical" : "mastering",
+                        struggleReason:
+                          pupil.status === "Needs Review"
+                            ? "Needs review on comprehension passages"
+                            : "Consistent high reading performance",
+                        recommendedAction:
+                          pupil.status === "Needs Review"
+                            ? "Review chapter passages"
+                            : "Keep up the excellent work",
+                      });
+                    }
+                  }}
+                  className="px-5 py-3.5 flex items-center gap-4 transition-all duration-150 hover:bg-slate-50/80 border-l-4 border-l-transparent cursor-pointer"
+                  title={`View student record for ${entry.studentName}`}
+                >
+                  {/* Rank Badge */}
+                  <div className="flex-shrink-0 w-8 text-center">
+                    {entry.rank === 1 ? (
+                      <span className="inline-flex w-7 h-7 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 text-slate-950 text-xs font-black items-center justify-center shadow-xs">
+                        1
+                      </span>
+                    ) : entry.rank === 2 ? (
+                      <span className="inline-flex w-7 h-7 rounded-xl bg-slate-200 text-slate-700 text-xs font-black items-center justify-center">
+                        2
+                      </span>
+                    ) : entry.rank === 3 ? (
+                      <span className="inline-flex w-7 h-7 rounded-xl bg-amber-100 text-amber-800 text-xs font-black items-center justify-center">
+                        3
+                      </span>
+                    ) : (
+                      <span className="text-xs font-black text-slate-400">#{entry.rank}</span>
+                    )}
+                  </div>
+
+                  {/* Avatar */}
+                  <StudentAvatar
+                    avatar={entry.avatar}
+                    name={entry.studentName}
+                    size="md"
+                    className="flex-shrink-0"
+                  />
+
+                  {/* Name, Tier Pill & Relative XP Bar */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                        {entry.studentName}
+                      </span>
+                      {entry.section && entry.section !== "Unassigned" && (
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 hidden xs:inline-flex">
+                          {entry.section}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full border hidden sm:inline-flex items-center gap-1 ${tierConfig.bg} ${tierConfig.text} ${tierConfig.border}`}
+                      >
+                        <span>{tierConfig.icon}</span>
+                        <span>{tierConfig.label}</span>
+                      </span>
+                    </div>
+
+                    {/* Relative XP Progress Bar */}
+                    <div className="flex items-center gap-2.5 mt-1.5">
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            entry.rank === 1
+                              ? "bg-gradient-to-r from-amber-400 to-yellow-500"
+                              : entry.rank <= 3
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                              : "bg-blue-500"
+                          }`}
+                          style={{ width: `${xpPct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-black text-blue-600 flex-shrink-0 min-w-[60px] text-right font-mono">
+                        {entry.totalXp} XP
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats Pill Badges (Right side) */}
+                  <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0 text-xs">
+                    {entry.streakDays > 0 && (
+                      <span className="font-black text-amber-600 flex items-center gap-1 hidden sm:inline-flex bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60">
+                        <Flame className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>{entry.streakDays}d</span>
+                      </span>
+                    )}
+                    <span className="font-bold text-slate-600 hidden md:inline-flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200/60">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{entry.quizzesPassed} Passed</span>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredLeaderboard.length === 0 && (
+            <div className="py-14 text-center space-y-2">
+              <Trophy className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="text-sm font-bold text-slate-600">No readers found</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── 5. Recent Classroom Activity & Live Mastery Progression ──────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Classroom Activity */}
+        <div className="dashboard-card p-5 border border-slate-200 bg-white space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Recent Classroom Activity
+              </h3>
+            </div>
+
+            {/* Minimal Neutral Filter */}
+            <div className="inline-flex items-center gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setFeedFilter("all")}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  feedFilter === "all"
+                    ? "bg-slate-900 text-white font-semibold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                All ({activityFeed.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFeedFilter("quiz")}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  feedFilter === "quiz"
+                    ? "bg-slate-900 text-white font-semibold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Quizzes ({activityFeed.filter((a) => a.type === "quiz_pass" || a.type === "quiz_attempt").length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFeedFilter("badge")}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  feedFilter === "badge"
+                    ? "bg-slate-900 text-white font-semibold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Badges ({activityFeed.filter((a) => a.type === "badge_earned").length})
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="py-6 text-center text-xs text-slate-400">Loading activity...</div>
+          ) : displayedActivities.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-400">
+              No recent activity recorded for this section.
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 pr-1">
+              {displayedActivities.map((act) => (
+                <div
+                  key={act.id}
+                  className="py-2.5 px-1 flex items-center justify-between gap-3 text-xs hover:bg-slate-50/50 rounded-lg transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-slate-900">
+                        {act.studentName}
+                      </span>
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/60 px-1.5 py-0.5 rounded">
+                        {act.section}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 truncate mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span>{act.title}</span>
+                      {act.percentage !== undefined && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.2 rounded border font-mono ${
+                            act.percentage >= 80
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200/70"
+                              : act.percentage >= 70
+                              ? "bg-blue-50 text-blue-800 border-blue-200/70"
+                              : "bg-rose-50 text-rose-800 border-rose-200/70"
+                          }`}
+                        >
+                          {act.percentage}%
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {formatTimeAgo(act.timestamp)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPupilForNote({
+                          studentId: act.studentId,
+                          studentName: act.studentName,
+                          avatar: act.avatar,
+                          section: act.section,
+                          comprehensionPct: act.percentage || 100,
+                          quizzesPassed: 1,
+                          failedAttemptsCount: 0,
+                          lastActiveDate: act.timestamp,
+                          daysInactive: 0,
+                          riskLevel: "mastering",
+                          struggleReason: act.title,
+                          recommendedAction: "Great reading achievement! Keep up the momentum.",
+                        })
+                      }
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                    >
+                      Note
+                    </button>
                   </div>
                 </div>
               ))}

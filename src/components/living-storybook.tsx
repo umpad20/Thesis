@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { CertificateModal } from "@/components/certificate-modal";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { StorybookCloudWipe } from "@/components/storybook-cloud-transition";
+import { NodeStarBadge, StarRatingRow } from "@/components/quiz-stars";
 import type { Badge, Lesson, StudentBadgeProgress, BadgeType, MedalType } from "@/lib/types";
 
 export interface LivingStorybookProps {
@@ -680,6 +681,10 @@ export function LivingStorybook({
 
                     // Pop down for higher nodes, pop up for lower nodes
                     const popDown = coord.yPct < 45;
+                    const lessonScore =
+                      typeof prog?.highest_score === "number" && prog.highest_score > 0
+                        ? prog.highest_score
+                        : 100;
 
                     return (
                       <div
@@ -698,7 +703,7 @@ export function LivingStorybook({
                               type="button"
                               onClick={(e) => handleNodeClick(lesson.lesson_id, e)}
                               className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-b from-amber-300 via-yellow-400 to-amber-500 border-3 sm:border-4 border-yellow-100 shadow-[0_5px_0_#b45309,0_8px_16px_rgba(180,83,9,0.35)] flex items-center justify-center font-black text-amber-950 text-lg sm:text-xl group-hover:scale-105 active:scale-95 transition-all cursor-pointer select-none"
-                              title="Click to view Re-read and Retake options"
+                              title={`Lesson ${idx + 1}: ${lesson.lesson_title} (Score: ${lessonScore}%)`}
                             >
                               <span className="drop-shadow-[0_1px_0_rgba(255,255,255,0.7)]">{idx + 1}</span>
 
@@ -707,10 +712,8 @@ export function LivingStorybook({
                                 <Check className="w-3 h-3 stroke-[3.5]" />
                               </div>
 
-                              {/* Gold Star Badge */}
-                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-400 text-amber-950 border-2 border-white flex items-center justify-center shadow-xs pointer-events-none">
-                                <Star className="w-3 h-3 fill-amber-950 text-amber-950" />
-                              </div>
+                              {/* 3-Star Rating Badge (Score-dependent: 3 for 100%, 1.5 for 50%, etc.) */}
+                              <NodeStarBadge score={lessonScore} />
                             </button>
 
                             {/* Interactive Action Card (Re-read & Retake) */}
@@ -741,9 +744,12 @@ export function LivingStorybook({
                                   {lesson.lesson_title}
                                 </span>
                               </div>
-                              <div className="text-[9px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full inline-flex items-center gap-1 mb-1.5">
-                                <CheckCircle2 className="w-2.5 h-2.5 text-amber-600" />
-                                <span>Mastered · Score: {prog?.highest_score || 100}%</span>
+                              <div className="flex flex-col items-center gap-1 mb-1.5">
+                                <div className="text-[9px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>Mastered · Score: {lessonScore}%</span>
+                                </div>
+                                <StarRatingRow score={lessonScore} size="w-3 h-3" showLabel={true} />
                               </div>
 
                               {/* Action Buttons: Re-read & Retake */}

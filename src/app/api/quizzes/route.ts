@@ -105,13 +105,22 @@ export async function POST(request: Request) {
 
     // 3. Update student_lesson_progress
     if (lessonId) {
+      const { data: curLessonProg } = await supabase
+        .from("student_lesson_progress")
+        .select("highest_quiz_score")
+        .eq("student_id", studentId)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
+
+      const bestScore = Math.max(curLessonProg?.highest_quiz_score || 0, percentage);
+
       await supabase.from("student_lesson_progress").upsert(
         {
           student_id: studentId,
           lesson_id: lessonId,
           progress_percentage: 100,
           status: "completed",
-          highest_quiz_score: percentage,
+          highest_quiz_score: bestScore,
           last_accessed: new Date().toISOString(),
         },
         { onConflict: "student_id, lesson_id" }

@@ -70,9 +70,10 @@ export default function TeacherStudentsPage() {
       }
 
       try {
+        // Fetch all students and radar data for this teacher so section tab counts remain accurate
         const [liveStudents, radarData] = await Promise.all([
-          fetchStudentsFromSupabase(selectedSection, teacherId),
-          fetchTeacherInterventionRadar(teacherId || "", selectedSection),
+          fetchStudentsFromSupabase(undefined, teacherId),
+          fetchTeacherInterventionRadar(teacherId || "", undefined),
         ]);
         setStudents(liveStudents || []);
         if (radarData?.pupils) {
@@ -84,14 +85,14 @@ export default function TeacherStudentsPage() {
       setLoading(false);
     }
     loadData();
-  }, [selectedSection]);
+  }, []);
 
   const safeSections = Array.isArray(sections) && sections.length > 0 ? sections : ["Grade 3-A"];
 
-
-
   const sectionStudents = students.filter(
-    (s) => selectedSection === "all" || s.section === selectedSection
+    (s) =>
+      selectedSection === "all" ||
+      s.section?.trim().toLowerCase() === selectedSection.trim().toLowerCase()
   );
 
   const getStudentCategory = (s: EnrolledStudent): "mastering" | "on track" | "needs review" => {
@@ -117,7 +118,9 @@ export default function TeacherStudentsPage() {
 
   // Filter students based on section tab, status, and search term
   const filteredStudents = students.filter((s) => {
-    const matchesSection = selectedSection === "all" || s.section === selectedSection;
+    const matchesSection =
+      selectedSection === "all" ||
+      s.section?.trim().toLowerCase() === selectedSection.trim().toLowerCase();
     const matchesSearch =
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,11 +137,11 @@ export default function TeacherStudentsPage() {
 
   const exportCSV = () => {
     if (filteredStudents.length === 0) return;
-    const headers = "Student ID,Name,Gender,Email,Section,Current Badge,Comprehension %,Reading Speed,Quizzes Cleared,Status\n";
+    const headers = "Student ID,Name,Gender,Email,Section,Current Badge,Comprehension %,Quizzes Cleared,Status\n";
     const rows = filteredStudents
       .map(
         (s) =>
-          `"${s.id}","${s.name}","${s.gender}","${s.email || ""}","${s.section}","${s.currentBadge}","${s.comprehension}","${s.readingSpeed}","${s.quizzesPassed}","${s.status}"`
+          `"${s.id}","${s.name}","${s.gender}","${s.email || ""}","${s.section}","${s.currentBadge}","${s.comprehension}","${s.quizzesPassed}","${s.status}"`
       )
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
@@ -222,6 +225,7 @@ export default function TeacherStudentsPage() {
     setSelectedReportForRecord({
       studentId: s.supabaseUserId || pupilData.studentId || s.id,
       name: s.name,
+      email: s.email,
       section: s.section,
       gender: s.gender,
       currentBadge: s.currentBadge,
@@ -267,41 +271,20 @@ export default function TeacherStudentsPage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Header & Quick Enrollment Action */}
+      {/* 1. Header (Matching Sidebar "Student Records") */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-            Pupil Enrollment &amp; Section Roster
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+            Student Records
           </h1>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Link
-            href={
-              selectedSection && selectedSection !== "all"
-                ? `/teacher/students/enroll?section=${encodeURIComponent(selectedSection)}`
-                : "/teacher/students/enroll"
-            }
-            className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Enroll Pupils</span>
-          </Link>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportCSV}
-            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
-            <span>Export Roster (CSV)</span>
-          </Button>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage section rosters, student credentials, and individual reading mastery evaluations.
+          </p>
         </div>
       </div>
 
-      {/* 2. Section Selector Tabs Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-100/80 rounded-2xl border border-slate-200/80">
+      {/* 2. Section Selector Tabs Bar with Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-2 bg-slate-100/80 rounded-2xl border border-slate-200/80">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-xs font-bold text-slate-500 px-2 flex items-center gap-1">
             <Layers className="w-3.5 h-3.5 text-slate-400" />
@@ -311,7 +294,7 @@ export default function TeacherStudentsPage() {
           <button
             type="button"
             onClick={() => setSelectedSection("all")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               selectedSection === "all"
                 ? "bg-slate-900 text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
@@ -321,15 +304,17 @@ export default function TeacherStudentsPage() {
           </button>
 
           {safeSections.map((sec) => {
-            const count = students.filter((s) => s.section === sec).length;
-            const isSelected = selectedSection === sec;
+            const count = students.filter(
+              (s) => s.section?.trim().toLowerCase() === sec.trim().toLowerCase()
+            ).length;
+            const isSelected = selectedSection.trim().toLowerCase() === sec.trim().toLowerCase();
 
             return (
               <button
                 key={sec}
                 type="button"
                 onClick={() => setSelectedSection(sec)}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   isSelected
                     ? "bg-blue-600 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
@@ -348,22 +333,25 @@ export default function TeacherStudentsPage() {
           })}
         </div>
 
-        <button
-          type="button"
-          onClick={async () => {
-            const newSecName = prompt("Enter new section name (e.g. Grade 3-C):");
-            if (newSecName && newSecName.trim()) {
-              const teacher = getCurrentUser();
-              const updated = await addTeacherSection(newSecName.trim(), teacher?.id);
-              setSections(updated);
-              setSelectedSection(newSecName.trim());
-            }
-          }}
-          className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-blue-50 transition-colors self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add New Section</span>
-        </button>
+        {/* Section Actions: Add Section */}
+        <div className="flex items-center gap-2 flex-wrap self-start lg:self-auto">
+          <button
+            type="button"
+            onClick={async () => {
+              const newSecName = prompt("Enter new section name (e.g. Grade 3-C):");
+              if (newSecName && newSecName.trim()) {
+                const teacher = getCurrentUser();
+                const updated = await addTeacherSection(newSecName.trim(), teacher?.id);
+                setSections(updated);
+                setSelectedSection(newSecName.trim());
+              }
+            }}
+            className="text-xs font-bold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 flex items-center gap-1 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 text-blue-600" />
+            <span>Add New Section</span>
+          </button>
+        </div>
       </div>
 
       {/* 3. Search & Status Filter Controls */}
@@ -448,16 +436,40 @@ export default function TeacherStudentsPage() {
 
       {/* 4. Enrolled Students Roster Table */}
       <div className="dashboard-card p-6">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 mb-4">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-blue-600" />
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
               {selectedSection === "all" ? "All Enrolled Students" : `Students in ${selectedSection}`}
             </h3>
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full ml-1">
+              Showing {filteredStudents.length} of {students.length} Students
+            </span>
           </div>
-          <span className="text-xs font-bold text-slate-500">
-            Showing {filteredStudents.length} of {students.length} Pupils
-          </span>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Link
+              href={
+                selectedSection && selectedSection !== "all"
+                  ? `/teacher/students/enroll?section=${encodeURIComponent(selectedSection)}`
+                  : "/teacher/students/enroll"
+              }
+              className="h-8 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>{selectedSection !== "all" ? `Add Student to ${selectedSection}` : "Add Student"}</span>
+            </Link>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportCSV}
+              className="h-8 px-3 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-400" />
+              <span>Export Roster (CSV)</span>
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -467,11 +479,11 @@ export default function TeacherStudentsPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200/80 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4">Pupil Name &amp; ID</th>
+                  <th className="py-3 px-4">Student Name &amp; ID</th>
+                  <th className="py-3 px-3">Student Email</th>
                   <th className="py-3 px-3">Enrolled Section</th>
                   <th className="py-3 px-3">Active Badge Milestone</th>
                   <th className="py-3 px-3">Comprehension %</th>
-                  <th className="py-3 px-3">Reading Speed</th>
                   <th className="py-3 px-3">Quizzes Cleared</th>
                   <th className="py-3 px-3">Intervention Status</th>
                   <th className="py-3 px-3 text-center">Individual Record</th>
@@ -483,7 +495,7 @@ export default function TeacherStudentsPage() {
                 {filteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-12 text-center text-slate-400">
-                      No students found in this section. Click <strong>&quot;Enroll Pupils&quot;</strong> to add one.
+                      No students found in this section. Click <strong>&quot;Add Student&quot;</strong> to add one.
                     </td>
                   </tr>
                 ) : (
@@ -516,6 +528,19 @@ export default function TeacherStudentsPage() {
                           </button>
                         </td>
 
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          {s.email ? (
+                            <span
+                              className="font-mono text-[11px] text-blue-700 bg-blue-50/70 border border-blue-100 px-2 py-0.5 rounded-md inline-block max-w-[200px] truncate"
+                              title={s.email}
+                            >
+                              {s.email}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 font-normal text-[11px]">—</span>
+                          )}
+                        </td>
+
                         <td className="py-3.5 px-3 text-slate-700 font-semibold whitespace-nowrap">
                           {s.section}
                         </td>
@@ -535,10 +560,6 @@ export default function TeacherStudentsPage() {
 
                         <td className="py-3.5 px-3 font-bold text-slate-900 whitespace-nowrap">
                           {s.comprehension}
-                        </td>
-
-                        <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap">
-                          {s.readingSpeed}
                         </td>
 
                         <td className="py-3.5 px-3 text-slate-600 whitespace-nowrap">
@@ -641,7 +662,7 @@ export default function TeacherStudentsPage() {
               <div className="py-8 text-center space-y-2">
                 <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
                 <h4 className="text-sm font-black text-slate-900">Guidance Note Dispatched!</h4>
-                <p className="text-xs text-slate-500">The encouragement advice has been sent to the pupil.</p>
+                <p className="text-xs text-slate-500">The encouragement advice has been sent to the student.</p>
               </div>
             ) : (
               <form onSubmit={handleSendNote} className="space-y-4">

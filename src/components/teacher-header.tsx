@@ -156,7 +156,7 @@ export function TeacherHeader() {
       title: "Classroom Active",
       message:
         students.length > 0
-          ? `${students.length} pupil(s) enrolled and monitored in your live faculty dashboard.`
+          ? `${students.length} student(s) enrolled and monitored in your live faculty dashboard.`
           : "Your classroom is ready. Enroll student accounts to track reading metrics.",
       time: "Live",
       type: "roster",

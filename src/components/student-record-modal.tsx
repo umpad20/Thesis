@@ -174,6 +174,12 @@ export function StudentRecordModal({
                 <span>Section: <strong className="text-slate-700 font-bold">{pupil.section}</strong></span>
                 <span>•</span>
                 <span>ID: <code className="text-slate-600 font-mono text-[11px]">{displayStudentId}</code></span>
+                {report?.email && (
+                  <>
+                    <span>•</span>
+                    <span>Email: <code className="text-blue-600 font-mono text-[11px]">{report.email}</code></span>
+                  </>
+                )}
                 {report?.gender && (
                   <>
                     <span>•</span>
@@ -347,7 +353,7 @@ export function StudentRecordModal({
             ) : attempts.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400 space-y-1">
                 <FileText className="w-5 h-5 text-slate-300 mx-auto" />
-                <p>No quiz attempts recorded yet for this pupil.</p>
+                <p>No quiz attempts recorded yet for this student.</p>
               </div>
             ) : (
               <table className="w-full text-left text-xs border-collapse">

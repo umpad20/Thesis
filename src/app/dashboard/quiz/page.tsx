@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { BadgeGraphic } from "@/components/badge-graphic";
 import { CertificateModal } from "@/components/certificate-modal";
+import { StarRatingRow, getStarCountFromScore } from "@/components/quiz-stars";
 import {
   fetchQuizForLesson,
   fetchStageFinalQuiz,
@@ -658,6 +659,18 @@ function QuizContent() {
                   : "Great job! You passed the reading comprehension assessment and unlocked the next story in this chapter!"
                 : `You scored ${percentage}%. You need ≥${passingScore}% to pass and advance. Review the story passage and retry!`}
             </p>
+          </div>
+
+          {/* 3-Star Rating Display */}
+          <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+            <StarRatingRow score={percentage} size="w-7 h-7 sm:w-8 sm:h-8" />
+            <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100/80 border border-amber-300 text-amber-900 font-bold text-xs sm:text-sm">
+              <span>
+                {percentage >= 100
+                  ? "⭐⭐⭐ Perfect Score · 3/3 Stars!"
+                  : `${getStarCountFromScore(percentage)} of 3 Stars Earned`}
+              </span>
+            </div>
           </div>
 
           {/* Score & XP Earned Metrics */}

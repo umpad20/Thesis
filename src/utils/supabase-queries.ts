@@ -874,28 +874,40 @@ export async function submitQuizAttempt(params: {
 
     // 4. Regular Lesson Quiz Submission Logic
     if (params.lessonId) {
-      if (params.passed) {
-        // Passed lesson -> Mark lesson completed
+      // Query existing progress to preserve the student's highest score and completion status
+      const { data: curLessonProg } = await supabase
+        .from("student_lesson_progress")
+        .select("status, highest_quiz_score")
+        .eq("student_id", params.studentId)
+        .eq("lesson_id", params.lessonId)
+        .maybeSingle();
+
+      const existingHighest = curLessonProg?.highest_quiz_score || 0;
+      const bestScore = Math.max(existingHighest, params.percentage);
+      const isAlreadyDone = curLessonProg?.status === "completed";
+
+      if (params.passed || isAlreadyDone) {
+        // Passed or previously completed -> Keep status completed with best score
         await supabase.from("student_lesson_progress").upsert(
           {
             student_id: params.studentId,
             lesson_id: params.lessonId,
             progress_percentage: 100,
             status: "completed",
-            highest_quiz_score: params.percentage,
+            highest_quiz_score: bestScore,
             last_accessed: new Date().toISOString(),
           },
           { onConflict: "student_id, lesson_id" }
         );
       } else {
-        // Failed lesson -> Retained in lesson (status in_progress)
+        // Failed lesson and not previously completed -> Retained in lesson (status in_progress)
         await supabase.from("student_lesson_progress").upsert(
           {
             student_id: params.studentId,
             lesson_id: params.lessonId,
             progress_percentage: Math.min(params.percentage, 50),
             status: "in_progress",
-            highest_quiz_score: params.percentage,
+            highest_quiz_score: bestScore,
             last_accessed: new Date().toISOString(),
           },
           { onConflict: "student_id, lesson_id" }
@@ -999,6 +1011,7 @@ export async function fetchStudentLessonProgress(
 export interface TeacherReportRow {
   studentId: string;
   name: string;
+  email?: string;
   section: string;
   gender: string;
   currentBadge: string;
