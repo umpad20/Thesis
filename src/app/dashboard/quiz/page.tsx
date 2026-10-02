@@ -20,6 +20,13 @@ import {
   ShieldCheck,
   X,
   Trophy,
+  CheckSquare,
+  Square,
+  Puzzle,
+  Maximize2,
+  Link2,
+  Sparkles,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -37,6 +44,7 @@ import {
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { soundEffects } from "@/utils/sound-effects";
+import { shuffleArray } from "@/utils/quiz-helpers";
 import type { Badge, BadgeType, MedalType, QuestionChoice, Lesson } from "@/lib/types";
 
 function QuizContent() {
@@ -60,6 +68,11 @@ function QuizContent() {
   const [isAlreadyPassed, setIsAlreadyPassed] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedChoiceId, setSelectedChoiceId] = useState<number | null>(null);
+  const [selectedChoiceIds, setSelectedChoiceIds] = useState<number[]>([]);
+  const [matchedPairs, setMatchedPairs] = useState<Record<number, string>>({});
+  const [selectedLeftChoiceId, setSelectedLeftChoiceId] = useState<number | null>(null);
+  const [shuffledTargets, setShuffledTargets] = useState<string[]>([]);
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [showHint, setShowHint] = useState(false);
@@ -70,7 +83,7 @@ function QuizContent() {
   const [studentSection, setStudentSection] = useState("Grade 3-A");
   const [feedbackType, setFeedbackType] = useState<"correct" | "wrong" | null>(null);
   const [recordedAnswers, setRecordedAnswers] = useState<
-    Array<{ questionId: number; choiceId: number; isCorrect: boolean }>
+    Array<{ questionId: number; choiceId?: number | null; isCorrect: boolean }>
   >([]);
 
   useEffect(() => {
@@ -80,6 +93,9 @@ function QuizContent() {
       // Reset all quiz interaction state for a fresh start
       setCurrentIndex(0);
       setSelectedChoiceId(null);
+      setSelectedChoiceIds([]);
+      setMatchedPairs({});
+      setSelectedLeftChoiceId(null);
       setIsSubmitted(false);
       setScore(0);
       setShowHint(false);
@@ -187,9 +203,26 @@ function QuizContent() {
 
   const questions = quizData?.questions || [];
   const currentQuestion = questions[currentIndex];
+  const qType = currentQuestion?.question_type || "multiple_choice";
   const choices: QuestionChoice[] = (currentQuestion?.choices || []) as QuestionChoice[];
   const totalQuestions = questions.length;
   const maxScore = Math.max(totalQuestions * (currentQuestion?.points || 10), 10);
+
+  // Sync shuffled right items when matching type changes or moves to next question
+  useEffect(() => {
+    setSelectedChoiceId(null);
+    setSelectedChoiceIds([]);
+    setMatchedPairs({});
+    setSelectedLeftChoiceId(null);
+    if (currentQuestion && qType === "matching") {
+      const targets = choices
+        .map((c) => (c.match_target || "").trim())
+        .filter((t) => t.length > 0);
+      setShuffledTargets(shuffleArray(targets));
+    } else {
+      setShuffledTargets([]);
+    }
+  }, [currentIndex, currentQuestion, qType]);
 
   const effectiveBadgeId = rawBadgeId
     ? Number(rawBadgeId)
@@ -234,19 +267,101 @@ function QuizContent() {
 
   const nextFirstLessonId = badgeId ? badgeId * 3 + 1 : 4;
 
-  const handleSelect = (choiceId: number) => {
+  const handleSelectRadio = (choiceId: number) => {
     if (isSubmitted) return;
     setSelectedChoiceId(choiceId);
   };
 
+  const handleToggleCheckbox = (choiceId: number) => {
+    if (isSubmitted) return;
+    setSelectedChoiceIds((prev) =>
+      prev.includes(choiceId) ? prev.filter((id) => id !== choiceId) : [...prev, choiceId]
+    );
+  };
+
+  const handleSelectLeftItem = (choiceId: number) => {
+    if (isSubmitted) return;
+    setSelectedLeftChoiceId((prev) => (prev === choiceId ? null : choiceId));
+  };
+
+  const handleSelectRightTarget = (targetText: string) => {
+    if (isSubmitted) return;
+    if (selectedLeftChoiceId !== null) {
+      setMatchedPairs((prev) => ({
+        ...prev,
+        [selectedLeftChoiceId]: targetText,
+      }));
+      // Auto move focus to next unmatched left item
+      const nextUnmatched = choices.find(
+        (c) => c.choice_id !== selectedLeftChoiceId && !matchedPairs[c.choice_id]
+      );
+      setSelectedLeftChoiceId(nextUnmatched ? nextUnmatched.choice_id : null);
+    }
+  };
+
+  const handleDirectMatchSelect = (choiceId: number, targetText: string) => {
+    if (isSubmitted) return;
+    if (!targetText) {
+      setMatchedPairs((prev) => {
+        const next = { ...prev };
+        delete next[choiceId];
+        return next;
+      });
+    } else {
+      setMatchedPairs((prev) => ({
+        ...prev,
+        [choiceId]: targetText,
+      }));
+    }
+  };
+
+  const handleClearMatch = (choiceId: number) => {
+    if (isSubmitted) return;
+    setMatchedPairs((prev) => {
+      const next = { ...prev };
+      delete next[choiceId];
+      return next;
+    });
+  };
+
+  const isSubmitDisabled = (() => {
+    if (isSubmitted || !currentQuestion) return true;
+    if (qType === "checkboxes") {
+      return selectedChoiceIds.length === 0;
+    }
+    if (qType === "matching") {
+      return choices.length === 0 || choices.some((c) => !matchedPairs[c.choice_id]);
+    }
+    return selectedChoiceId === null;
+  })();
+
   const handleSubmitAnswer = () => {
-    if (selectedChoiceId === null || !currentQuestion) return;
+    if (isSubmitDisabled || !currentQuestion) return;
     setIsSubmitted(true);
 
-    const chosen = choices.find((c) => c.choice_id === selectedChoiceId);
-    const isCorrectChoice = Boolean(chosen?.is_correct);
+    let isCorrectAnswer = false;
 
-    if (isCorrectChoice) {
+    if (qType === "checkboxes") {
+      const correctChoiceIds = choices
+        .filter((c) => c.is_correct)
+        .map((c) => c.choice_id);
+      const isMatch =
+        correctChoiceIds.length === selectedChoiceIds.length &&
+        correctChoiceIds.every((id) => selectedChoiceIds.includes(id));
+      isCorrectAnswer = isMatch;
+    } else if (qType === "matching") {
+      const allMatchedCorrectly = choices.every((c) => {
+        const studentMatch = (matchedPairs[c.choice_id] || "").trim();
+        const expectedMatch = (c.match_target || "").trim();
+        return studentMatch === expectedMatch;
+      });
+      isCorrectAnswer = allMatchedCorrectly;
+    } else {
+      const chosen = choices.find((c) => c.choice_id === selectedChoiceId);
+      isCorrectAnswer = Boolean(chosen?.is_correct);
+    }
+
+    if (isCorrectAnswer) {
       setFeedbackType("correct");
       soundEffects.playCorrect(true);
       setScore((prev) => prev + (currentQuestion.points || 10));
@@ -259,8 +374,8 @@ function QuizContent() {
       ...prev,
       {
         questionId: currentQuestion.question_id,
-        choiceId: selectedChoiceId,
-        isCorrect: isCorrectChoice,
+        choiceId: selectedChoiceId || (selectedChoiceIds[0] ?? null),
+        isCorrect: isCorrectAnswer,
       },
     ]);
   };
@@ -270,6 +385,9 @@ function QuizContent() {
     if (currentIndex < totalQuestions - 1) {
       setCurrentIndex((prev) => prev + 1);
       setSelectedChoiceId(null);
+      setSelectedChoiceIds([]);
+      setMatchedPairs({});
+      setSelectedLeftChoiceId(null);
       setIsSubmitted(false);
       setShowHint(false);
     } else {
@@ -310,6 +428,9 @@ function QuizContent() {
   const handleRetake = () => {
     setCurrentIndex(0);
     setSelectedChoiceId(null);
+    setSelectedChoiceIds([]);
+    setMatchedPairs({});
+    setSelectedLeftChoiceId(null);
     setIsSubmitted(false);
     setShowHint(false);
     setScore(0);
@@ -933,85 +1054,469 @@ function QuizContent() {
           }`}
       >
         {/* Top: Question Header */}
-        <div className="pb-3 border-b border-amber-200/60 flex items-start justify-between gap-3 sm:gap-4 flex-shrink-0">
-          <div className="space-y-1 min-w-0">
-            <span className="text-[10px] sm:text-[11px] font-black text-blue-600 uppercase tracking-widest block">
-              {isStageFinal ? "Stage Mastery Question" : "Question"} {currentIndex + 1}
+        <div className="pb-3 border-b border-amber-200/60 space-y-2 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] sm:text-[11px] font-black text-blue-600 uppercase tracking-widest block">
+                {isStageFinal ? "Stage Mastery Question" : "Comprehension Question"} {currentIndex + 1}
+              </span>
+
+              {/* Question Type Pill Badge */}
+              {qType === "checkboxes" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300">
+                  <CheckSquare className="w-3 h-3 text-emerald-600" />
+                  <span>Checkboxes · Select All That Apply</span>
+                </span>
+              ) : qType === "matching" ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-black border border-purple-300">
+                  <Puzzle className="w-3 h-3 text-purple-600" />
+                  <span>Matching Type · Connect Each Pair</span>
+                </span>
+              ) : null}
+            </div>
+
+            <span className="text-[10px] sm:text-[11px] font-black text-amber-700 bg-amber-50 px-2.5 sm:px-3 py-1 rounded-xl border border-amber-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
+              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>+{currentQuestion.points || 10} XP</span>
             </span>
-            <h2 className="text-sm sm:text-lg font-black text-slate-900 leading-snug">
-              {currentQuestion.question_text}
-            </h2>
           </div>
-          <span className="text-[10px] sm:text-[11px] font-black text-amber-700 bg-amber-50 px-2.5 sm:px-3 py-1 rounded-xl border border-amber-200 whitespace-nowrap flex items-center gap-1 flex-shrink-0">
-            <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-            <span>+{currentQuestion.points || 10} XP</span>
-          </span>
+
+          {/* Question Prompt Image (if present) */}
+          {currentQuestion.question_image_url && (
+            <div className="relative rounded-2xl overflow-hidden border-2 border-amber-200/80 bg-amber-50/40 shadow-xs max-h-64 sm:max-h-80 flex items-center justify-center group my-1">
+              <img
+                src={currentQuestion.question_image_url}
+                alt="Question Visual"
+                className="w-full max-h-64 sm:max-h-80 object-contain rounded-2xl cursor-pointer hover:scale-[1.01] transition-transform duration-300"
+                onClick={() => setExpandedImageUrl(currentQuestion.question_image_url || null)}
+              />
+              <button
+                type="button"
+                onClick={() => setExpandedImageUrl(currentQuestion.question_image_url || null)}
+                className="absolute bottom-2.5 right-2.5 px-2.5 py-1 rounded-xl bg-slate-900/75 hover:bg-slate-900 text-white text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-xs transition-colors shadow-xs cursor-pointer"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Enlarge Picture</span>
+              </button>
+            </div>
+          )}
+
+          <h2 className="text-sm sm:text-lg font-black text-slate-900 leading-snug">
+            {currentQuestion.question_text}
+          </h2>
         </div>
 
         {/* Middle: Answer Choices + Feedback + Hint */}
-        <div className="flex-1 flex flex-col justify-center py-1 sm:py-2 space-y-2 sm:space-y-2.5 min-h-0">
-          {/* Answer Choice Grid */}
-          <div className="space-y-2 sm:space-y-2.5">
-            {choices.map((choice, idx) => {
-              const letter = String.fromCharCode(65 + idx);
-              const isSelected = selectedChoiceId === choice.choice_id;
+        <div className="flex-1 flex flex-col justify-center py-1 sm:py-2 space-y-3 min-h-0">
 
-              let cardStyles = "border-slate-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/20";
-              let indicatorStyles = "bg-slate-100 text-slate-700 border-slate-200";
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* A. MATCHING TYPE BOARD */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {qType === "matching" ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-1">
+                <span>
+                  {isSubmitted
+                    ? "Evaluation of Matched Pairs"
+                    : "Tap a Left Item, then tap its Matching Target on the right:"}
+                </span>
+                <span className="text-[11px] text-purple-700 font-black">
+                  {Object.keys(matchedPairs).length} of {choices.length} paired
+                </span>
+              </div>
 
-              if (isSelected && !isSubmitted) {
-                cardStyles = "border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20 shadow-xs";
-                indicatorStyles = "bg-blue-600 text-white border-blue-600 font-bold";
-              } else if (isSubmitted) {
-                if (choice.is_correct) {
-                  cardStyles = "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/30 anim-pop-bounce";
-                  indicatorStyles = "bg-emerald-500 text-white border-emerald-500 font-bold";
-                } else if (isSelected && !choice.is_correct) {
-                  cardStyles = "border-rose-400 bg-rose-50/70";
-                  indicatorStyles = "bg-rose-500 text-white border-rose-500 font-bold";
-                } else {
-                  cardStyles = "opacity-40 border-slate-200 bg-slate-50";
-                }
-              }
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Column 1: Left Items / Premises */}
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                    Story Clues / Items:
+                  </span>
+                  {choices.map((choice, idx) => {
+                    const letter = String.fromCharCode(65 + idx);
+                    const isSelected = selectedLeftChoiceId === choice.choice_id;
+                    const matchedTarget = matchedPairs[choice.choice_id];
+                    const isPairCorrect =
+                      isSubmitted &&
+                      (matchedTarget || "").trim() === (choice.match_target || "").trim();
 
-              return (
-                <div
-                  key={choice.choice_id}
-                  onClick={() => handleSelect(choice.choice_id)}
-                  className={`p-3 sm:p-4 rounded-xl border transition-all flex items-center justify-between cursor-pointer min-h-[50px] sm:min-h-[54px] select-none ${cardStyles}`}
-                >
-                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 pr-2">
-                    <span
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-black flex items-center justify-center border flex-shrink-0 transition-all ${indicatorStyles}`}
-                    >
-                      {letter}
-                    </span>
-                    <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
-                      {choice.choice_text}
-                    </span>
-                  </div>
+                    let cardBorder = "border-slate-200 bg-white hover:border-purple-300";
+                    if (isSelected && !isSubmitted) {
+                      cardBorder = "border-purple-600 bg-purple-50/70 ring-2 ring-purple-500/30";
+                    } else if (isSubmitted) {
+                      cardBorder = isPairCorrect
+                        ? "border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500"
+                        : "border-rose-400 bg-rose-50/60 ring-1 ring-rose-400";
+                    }
 
-                  {isSubmitted && choice.is_correct && (
-                    <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 flex-shrink-0 animate-bounce" />
-                  )}
-                  {isSubmitted && isSelected && !choice.is_correct && (
-                    <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 flex-shrink-0" />
-                  )}
+                    return (
+                      <div
+                        key={choice.choice_id}
+                        onClick={() => handleSelectLeftItem(choice.choice_id)}
+                        className={`p-3 rounded-2xl border transition-all cursor-pointer space-y-2 shadow-2xs select-none ${cardBorder}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-6 h-6 rounded-lg bg-purple-100 text-purple-800 text-xs font-black flex items-center justify-center flex-shrink-0">
+                              {letter}
+                            </span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-800 leading-snug">
+                              {choice.choice_text}
+                            </span>
+                          </div>
+
+                          {choice.choice_image_url && (
+                            <img
+                              src={choice.choice_image_url}
+                              alt={choice.choice_text}
+                              className="w-10 h-10 rounded-lg object-cover border border-slate-200 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedImageUrl(choice.choice_image_url || null);
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Matched target badge or unassigned tag */}
+                        <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                          {matchedTarget ? (
+                            <div className="flex items-center justify-between w-full bg-purple-50 px-2.5 py-1 rounded-xl border border-purple-200">
+                              <span className="font-bold text-purple-900 truncate">
+                                ⇄ {matchedTarget}
+                              </span>
+                              {!isSubmitted && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleClearMatch(choice.choice_id);
+                                  }}
+                                  className="text-purple-400 hover:text-rose-600 p-0.5 rounded cursor-pointer ml-1"
+                                  title="Unlink match"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span
+                              className={`text-[11px] font-semibold italic ${
+                                isSelected ? "text-purple-600 font-bold" : "text-slate-400"
+                              }`}
+                            >
+                              {isSelected
+                                ? "👉 Now tap matching answer on the right!"
+                                : "Tap to connect match..."}
+                            </span>
+                          )}
+
+                          {isSubmitted && (
+                            <div className="flex-shrink-0">
+                              {isPairCorrect ? (
+                                <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                  <span>Matched</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <XCircle className="w-3 h-3 text-rose-600" />
+                                  <span>Correct: {choice.match_target}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Touch Dropdown Fallback */}
+                        {!isSubmitted && (
+                          <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                            <select
+                              value={matchedTarget || ""}
+                              onChange={(e) =>
+                                handleDirectMatchSelect(choice.choice_id, e.target.value)
+                              }
+                              className="w-full text-xs font-semibold px-2 py-1 rounded-lg border border-purple-200 bg-white text-slate-800 outline-none cursor-pointer"
+                            >
+                              <option value="">Select match from list...</option>
+                              {shuffledTargets.map((tgt, tIdx) => (
+                                <option key={tIdx} value={tgt}>
+                                  {tgt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Column 2: Right Targets / Available Matches */}
+                <div className="space-y-2.5">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                    Matching Targets:
+                  </span>
+                  <div className="space-y-2">
+                    {shuffledTargets.map((targetText, tIdx) => {
+                      const isAssigned = Object.values(matchedPairs).includes(targetText);
+
+                      return (
+                        <div
+                          key={tIdx}
+                          onClick={() => handleSelectRightTarget(targetText)}
+                          className={`p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer shadow-2xs select-none ${
+                            isAssigned
+                              ? "border-purple-300 bg-purple-50/50 text-purple-950 font-bold"
+                              : selectedLeftChoiceId !== null
+                              ? "border-purple-400 bg-white hover:bg-purple-50/80 hover:border-purple-500 animate-pulse"
+                              : "border-slate-200 bg-white hover:border-slate-300 text-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-600 text-xs font-black flex items-center justify-center flex-shrink-0">
+                              {tIdx + 1}
+                            </span>
+                            <span className="text-xs sm:text-sm font-semibold leading-snug">
+                              {targetText}
+                            </span>
+                          </div>
+
+                          {isAssigned && (
+                            <span className="text-[10px] font-black text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                              Linked
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : qType === "checkboxes" ? (
+            /* ═══════════════════════════════════════════════════════════════ */
+            /* B. CHECKBOXES (SELECT ALL THAT APPLY) */
+            /* ═══════════════════════════════════════════════════════════════ */
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 pb-1">
+                <span className="text-emerald-700 font-black flex items-center gap-1">
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>Check all correct answers that apply:</span>
+                </span>
+                <span className="text-[11px] font-bold text-slate-500">
+                  {selectedChoiceIds.length} option(s) selected
+                </span>
+              </div>
+
+              <div className="space-y-2 sm:space-y-2.5">
+                {choices.map((choice, idx) => {
+                  const letter = String.fromCharCode(65 + idx);
+                  const isChecked = selectedChoiceIds.includes(choice.choice_id);
+
+                  let cardStyles =
+                    "border-slate-200/80 bg-white hover:border-emerald-300 hover:bg-emerald-50/20";
+                  let checkIcon = isChecked ? (
+                    <CheckSquare className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <Square className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                  );
+
+                  if (isChecked && !isSubmitted) {
+                    cardStyles =
+                      "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-xs";
+                  } else if (isSubmitted) {
+                    if (choice.is_correct && isChecked) {
+                      cardStyles =
+                        "border-emerald-500 bg-emerald-50/80 ring-2 ring-emerald-500/30 anim-pop-bounce";
+                      checkIcon = <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />;
+                    } else if (!choice.is_correct && isChecked) {
+                      cardStyles = "border-rose-400 bg-rose-50/70";
+                      checkIcon = <XCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />;
+                    } else if (choice.is_correct && !isChecked) {
+                      cardStyles =
+                        "border-amber-400 bg-amber-50/50 border-dashed ring-1 ring-amber-300";
+                      checkIcon = <CheckCircle2 className="w-5 h-5 text-amber-600 flex-shrink-0" />;
+                    } else {
+                      cardStyles = "opacity-40 border-slate-200 bg-slate-50";
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={choice.choice_id}
+                      onClick={() => handleToggleCheckbox(choice.choice_id)}
+                      className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer min-h-[52px] sm:min-h-[56px] select-none ${cardStyles}`}
+                    >
+                      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 pr-2">
+                        {checkIcon}
+
+                        <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black flex items-center justify-center border border-slate-200 bg-slate-100 text-slate-700 flex-shrink-0">
+                          {letter}
+                        </span>
+
+                        {choice.choice_image_url && (
+                          <img
+                            src={choice.choice_image_url}
+                            alt={choice.choice_text}
+                            className="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedImageUrl(choice.choice_image_url || null);
+                            }}
+                          />
+                        )}
+
+                        <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                          {choice.choice_text}
+                        </span>
+                      </div>
+
+                      {isSubmitted && (
+                        <div className="flex-shrink-0">
+                          {choice.is_correct && isChecked && (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                              Correct!
+                            </span>
+                          )}
+                          {!choice.is_correct && isChecked && (
+                            <span className="text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
+                              Incorrect
+                            </span>
+                          )}
+                          {choice.is_correct && !isChecked && (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                              Correct (Missed)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* ═══════════════════════════════════════════════════════════════ */
+            /* C. MULTIPLE CHOICE (WITH SUPPORT FOR IMAGE CHOICES) */
+            /* ═══════════════════════════════════════════════════════════════ */
+            <div
+              className={
+                choices.some((c) => Boolean(c.choice_image_url))
+                  ? "grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  : "space-y-2 sm:space-y-2.5"
+              }
+            >
+              {choices.map((choice, idx) => {
+                const letter = String.fromCharCode(65 + idx);
+                const isSelected = selectedChoiceId === choice.choice_id;
+                const hasImage = Boolean(choice.choice_image_url);
+
+                let cardStyles =
+                  "border-slate-200/80 bg-white hover:border-blue-300 hover:bg-blue-50/20";
+                let indicatorStyles = "bg-slate-100 text-slate-700 border-slate-200";
+
+                if (isSelected && !isSubmitted) {
+                  cardStyles = "border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20 shadow-xs";
+                  indicatorStyles = "bg-blue-600 text-white border-blue-600 font-bold";
+                } else if (isSubmitted) {
+                  if (choice.is_correct) {
+                    cardStyles =
+                      "border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/30 anim-pop-bounce";
+                    indicatorStyles = "bg-emerald-500 text-white border-emerald-500 font-bold";
+                  } else if (isSelected && !choice.is_correct) {
+                    cardStyles = "border-rose-400 bg-rose-50/70";
+                    indicatorStyles = "bg-rose-500 text-white border-rose-500 font-bold";
+                  } else {
+                    cardStyles = "opacity-40 border-slate-200 bg-slate-50";
+                  }
+                }
+
+                if (hasImage) {
+                  return (
+                    <div
+                      key={choice.choice_id}
+                      onClick={() => handleSelectRadio(choice.choice_id)}
+                      className={`rounded-2xl border transition-all flex flex-col justify-between cursor-pointer select-none p-3.5 shadow-2xs ${cardStyles}`}
+                    >
+                      {/* Top bar with Letter Badge & Indicator */}
+                      <div className="flex items-center justify-between gap-2 pb-2">
+                        <span
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black flex items-center justify-center border flex-shrink-0 transition-all ${indicatorStyles}`}
+                        >
+                          {letter}
+                        </span>
+
+                        {isSubmitted && choice.is_correct && (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 animate-bounce" />
+                        )}
+                        {isSubmitted && isSelected && !choice.is_correct && (
+                          <XCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />
+                        )}
+                      </div>
+
+                      {/* Choice Image */}
+                      <div className="relative w-full h-32 sm:h-36 rounded-xl overflow-hidden border border-slate-200 mb-2 bg-slate-100 flex items-center justify-center">
+                        <img
+                          src={choice.choice_image_url || ""}
+                          alt={choice.choice_text}
+                          className="w-full h-full object-cover rounded-xl"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedImageUrl(choice.choice_image_url || null);
+                          }}
+                        />
+                      </div>
+
+                      {/* Choice text */}
+                      {choice.choice_text && (
+                        <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                          {choice.choice_text}
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={choice.choice_id}
+                    onClick={() => handleSelectRadio(choice.choice_id)}
+                    className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer min-h-[52px] sm:min-h-[56px] select-none ${cardStyles}`}
+                  >
+                    <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 pr-2">
+                      <span
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-black flex items-center justify-center border flex-shrink-0 transition-all ${indicatorStyles}`}
+                      >
+                        {letter}
+                      </span>
+                      <span className="text-xs sm:text-sm font-semibold text-slate-800 leading-snug">
+                        {choice.choice_text}
+                      </span>
+                    </div>
+
+                    {isSubmitted && choice.is_correct && (
+                      <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 flex-shrink-0 animate-bounce" />
+                    )}
+                    {isSubmitted && isSelected && !choice.is_correct && (
+                      <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500 flex-shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Feedback / Explanation Box */}
           {isSubmitted && (
             <div
-              className={`p-3 sm:p-4 rounded-xl border text-xs leading-relaxed space-y-1 transition-all duration-200 ${isCorrect
+              className={`p-3.5 sm:p-4 rounded-xl border text-xs leading-relaxed space-y-1 transition-all duration-200 ${
+                feedbackType === "correct"
                   ? "bg-emerald-50 border-emerald-200 text-emerald-950"
                   : "bg-amber-50 border-amber-200 text-amber-950"
-                }`}
+              }`}
             >
               <div className="flex items-center gap-2 font-bold text-xs sm:text-sm">
-                {isCorrect ? (
+                {feedbackType === "correct" ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     <span>Correct! +{currentQuestion.points || 10} XP Earned</span>
@@ -1058,11 +1563,10 @@ function QuizContent() {
 
         {/* Bottom: Action Controls */}
         <div className="pt-3 sm:pt-4 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
-
           {!isSubmitted ? (
             <Button
               onClick={handleSubmitAnswer}
-              disabled={selectedChoiceId === null}
+              disabled={isSubmitDisabled}
               className="h-11 px-6 sm:px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 disabled:opacity-50 transition-all cursor-pointer"
             >
               Submit Answer
@@ -1078,6 +1582,32 @@ function QuizContent() {
           )}
         </div>
       </div>
+
+      {/* ── Lightbox Image Zoom Modal ── */}
+      {expandedImageUrl && (
+        <div
+          onClick={() => setExpandedImageUrl(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer anim-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl p-3 shadow-2xl border border-slate-700 flex flex-col items-center"
+          >
+            <button
+              type="button"
+              onClick={() => setExpandedImageUrl(null)}
+              className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-rose-600 transition-colors shadow-lg cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={expandedImageUrl}
+              alt="Enlarged Visual"
+              className="max-h-[82vh] max-w-full rounded-2xl object-contain"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

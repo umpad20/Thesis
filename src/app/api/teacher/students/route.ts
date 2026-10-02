@@ -112,17 +112,41 @@ export async function GET(request: Request) {
       }
 
       // Format last active date and streak
+      const candidateTimestamps: (string | undefined)[] = [
+        p.updated_at,
+        p.created_at,
+        ...studentAttempts.map((a) => a.completed_at || a.started_at),
+        ...studentProgress.map((b) => b.updated_at),
+      ];
+
+      const validTimestamps = candidateTimestamps
+        .filter((ts): ts is string => Boolean(ts && !isNaN(new Date(ts).getTime())))
+        .map((ts) => new Date(ts).getTime())
+        .sort((a, b) => b - a);
+
+      const latestTimeMs = validTimestamps[0];
+      const lastActiveIso = latestTimeMs ? new Date(latestTimeMs).toISOString() : undefined;
+      const isOnline = latestTimeMs ? Date.now() - latestTimeMs < 15 * 60 * 1000 : false;
+
       let lastActive = "Enrolled";
-      let lastActiveIso: string | undefined = undefined;
-      if (studentAttempts.length > 0) {
-        const latestAttempt = studentAttempts.sort(
-          (a, b) => new Date(b.completed_at || b.started_at).getTime() - new Date(a.completed_at || a.started_at).getTime()
-        )[0];
-        if (latestAttempt) {
-          const rawIso = latestAttempt.completed_at || latestAttempt.started_at;
-          lastActiveIso = rawIso;
-          const d = new Date(rawIso);
-          lastActive = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      if (latestTimeMs) {
+        const diffMs = Date.now() - latestTimeMs;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        if (diffMins < 1) {
+          lastActive = "Just now";
+        } else if (diffMins < 60) {
+          lastActive = `${diffMins}m ago`;
+        } else if (diffMins < 24 * 60) {
+          const diffHours = Math.floor(diffMins / 60);
+          lastActive = `${diffHours}h ago`;
+        } else if (diffMins < 48 * 60) {
+          lastActive = "Yesterday";
+        } else {
+          lastActive = new Date(latestTimeMs).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
         }
       }
 
@@ -144,6 +168,7 @@ export async function GET(request: Request) {
         readingSpeed: avgScore > 0 ? `${Math.round(85 + (avgScore / 100) * 20)} WPM` : "—",
         lastActive,
         lastActiveIso,
+        isOnline,
         avatar: p.avatar || "👧",
         totalXp: studentXp,
         streakDays: studentStreak,

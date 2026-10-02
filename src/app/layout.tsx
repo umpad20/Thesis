@@ -38,10 +38,13 @@ export const metadata: Metadata = {
   },
 };
 
+import { GlobalPresenceTracker } from "@/components/global-presence-tracker";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plusJakarta.variable} ${inter.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans bg-white text-slate-900 selection:bg-orange-500 selection:text-white">
+        <GlobalPresenceTracker />
         {children}
       </body>
     </html>

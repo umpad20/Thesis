@@ -278,6 +278,44 @@ export async function authenticateSignIn(
     };
 
     setCurrentUserSession(userProfile);
+
+    // If student, immediately touch updated_at and update online presence map
+    if (userProfile.role === "student" && userProfile.id) {
+      void supabase
+        .from("profiles")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", userProfile.id);
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("readsmart_online_students") || "{}";
+          const map = JSON.parse(raw);
+          const now = Date.now();
+          map[userProfile.id] = now;
+          if (userProfile.fullName) map[userProfile.fullName.toLowerCase().trim()] = now;
+          if (userProfile.email) map[userProfile.email.toLowerCase().trim()] = now;
+          localStorage.setItem("readsmart_online_students", JSON.stringify(map));
+
+          if ("BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("readsmart_student_presence");
+            bc.postMessage({
+              type: "heartbeat",
+              studentId: userProfile.id,
+              name: userProfile.fullName,
+              cleanName: userProfile.fullName?.toLowerCase().trim(),
+              email: userProfile.email,
+              cleanEmail: userProfile.email?.toLowerCase().trim(),
+              online: true,
+              timestamp: now,
+            });
+            setTimeout(() => bc.close(), 1000);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+
     return { success: true, user: userProfile };
   } catch {
     return {

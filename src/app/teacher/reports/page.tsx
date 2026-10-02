@@ -296,10 +296,10 @@ export default function TeacherReportsPage() {
       </div>
 
       {/* ── 2. Top Summary KPI Cards (Hidden on Print) ────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 print:hidden">
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Enrolled Pupils
+            Enrolled Students
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-black text-slate-900">{totalPupils}</span>
@@ -319,21 +319,11 @@ export default function TeacherReportsPage() {
 
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Avg Reading Speed
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">{avgSpeed > 0 ? `${avgSpeed} WPM` : "—"}</span>
-            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">80–110 WPM</span>
-          </div>
-        </div>
-
-        <div className="dashboard-card p-4">
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
             Passing Rate
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-black text-purple-900">{passRate}%</span>
-            <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">{passingCount}/{totalPupils} Pupils</span>
+            <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md">{passingCount}/{totalPupils} Students</span>
           </div>
         </div>
       </div>
@@ -477,9 +467,6 @@ export default function TeacherReportsPage() {
               <Layers className="w-4 h-4 text-blue-600" />
               <span>Section Comparative Breakdown</span>
             </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Side-by-side performance evaluation across enrolled class sections
-            </p>
           </div>
           <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-bold text-slate-700 self-start sm:self-center font-mono">
             {sections.length} Section{sections.length > 1 ? "s" : ""}
@@ -505,7 +492,7 @@ export default function TeacherReportsPage() {
                   <div>
                     <h4 className="text-sm font-black text-slate-900">{sec.name}</h4>
                     <p className="text-[10px] text-slate-500 font-medium">
-                      {sec.enrolled} Enrolled Pupil{sec.enrolled !== 1 ? "s" : ""}
+                      {sec.enrolled} Enrolled Student{sec.enrolled !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </div>
@@ -560,7 +547,7 @@ export default function TeacherReportsPage() {
                       sec.priorityNeedsCount > 0 ? "text-rose-700" : "text-slate-500"
                     }`}
                   >
-                    {sec.priorityNeedsCount} Pupil{sec.priorityNeedsCount !== 1 ? "s" : ""}
+                    {sec.priorityNeedsCount} Student{sec.priorityNeedsCount !== 1 ? "s" : ""}
                   </span>
                 </div>
               </div>

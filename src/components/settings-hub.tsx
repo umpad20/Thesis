@@ -554,14 +554,14 @@ export function SettingsHub({ portal }: SettingsHubProps) {
             className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-xs transition-colors cursor-pointer flex-shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to {portal === "teacher" ? "Teacher Hub" : "My Learning"}</span>
+            <span className="hidden sm:inline">Back to {portal === "teacher" ? "Teacher Dashboard" : "My Learning"}</span>
             <span className="inline sm:hidden">Back</span>
           </Link>
 
           <div className="h-6 w-px bg-slate-200 hidden sm:block" />
 
           <div className="min-w-0">
-            <h1 className="text-sm sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2 truncate">
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5 sm:gap-2 truncate">
               <span className="truncate">Settings &amp; Preferences</span>
               <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex-shrink-0">
                 {portal === "teacher" ? "Faculty" : "Pupil"}

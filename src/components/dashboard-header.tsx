@@ -89,6 +89,11 @@ export function DashboardHeader() {
             user.fullName = prof.full_name || user.fullName;
             const { setCurrentUserSession } = await import("@/utils/auth-helpers");
             setCurrentUserSession(user);
+            // Touch live online heartbeat timestamp
+            void supabase
+              .from("profiles")
+              .update({ updated_at: new Date().toISOString() })
+              .eq("id", user.id);
           }
         } catch {
           // ignore
@@ -134,6 +139,105 @@ export function DashboardHeader() {
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleStorageChange);
+    };
+  }, []);
+
+  // Live Student Online Heartbeat & Realtime Presence Broadcast
+  useEffect(() => {
+    const user = getCurrentUser() || DEFAULT_STUDENT;
+    if (!user?.id || user.role === "teacher") return;
+
+    let presenceChannel: any = null;
+    let bc: BroadcastChannel | null = null;
+
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        bc = new BroadcastChannel("readsmart_student_presence");
+        bc.postMessage({
+          type: "heartbeat",
+          studentId: user.id,
+          name: user.fullName,
+          online: true,
+          timestamp: Date.now(),
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    // Touch database updated_at & BroadcastChannel heartbeat every 20 seconds
+    const interval = setInterval(async () => {
+      try {
+        if (bc) {
+          bc.postMessage({
+            type: "heartbeat",
+            studentId: user.id,
+            name: user.fullName,
+            online: true,
+            timestamp: Date.now(),
+          });
+        }
+        const { createClient } = await import("@/utils/supabase/client");
+        const supabase = createClient();
+        void supabase
+          .from("profiles")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", user.id);
+      } catch {
+        // ignore
+      }
+    }, 20000);
+
+    // Supabase Realtime presence channel
+    import("@/utils/supabase/client")
+      .then(({ createClient }) => {
+        const supabase = createClient();
+        presenceChannel = supabase.channel("readsmart_online_presence");
+        presenceChannel.subscribe(async (status: string) => {
+          if (status === "SUBSCRIBED") {
+            await presenceChannel.track({
+              studentId: user.id,
+              name: user.fullName,
+              onlineAt: new Date().toISOString(),
+            });
+          }
+        });
+      })
+      .catch(() => {});
+
+    const handleBeforeUnload = () => {
+      try {
+        if (bc) {
+          bc.postMessage({
+            type: "offline",
+            studentId: user.id,
+            name: user.fullName,
+            online: false,
+            timestamp: Date.now(),
+          });
+        }
+        if (presenceChannel) {
+          void presenceChannel.untrack();
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      handleBeforeUnload();
+      if (bc) bc.close();
+      if (presenceChannel) {
+        try {
+          import("@/utils/supabase/client").then(({ createClient }) => {
+            createClient().removeChannel(presenceChannel);
+          });
+        } catch {}
+      }
     };
   }, []);
 

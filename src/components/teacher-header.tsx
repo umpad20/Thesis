@@ -178,31 +178,18 @@ export function TeacherHeader() {
   ];
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-50">
+    <header className="h-16 min-h-[64px] bg-white border-b border-slate-200/80 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-50 shrink-0">
       {/* ── Left: Faculty Workspace Identity ── */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/60 uppercase tracking-wider">
             Teacher Workspace
           </span>
-          <span className="hidden sm:inline-block text-xs font-bold text-slate-500">
-            · {currentUser.section || "Grade 3 Faculty"}
-          </span>
         </div>
       </div>
 
       {/* ── Right: Notification Center & Faculty Profile ── */}
       <div className="flex items-center gap-2.5 sm:gap-3">
-        {/* Reports Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/teacher/reports")}
-          className="hidden md:flex h-9 px-3 rounded-xl border-slate-200 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 items-center gap-1.5 cursor-pointer"
-        >
-          <Download className="w-3.5 h-3.5 text-slate-400" />
-          <span>Reports</span>
-        </Button>
 
         {/* Notification Bell Dropdown */}
         <div ref={notifsContainerRef} className="relative">
@@ -213,7 +200,7 @@ export function TeacherHeader() {
               setHasUnread(false);
             }}
             aria-label="View Notifications"
-            className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
+            className="h-9 w-9 relative rounded-xl text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-colors cursor-pointer flex items-center justify-center shadow-2xs"
           >
             <Bell className="w-4 h-4" />
             {hasUnread && (
@@ -269,19 +256,16 @@ export function TeacherHeader() {
           <button
             type="button"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100/80 border border-transparent hover:border-slate-200 transition-all text-left outline-none cursor-pointer select-none"
+            className="h-9 flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200/80 transition-all text-left outline-none cursor-pointer select-none shadow-2xs"
           >
-            <Avatar className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0">
-              <AvatarFallback className="bg-slate-900 text-white font-bold text-xs rounded-lg flex items-center justify-center">
+            <Avatar className="w-6 h-6 rounded-lg bg-slate-900 border border-slate-800 flex-shrink-0">
+              <AvatarFallback className="bg-slate-900 text-white font-bold text-[11px] rounded-lg flex items-center justify-center">
                 {currentUser.avatar ? currentUser.avatar : getInitials(currentUser.fullName)}
               </AvatarFallback>
             </Avatar>
             <div className="hidden md:block">
-              <span className="text-xs font-bold text-slate-900 block leading-tight">
+              <span className="text-xs font-bold text-slate-900 block leading-tight truncate max-w-[120px]">
                 {currentUser.fullName}
-              </span>
-              <span className="text-[10px] font-semibold text-slate-400 block">
-                {currentUser.section || "Grade 3 Faculty"} · Faculty
               </span>
             </div>
             <ChevronDown

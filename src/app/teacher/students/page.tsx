@@ -87,6 +87,129 @@ export default function TeacherStudentsPage() {
     loadData();
   }, []);
 
+  const [liveOnlineIds, setLiveOnlineIds] = useState<Set<string>>(new Set());
+  const [recentBroadcasts, setRecentBroadcasts] = useState<Record<string, number>>({});
+
+  // Real-time student presence tracking via Supabase Channel and BroadcastChannel
+  useEffect(() => {
+    let presenceChannel: any = null;
+    let bc: BroadcastChannel | null = null;
+
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        bc = new BroadcastChannel("readsmart_student_presence");
+        bc.onmessage = (event) => {
+          const data = event.data;
+          if (!data || !data.studentId) return;
+          if (data.online === false || data.type === "offline") {
+            setLiveOnlineIds((prev) => {
+              const next = new Set(prev);
+              next.delete(data.studentId);
+              return next;
+            });
+            setRecentBroadcasts((prev) => {
+              const next = { ...prev };
+              delete next[data.studentId];
+              return next;
+            });
+          } else {
+            setLiveOnlineIds((prev) => new Set(prev).add(data.studentId));
+            setRecentBroadcasts((prev) => ({ ...prev, [data.studentId]: Date.now() }));
+          }
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    // Connect to Supabase Realtime Presence Channel
+    import("@/utils/supabase/client")
+      .then(({ createClient }) => {
+        const supabase = createClient();
+        presenceChannel = supabase.channel("readsmart_online_presence");
+        presenceChannel
+          .on("presence", { event: "sync" }, () => {
+            const state = presenceChannel.presenceState();
+            const onlineSet = new Set<string>();
+            Object.values(state).forEach((presences: any) => {
+              if (Array.isArray(presences)) {
+                presences.forEach((p: any) => {
+                  if (p?.studentId) onlineSet.add(p.studentId);
+                });
+              }
+            });
+            setLiveOnlineIds((prev) => {
+              const combined = new Set(onlineSet);
+              Object.keys(recentBroadcasts).forEach((id) => combined.add(id));
+              return combined;
+            });
+          })
+          .on("presence", { event: "join" }, ({ newPresences }: any) => {
+            if (Array.isArray(newPresences)) {
+              setLiveOnlineIds((prev) => {
+                const next = new Set(prev);
+                newPresences.forEach((p: any) => {
+                  if (p?.studentId) next.add(p.studentId);
+                });
+                return next;
+              });
+            }
+          })
+          .on("presence", { event: "leave" }, ({ leftPresences }: any) => {
+            if (Array.isArray(leftPresences)) {
+              setLiveOnlineIds((prev) => {
+                const next = new Set(prev);
+                leftPresences.forEach((p: any) => {
+                  if (p?.studentId) next.delete(p.studentId);
+                });
+                return next;
+              });
+            }
+          })
+          .subscribe();
+      })
+      .catch(() => {});
+
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setRecentBroadcasts((prev) => {
+        const next: Record<string, number> = {};
+        let changed = false;
+        Object.entries(prev).forEach(([id, ts]) => {
+          if (now - ts < 45000) {
+            next[id] = ts;
+          } else {
+            changed = true;
+          }
+        });
+        if (changed) {
+          setLiveOnlineIds((prevOnline) => {
+            const updated = new Set(prevOnline);
+            Object.keys(prev).forEach((id) => {
+              if (!next[id] && !presenceChannel?.presenceState()?.[id]) {
+                updated.delete(id);
+              }
+            });
+            return updated;
+          });
+        }
+        return next;
+      });
+    }, 15000);
+
+    return () => {
+      clearInterval(cleanupInterval);
+      if (bc) bc.close();
+      if (presenceChannel) {
+        try {
+          import("@/utils/supabase/client").then(({ createClient }) => {
+            createClient().removeChannel(presenceChannel);
+          });
+        } catch {}
+      }
+    };
+  }, []);
+
   const safeSections = Array.isArray(sections) && sections.length > 0 ? sections : ["Grade 3-A"];
 
   const sectionStudents = students.filter(
@@ -134,6 +257,55 @@ export default function TeacherStudentsPage() {
 
     return matchesSection && matchesSearch && matchesFilter;
   });
+
+  const checkStudentOnline = (st: EnrolledStudent) => {
+    const sid = st.supabaseUserId || st.id;
+    const cleanName = (st.name || "").toLowerCase().trim();
+    const cleanEmail = (st.email || "").toLowerCase().trim();
+
+    if (sid && liveOnlineIds.has(sid)) return true;
+    if (cleanName && liveOnlineIds.has(cleanName)) return true;
+    if (cleanEmail && liveOnlineIds.has(cleanEmail)) return true;
+
+    const checkBroadcast = (k?: string) => Boolean(k && recentBroadcasts[k] && Date.now() - recentBroadcasts[k] < 45000);
+    if (checkBroadcast(sid) || checkBroadcast(cleanName) || checkBroadcast(cleanEmail)) return true;
+
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("readsmart_online_students");
+        if (raw) {
+          const map = JSON.parse(raw);
+          const now = Date.now();
+          if ((sid && map[sid] && now - map[sid] < 45000) ||
+              (cleanName && map[cleanName] && now - map[cleanName] < 45000) ||
+              (cleanEmail && map[cleanEmail] && now - map[cleanEmail] < 45000)) {
+            return true;
+          }
+        }
+        const userRaw = localStorage.getItem("readsmart_current_user");
+        if (userRaw) {
+          const u = JSON.parse(userRaw);
+          if (u?.role === "student") {
+            if ((sid && u.id === sid) || (cleanName && u.fullName?.toLowerCase().trim() === cleanName) || (cleanEmail && u.email?.toLowerCase().trim() === cleanEmail)) {
+              return true;
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (st.isOnline) return true;
+    if (st.lastActiveIso) {
+      const diffMs = Date.now() - new Date(st.lastActiveIso).getTime();
+      if (diffMs >= 0 && diffMs < 15 * 60 * 1000) return true;
+    }
+    const la = (st.lastActive || "").toLowerCase();
+    return (
+      la.includes("just now") ||
+      la.includes("online") ||
+      /^[1-9]\d?m ago/.test(la)
+    );
+  };
 
   const exportCSV = () => {
     if (filteredStudents.length === 0) return;
@@ -277,9 +449,6 @@ export default function TeacherStudentsPage() {
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
             Student Records
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage section rosters, student credentials, and individual reading mastery evaluations.
-          </p>
         </div>
       </div>
 
@@ -511,15 +680,31 @@ export default function TeacherStudentsPage() {
                             className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-hidden"
                             title={`View individual record for ${s.name}`}
                           >
-                            <StudentAvatar
-                              avatar={s.avatar || (s.gender === "Female" ? "👧" : "👦")}
-                              name={s.name}
-                              size="xs"
-                              className="flex-shrink-0 group-hover:ring-2 group-hover:ring-blue-400 transition-all"
-                            />
+                            <div className="relative flex-shrink-0">
+                              <StudentAvatar
+                                avatar={s.avatar || (s.gender === "Female" ? "👧" : "👦")}
+                                name={s.name}
+                                size="xs"
+                                className="flex-shrink-0 group-hover:ring-2 group-hover:ring-blue-400 transition-all"
+                              />
+                              <span
+                                className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
+                                  checkStudentOnline(s) ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                                }`}
+                                title={checkStudentOnline(s) ? "Online Now" : "Offline"}
+                              />
+                            </div>
                             <div>
-                              <div className="text-slate-900 font-bold group-hover:text-blue-600 transition-colors">
-                                {s.name}
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-900 font-bold group-hover:text-blue-600 transition-colors">
+                                  {s.name}
+                                </span>
+                                {checkStudentOnline(s) && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>Online</span>
+                                  </span>
+                                )}
                               </div>
                               <span className="text-[10px] text-slate-400 font-normal">
                                 {s.id} · {s.gender}

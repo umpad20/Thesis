@@ -351,7 +351,7 @@ function EnrollPupilsForm() {
                   <UserPlus className="w-6 h-6" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                  <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
                     Enroll Students
                   </h1>
                 </div>

@@ -188,12 +188,12 @@ export default function TeacherBadgesPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       {/* ── 1. Unified Header & Create Stage Button ─────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-            Reading Curriculum &amp; Stage Badges Studio
+            Curriculum &amp; Badges
           </h1>
         </div>
 

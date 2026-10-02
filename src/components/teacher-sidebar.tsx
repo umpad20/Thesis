@@ -17,7 +17,7 @@ export function TeacherSidebar() {
   const pathname = usePathname();
 
   const teacherNavItems = [
-    { name: "Teacher Hub", href: "/teacher", icon: LayoutDashboard },
+    { name: "Teacher Dashboard", href: "/teacher", icon: LayoutDashboard },
     { name: "Student Records", href: "/teacher/students", icon: Users },
     { name: "Curriculum & Badges", href: "/teacher/badges", icon: Map },
     { name: "Reports", href: "/teacher/reports", icon: BarChart3 },

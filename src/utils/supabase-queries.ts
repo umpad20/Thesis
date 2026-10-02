@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { parseQuizQuestion, parseQuestionChoice } from "@/utils/quiz-helpers";
 import type {
   Badge,
   StudentBadgeProgress,
@@ -558,10 +559,14 @@ export async function fetchQuizForLesson(lessonId: number): Promise<QuizWithQues
       .select("*")
       .in("question_id", questionIds);
 
-    const questionsWithChoices = questions.map((q) => ({
-      ...q,
-      choices: (choices || []).filter((c) => c.question_id === q.question_id),
-    }));
+    const questionsWithChoices = questions.map((q) => {
+      const parsedQ = parseQuizQuestion(q);
+      const rawChoices = (choices || []).filter((c) => c.question_id === q.question_id);
+      return {
+        ...parsedQ,
+        choices: rawChoices.map((c) => parseQuestionChoice(c)),
+      };
+    });
 
     return {
       ...quiz,
@@ -603,10 +608,14 @@ export async function fetchStageFinalQuiz(badgeId: number): Promise<QuizWithQues
       .select("*")
       .in("question_id", questionIds);
 
-    const questionsWithChoices = questions.map((q) => ({
-      ...q,
-      choices: (choices || []).filter((c) => c.question_id === q.question_id),
-    }));
+    const questionsWithChoices = questions.map((q) => {
+      const parsedQ = parseQuizQuestion(q);
+      const rawChoices = (choices || []).filter((c) => c.question_id === q.question_id);
+      return {
+        ...parsedQ,
+        choices: rawChoices.map((c) => parseQuestionChoice(c)),
+      };
+    });
 
     return {
       ...quiz,
@@ -717,10 +726,14 @@ export async function fetchStageCurriculumDetails(badgeId: number): Promise<Stag
       let lQuestionsWithChoices: any[] = [];
       if (lQuiz) {
         const lQuestions = questionsData.filter((q) => q.quiz_id === lQuiz.quiz_id);
-        lQuestionsWithChoices = lQuestions.map((q) => ({
-          ...q,
-          choices: choicesData.filter((c) => c.question_id === q.question_id),
-        }));
+        lQuestionsWithChoices = lQuestions.map((q) => {
+          const parsedQ = parseQuizQuestion(q);
+          const rawChoices = choicesData.filter((c) => c.question_id === q.question_id);
+          return {
+            ...parsedQ,
+            choices: rawChoices.map((c) => parseQuestionChoice(c)),
+          };
+        });
       }
 
       return {
@@ -763,7 +776,7 @@ export async function submitQuizAttempt(params: {
   totalPoints: number;
   percentage: number;
   passed: boolean;
-  answers: Array<{ questionId: number; choiceId: number; isCorrect: boolean }>;
+  answers: Array<{ questionId: number; choiceId?: number | null; isCorrect: boolean }>;
 }): Promise<{ success: boolean; attemptId?: number }> {
   try {
     const supabase = createClient();
@@ -788,12 +801,18 @@ export async function submitQuizAttempt(params: {
       return { success: false };
     }
 
+    // Touch student updated_at in profiles table
+    void supabase
+      .from("profiles")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", params.studentId);
+
     // 2. Record individual answers
     if (params.answers.length > 0) {
       const answerRows = params.answers.map((a) => ({
         attempt_id: attempt.attempt_id,
         question_id: a.questionId,
-        selected_choice_id: a.choiceId,
+        selected_choice_id: a.choiceId && a.choiceId > 0 ? a.choiceId : null,
         is_correct: a.isCorrect,
       }));
 
@@ -1020,6 +1039,8 @@ export interface TeacherReportRow {
   quizzesPassed: string;
   status: "Mastering" | "On Track" | "Needs Review";
   lastActive: string;
+  lastActiveIso?: string;
+  isOnline?: boolean;
   avatar?: string;
   totalXp?: number;
   streakDays?: number;
@@ -1159,6 +1180,44 @@ export async function fetchClassRosterReports(
       const activityTimestamps = studentAttempts.map((a) => a.completed_at || a.started_at);
       const streakDays = calculateStudentStreak(activityTimestamps);
 
+      // Determine true latest activity timestamp
+      const candidateTimestamps: (string | undefined)[] = [
+        p.updated_at,
+        p.created_at,
+        ...studentAttempts.map((a) => a.completed_at || a.started_at),
+        ...studentBadges.map((b) => b.updated_at || b.created_at),
+      ];
+
+      const validTimestamps = candidateTimestamps
+        .filter((ts): ts is string => Boolean(ts && !isNaN(new Date(ts).getTime())))
+        .map((ts) => new Date(ts).getTime())
+        .sort((a, b) => b - a);
+
+      const latestTimeMs = validTimestamps[0];
+      const latestIso = latestTimeMs ? new Date(latestTimeMs).toISOString() : undefined;
+      const isOnline = latestTimeMs ? Date.now() - latestTimeMs < 15 * 60 * 1000 : false;
+
+      let lastActiveFormatted = "Active recently";
+      if (latestTimeMs) {
+        const diffMs = Date.now() - latestTimeMs;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        if (diffMins < 1) {
+          lastActiveFormatted = "Just now";
+        } else if (diffMins < 60) {
+          lastActiveFormatted = `${diffMins}m ago`;
+        } else if (diffMins < 24 * 60) {
+          const diffHours = Math.floor(diffMins / 60);
+          lastActiveFormatted = `${diffHours}h ago`;
+        } else if (diffMins < 48 * 60) {
+          lastActiveFormatted = "Yesterday";
+        } else {
+          lastActiveFormatted = new Date(latestTimeMs).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+        }
+      }
+
       return {
         studentId: p.id,
         name: p.full_name || "Student",
@@ -1168,7 +1227,9 @@ export async function fetchClassRosterReports(
         comprehensionPct: `${avgScore}%`,
         readingSpeed: avgScore > 0 ? `${Math.round(85 + (avgScore / 100) * 20)} WPM` : "—",
         status: status as "Mastering" | "On Track" | "Needs Review",
-        lastActive: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "Active recently",
+        lastActive: lastActiveFormatted,
+        lastActiveIso: latestIso,
+        isOnline,
         avatar: p.avatar || "👧",
         gender: inferStudentGender(p),
         totalXp: xpCalc.totalXp,

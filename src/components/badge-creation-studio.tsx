@@ -47,6 +47,13 @@ import {
   fetchStageCurriculumDetails,
 } from "@/utils/supabase-queries";
 import { createClient } from "@/utils/supabase/client";
+import {
+  formatQuestionTextForSave,
+  formatChoiceTextForSave,
+  parseQuizQuestion,
+  parseQuestionChoice,
+} from "@/utils/quiz-helpers";
+import { QuestionAuthoringCard } from "@/components/question-authoring-card";
 import type { Badge, BadgeType, MedalType, Lesson, LessonPage } from "@/lib/types";
 
 export interface VocabularyWordFormItem {
@@ -57,10 +64,18 @@ export interface VocabularyWordFormItem {
 
 export interface QuestionFormItem {
   question_text: string;
+  question_type?: "multiple_choice" | "checkboxes" | "matching" | string;
+  question_image_url?: string;
   explanation: string;
   hint: string;
   points: number;
-  choices: Array<{ choice_letter: string; choice_text: string; is_correct: boolean }>;
+  choices: Array<{
+    choice_letter: string;
+    choice_text: string;
+    choice_image_url?: string;
+    match_target?: string;
+    is_correct: boolean;
+  }>;
 }
 
 export interface LessonSentenceItem {
@@ -88,17 +103,35 @@ function createBlankSentence(index: number = 1): LessonSentenceItem {
   };
 }
 
-function createBlankQuestion(): QuestionFormItem {
+function createBlankQuestion(type: string = "multiple_choice"): QuestionFormItem {
+  if (type === "matching") {
+    return {
+      question_text: "",
+      question_type: "matching",
+      question_image_url: "",
+      explanation: "",
+      hint: "",
+      points: 20,
+      choices: [
+        { choice_letter: "A", choice_text: "", match_target: "", is_correct: true },
+        { choice_letter: "B", choice_text: "", match_target: "", is_correct: true },
+        { choice_letter: "C", choice_text: "", match_target: "", is_correct: true },
+      ],
+    };
+  }
+
   return {
     question_text: "",
+    question_type: type,
+    question_image_url: "",
     explanation: "",
     hint: "",
     points: 20,
     choices: [
-      { choice_letter: "A", choice_text: "", is_correct: true },
-      { choice_letter: "B", choice_text: "", is_correct: false },
-      { choice_letter: "C", choice_text: "", is_correct: false },
-      { choice_letter: "D", choice_text: "", is_correct: false },
+      { choice_letter: "A", choice_text: "", choice_image_url: "", is_correct: true },
+      { choice_letter: "B", choice_text: "", choice_image_url: "", is_correct: false },
+      { choice_letter: "C", choice_text: "", choice_image_url: "", is_correct: false },
+      { choice_letter: "D", choice_text: "", choice_image_url: "", is_correct: false },
     ],
   };
 }
@@ -211,17 +244,27 @@ export function BadgeCreationStudio() {
                 });
 
                 const qs: QuestionFormItem[] = l.quiz?.questions
-                  ? l.quiz.questions.map((q) => ({
-                      question_text: q.question_text,
-                      explanation: q.explanation || "",
-                      hint: q.hint || "",
-                      points: q.points || 20,
-                      choices: q.choices.map((c, idx) => ({
-                        choice_letter: String.fromCharCode(65 + idx),
-                        choice_text: c.choice_text,
-                        is_correct: c.is_correct,
-                      })),
-                    }))
+                  ? l.quiz.questions.map((q) => {
+                      const parsedQ = parseQuizQuestion(q);
+                      return {
+                        question_text: parsedQ.question_text,
+                        question_type: parsedQ.question_type || "multiple_choice",
+                        question_image_url: parsedQ.question_image_url || "",
+                        explanation: parsedQ.explanation || "",
+                        hint: parsedQ.hint || "",
+                        points: parsedQ.points || 20,
+                        choices: ((q as any).choices || []).map((c: any, idx: number) => {
+                          const parsedC = parseQuestionChoice(c);
+                          return {
+                            choice_letter: String.fromCharCode(65 + idx),
+                            choice_text: parsedC.choice_text,
+                            choice_image_url: parsedC.choice_image_url || "",
+                            match_target: parsedC.match_target || "",
+                            is_correct: parsedC.is_correct,
+                          };
+                        }),
+                      };
+                    })
                   : [];
 
                 return {
@@ -240,17 +283,27 @@ export function BadgeCreationStudio() {
               setFinalQuizTitle(details.finalQuiz.quiz_title);
               if (details.finalQuiz.questions && details.finalQuiz.questions.length > 0) {
                 setFinalQuizQuestions(
-                  details.finalQuiz.questions.map((q) => ({
-                    question_text: q.question_text,
-                    explanation: q.explanation || "",
-                    hint: q.hint || "",
-                    points: q.points || 20,
-                    choices: q.choices.map((c, idx) => ({
-                      choice_letter: String.fromCharCode(65 + idx),
-                      choice_text: c.choice_text,
-                      is_correct: c.is_correct,
-                    })),
-                  }))
+                  details.finalQuiz.questions.map((q) => {
+                    const parsedQ = parseQuizQuestion(q);
+                    return {
+                      question_text: parsedQ.question_text,
+                      question_type: parsedQ.question_type || "multiple_choice",
+                      question_image_url: parsedQ.question_image_url || "",
+                      explanation: parsedQ.explanation || "",
+                      hint: parsedQ.hint || "",
+                      points: parsedQ.points || 20,
+                      choices: ((q as any).choices || []).map((c: any, idx: number) => {
+                        const parsedC = parseQuestionChoice(c);
+                        return {
+                          choice_letter: String.fromCharCode(65 + idx),
+                          choice_text: parsedC.choice_text,
+                          choice_image_url: parsedC.choice_image_url || "",
+                          match_target: parsedC.match_target || "",
+                          is_correct: parsedC.is_correct,
+                        };
+                      }),
+                    };
+                  })
                 );
               }
             }
@@ -288,6 +341,32 @@ export function BadgeCreationStudio() {
     formLessons[activeLessonIndex] || formLessons[0] || createBlankLesson();
 
   // ── VALIDATION RULES & GATING ──
+  const isQuestionValid = (q: QuestionFormItem) => {
+    const hasTextOrImg =
+      q.question_text.trim().length >= 2 ||
+      Boolean(q.question_image_url && q.question_image_url.trim().length > 0);
+    if (!hasTextOrImg) return false;
+
+    if (q.question_type === "matching") {
+      return (
+        q.choices.length >= 2 &&
+        q.choices.every(
+          (c) =>
+            (c.choice_text.trim().length > 0 || Boolean(c.choice_image_url)) &&
+            (c.match_target?.trim()?.length || 0) > 0
+        )
+      );
+    }
+
+    // multiple_choice or checkboxes
+    return (
+      q.choices.length >= 2 &&
+      q.choices.some(
+        (c) => c.is_correct && (c.choice_text.trim().length > 0 || Boolean(c.choice_image_url))
+      )
+    );
+  };
+
   const isStep1Valid = formBadgeName.trim().length >= 3 && formDescription.trim().length >= 5;
   const isStep2Valid =
     isStep1Valid &&
@@ -298,24 +377,14 @@ export function BadgeCreationStudio() {
         (l.sentences && l.sentences.some((s) => s.sentence_text.trim().length >= 3)) ||
         l.story_content.trim().length >= 3;
       const hasQuestions =
-        l.questions.length === 0 ||
-        l.questions.every(
-          (q) =>
-            q.question_text.trim().length >= 3 &&
-            q.choices.some((c) => c.is_correct && c.choice_text.trim().length > 0)
-        );
+        l.questions.length === 0 || l.questions.every(isQuestionValid);
       return hasTitle && hasSentences && hasQuestions;
     });
 
   const isStep3Valid =
     isStep2Valid &&
     (finalQuizTitle.trim().length >= 3 || finalQuizQuestions.length === 0) &&
-    (finalQuizQuestions.length === 0 ||
-      finalQuizQuestions.every(
-        (q) =>
-          q.question_text.trim().length >= 3 &&
-          q.choices.some((c) => c.is_correct && c.choice_text.trim().length > 0)
-      ));
+    (finalQuizQuestions.length === 0 || finalQuizQuestions.every(isQuestionValid));
 
   // ── LESSON MUTATION HELPERS ──
   const addLesson = () => {
@@ -806,14 +875,22 @@ export function BadgeCreationStudio() {
           if (newQuiz) {
             for (let qIdx = 0; qIdx < lesson.questions.length; qIdx++) {
               const q = lesson.questions[qIdx];
-              if (q.question_text.trim().length > 0) {
+              const hasQContent =
+                q.question_text.trim().length > 0 ||
+                Boolean(q.question_image_url && q.question_image_url.trim().length > 0);
+              if (hasQContent) {
+                const formattedQText = formatQuestionTextForSave(
+                  q.question_text,
+                  q.question_image_url
+                );
                 const { data: createdQ, error: qErr } = await supabase
                   .from("quiz_questions")
                   .insert({
                     quiz_id: newQuiz.quiz_id,
-                    question_text: q.question_text.trim(),
-                    explanation: q.explanation.trim() || null,
-                    hint: q.hint.trim() || null,
+                    question_text: formattedQText,
+                    question_type: q.question_type || "multiple_choice",
+                    explanation: q.explanation?.trim() || null,
+                    hint: q.hint?.trim() || null,
                     points: q.points || 20,
                   })
                   .select("question_id")
@@ -825,11 +902,20 @@ export function BadgeCreationStudio() {
 
                 if (createdQ) {
                   for (const c of q.choices) {
-                    if (c.choice_text.trim().length > 0) {
+                    const hasChoiceContent =
+                      c.choice_text.trim().length > 0 ||
+                      Boolean(c.choice_image_url) ||
+                      Boolean(c.match_target);
+                    if (hasChoiceContent) {
+                      const formattedChoiceText = formatChoiceTextForSave(
+                        c.choice_text,
+                        c.choice_image_url,
+                        c.match_target
+                      );
                       await supabase.from("question_choices").insert({
                         question_id: createdQ.question_id,
-                        choice_text: c.choice_text.trim(),
-                        is_correct: c.is_correct,
+                        choice_text: formattedChoiceText,
+                        is_correct: Boolean(c.is_correct),
                       });
                     }
                   }
@@ -857,14 +943,22 @@ export function BadgeCreationStudio() {
         if (finalQuiz) {
           for (let qIdx = 0; qIdx < finalQuizQuestions.length; qIdx++) {
             const q = finalQuizQuestions[qIdx];
-            if (q.question_text.trim().length > 0) {
+            const hasQContent =
+              q.question_text.trim().length > 0 ||
+              Boolean(q.question_image_url && q.question_image_url.trim().length > 0);
+            if (hasQContent) {
+              const formattedQText = formatQuestionTextForSave(
+                q.question_text,
+                q.question_image_url
+              );
               const { data: createdQ, error: finalQErr } = await supabase
                 .from("quiz_questions")
                 .insert({
                   quiz_id: finalQuiz.quiz_id,
-                  question_text: q.question_text.trim(),
-                  explanation: q.explanation.trim() || null,
-                  hint: q.hint.trim() || null,
+                  question_text: formattedQText,
+                  question_type: q.question_type || "multiple_choice",
+                  explanation: q.explanation?.trim() || null,
+                  hint: q.hint?.trim() || null,
                   points: q.points || 20,
                 })
                 .select("question_id")
@@ -876,11 +970,20 @@ export function BadgeCreationStudio() {
 
               if (createdQ) {
                 for (const c of q.choices) {
-                  if (c.choice_text.trim().length > 0) {
+                  const hasChoiceContent =
+                    c.choice_text.trim().length > 0 ||
+                    Boolean(c.choice_image_url) ||
+                    Boolean(c.match_target);
+                  if (hasChoiceContent) {
+                    const formattedChoiceText = formatChoiceTextForSave(
+                      c.choice_text,
+                      c.choice_image_url,
+                      c.match_target
+                    );
                     await supabase.from("question_choices").insert({
                       question_id: createdQ.question_id,
-                      choice_text: c.choice_text.trim(),
-                      is_correct: c.is_correct,
+                      choice_text: formattedChoiceText,
+                      is_correct: Boolean(c.is_correct),
                     });
                   }
                 }
@@ -911,17 +1014,9 @@ export function BadgeCreationStudio() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                {editBadgeId ? "Edit Custom Stage Quest" : "Create New Custom Badge & Quest"}
-              </h1>
-              <span className="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black uppercase tracking-wider">
-                Full-Canvas Authoring
-              </span>
-            </div>
-            <p className="text-sm text-slate-500 font-medium mt-1">
-              Author unlimited story sentences, highlight words to define vocabulary, attach sentence illustrations, and build comprehension quizzes.
-            </p>
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+              {editBadgeId ? "Edit Custom Stage Quest" : "Create New Custom Badge & Quest"}
+            </h1>
           </div>
         </div>
 
@@ -995,9 +1090,8 @@ export function BadgeCreationStudio() {
 
               {/* Badge Title */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-800 flex items-center justify-between">
-                  <span>Badge &amp; Quest Name <span className="text-rose-500">*</span></span>
-                  <span className="text-xs text-slate-400 font-medium">Min. 3 characters</span>
+                <label className="text-sm font-bold text-slate-800 block">
+                  Badge &amp; Quest Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1036,7 +1130,7 @@ export function BadgeCreationStudio() {
                     <div className="space-y-1.5 flex-1">
                       <span className="text-sm font-black text-indigo-950 block">Custom Artwork Active</span>
                       <p className="text-xs text-slate-500 font-medium">
-                        This image will display on the Pupil Badge Map and Reward certificates.
+                        This image will display on the Student Badge Map and Reward certificates.
                       </p>
                       <div className="flex items-center gap-2.5 pt-1">
                         <Button
@@ -1121,7 +1215,7 @@ export function BadgeCreationStudio() {
                     className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                   />
                   <span className="text-xs text-slate-400 font-medium block">
-                    Pupils must score at least {formPassingScore}% on all quizzes to earn badge.
+                    Students must score at least {formPassingScore}% on all quizzes to earn badge.
                   </span>
                 </div>
 
@@ -1152,7 +1246,7 @@ export function BadgeCreationStudio() {
                   rows={3}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Summarize the core reading competency, themes, and learning goals for pupils in this stage..."
+                  placeholder="Summarize the core reading competency, themes, and learning goals for students in this stage..."
                   className="w-full px-4 py-3.5 rounded-2xl border border-slate-200 text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
@@ -1277,9 +1371,6 @@ export function BadgeCreationStudio() {
                         <BookOpen className="w-5 h-5 text-indigo-600" />
                         <span>Story Sentences &amp; Dual-Coding Illustrations ({(currentLesson.sentences || []).length} Sentences)</span>
                       </h3>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        Each sentence is an individual reading page. Highlight words inside any sentence to define vocabulary!
-                      </p>
                     </div>
 
                     <div className="flex items-center gap-2.5">
@@ -1351,15 +1442,7 @@ export function BadgeCreationStudio() {
                     </div>
                   )}
 
-                  {/* Helper Callout Banner for Teachers */}
-                  <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
-                      <Highlighter className="w-4 h-4" />
-                    </div>
-                    <div className="text-xs text-amber-950 font-medium leading-normal">
-                      <strong>Highlight to Tag Vocabulary:</strong> Simply highlight any word with your mouse inside a sentence box to immediately pop open the vocabulary definition editor!
-                    </div>
-                  </div>
+
 
                   {/* List of Sentences (Expansive Layout) */}
                   <div className="space-y-6">
@@ -1435,7 +1518,7 @@ export function BadgeCreationStudio() {
                             <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
                               <span>Sentence Content *</span>
                               <span className="text-[11px] text-indigo-600 font-medium">
-                                Highlight any word with your mouse 🖱️
+                                Highlight any word with your mouse
                               </span>
                             </label>
 
@@ -1730,71 +1813,20 @@ export function BadgeCreationStudio() {
                   ) : (
                     <div className="space-y-4">
                       {currentLesson.questions.map((q, qIdx) => (
-                        <div
+                        <QuestionAuthoringCard
                           key={qIdx}
-                          className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-4"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-black text-slate-900 flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
-                                {qIdx + 1}
-                              </span>
-                              <span>Question {qIdx + 1}</span>
-                            </span>
-
-                            <button
-                              type="button"
-                              onClick={() => removeQuestion(qIdx)}
-                              className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          <div>
-                            <input
-                              type="text"
-                              value={q.question_text}
-                              onChange={(e) => updateQuestion(qIdx, "question_text", e.target.value)}
-                              placeholder="Enter question text here..."
-                              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 outline-none"
-                            />
-                          </div>
-
-                          {/* Choices Grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {q.choices.map((choice, cIdx) => (
-                              <div
-                                key={cIdx}
-                                onClick={() => setQuestionChoiceCorrect(qIdx, cIdx)}
-                                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
-                                  choice.is_correct
-                                    ? "bg-emerald-50/70 border-emerald-300 text-emerald-950 font-bold"
-                                    : "bg-slate-50 border-slate-200 text-slate-800"
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name={`q-${activeLessonIndex}-${qIdx}`}
-                                  checked={choice.is_correct}
-                                  onChange={() => setQuestionChoiceCorrect(qIdx, cIdx)}
-                                  className="accent-emerald-600 cursor-pointer"
-                                />
-                                <span className="text-xs font-bold text-slate-500 w-4">
-                                  {choice.choice_letter}.
-                                </span>
-                                <input
-                                  type="text"
-                                  value={choice.choice_text}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) => updateChoiceText(qIdx, cIdx, e.target.value)}
-                                  placeholder={`Choice ${choice.choice_letter}`}
-                                  className="w-full bg-transparent text-sm outline-none font-medium"
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                          questionNumber={qIdx + 1}
+                          question={q}
+                          onChange={(updatedQ) =>
+                            updateCurrentLesson((l) => ({
+                              ...l,
+                              questions: l.questions.map((item, idx) =>
+                                idx === qIdx ? updatedQ : item
+                              ),
+                            }))
+                          }
+                          onRemove={() => removeQuestion(qIdx)}
+                        />
                       ))}
                     </div>
                   )}
@@ -1835,7 +1867,7 @@ export function BadgeCreationStudio() {
                   <span>Step 3: Stage Final Mastery Quiz &amp; Publish</span>
                 </h2>
                 <p className="text-sm text-slate-500 font-medium mt-0.5">
-                  Configure the comprehensive stage evaluation exam that awards pupils their Achievement Seal.
+                  Configure the comprehensive stage evaluation exam that awards students their Achievement Seal.
                 </p>
               </div>
 
@@ -1887,75 +1919,18 @@ export function BadgeCreationStudio() {
                 ) : (
                   <div className="space-y-4">
                     {finalQuizQuestions.map((q, qIdx) => (
-                      <div
+                      <QuestionAuthoringCard
                         key={qIdx}
-                        className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200 space-y-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-black text-slate-900 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">
-                              {qIdx + 1}
-                            </span>
-                            <span>Final Exam Question {qIdx + 1}</span>
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() => removeFinalQuestion(qIdx)}
-                            className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <input
-                          type="text"
-                          value={q.question_text}
-                          onChange={(e) =>
-                            setFinalQuizQuestions(
-                              finalQuizQuestions.map((item, idx) =>
-                                idx === qIdx ? { ...item, question_text: e.target.value } : item
-                              )
-                            )
-                          }
-                          placeholder="Enter comprehensive question text..."
-                          className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 bg-white outline-none"
-                        />
-
-                        {/* Choices Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {q.choices.map((choice, cIdx) => (
-                            <div
-                              key={cIdx}
-                              onClick={() => setFinalChoiceCorrect(qIdx, cIdx)}
-                              className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
-                                choice.is_correct
-                                  ? "bg-emerald-50 border-emerald-300 text-emerald-950 font-bold"
-                                  : "bg-white border-slate-200 text-slate-800"
-                              }`}
-                            >
-                              <input
-                                type="radio"
-                                name={`final-q-${qIdx}`}
-                                checked={choice.is_correct}
-                                onChange={() => setFinalChoiceCorrect(qIdx, cIdx)}
-                                className="accent-emerald-600 cursor-pointer"
-                              />
-                              <span className="text-xs font-bold text-slate-500 w-4">
-                                {choice.choice_letter}.
-                              </span>
-                              <input
-                                type="text"
-                                value={choice.choice_text}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => updateFinalChoiceText(qIdx, cIdx, e.target.value)}
-                                placeholder={`Choice ${choice.choice_letter}`}
-                                className="w-full bg-transparent text-sm outline-none font-medium"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                        questionNumber={qIdx + 1}
+                        question={q}
+                        isFinalExam
+                        onChange={(updatedQ) =>
+                          setFinalQuizQuestions((prev) =>
+                            prev.map((item, idx) => (idx === qIdx ? updatedQ : item))
+                          )
+                        }
+                        onRemove={() => removeFinalQuestion(qIdx)}
+                      />
                     ))}
                   </div>
                 )}
@@ -2034,7 +2009,7 @@ export function BadgeCreationStudio() {
                 <span>Live Badge Preview</span>
               </span>
               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                Pupil View
+                Student View
               </span>
             </div>
 

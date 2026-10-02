@@ -81,6 +81,7 @@ export interface EnrolledStudent {
   readingSpeed: string;
   lastActive: string;
   lastActiveIso?: string;
+  isOnline?: boolean;
   email?: string;
   avatar?: string;
   totalXp?: number;
@@ -126,14 +127,25 @@ export interface QuestionChoice {
   question_id: number;
   choice_text: string;
   choice_letter?: string;
+  choice_image_url?: string | null;
+  match_target?: string | null;
   is_correct: boolean;
 }
+
+export type QuizQuestionType =
+  | "multiple_choice"
+  | "checkboxes"
+  | "matching"
+  | "true_false"
+  | "identification"
+  | string;
 
 export interface QuizQuestion {
   question_id: number;
   quiz_id: number;
   question_text: string;
-  question_type: string;
+  question_type: QuizQuestionType;
+  question_image_url?: string | null;
   points: number;
   hint: string;
   explanation: string;
