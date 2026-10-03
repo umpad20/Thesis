@@ -174,6 +174,23 @@ function LessonReaderContent() {
 
   const assignedBadge = badges.find((b) => b.badge_id === activeLesson.badge_id);
 
+  // Compute 1-indexed level number matching map stepping stone
+  const chapterLessons = useMemo(
+    () => publishedLessons.filter((l) => l.badge_id === activeLesson.badge_id),
+    [publishedLessons, activeLesson.badge_id]
+  );
+  const lessonIndex = chapterLessons.findIndex((l) => l.lesson_id === activeLesson.lesson_id);
+  const levelNumber = lessonIndex >= 0 ? lessonIndex + 1 : (activeLesson.lesson_order || 1);
+
+  const rawLessonTitle = useMemo(() => {
+    const title = activeLesson.lesson_title || "Story";
+    return title.replace(/^level\s+\d+\s*[-:–]?\s*/i, "").trim() || title;
+  }, [activeLesson.lesson_title]);
+
+  const fullLessonTitle = useMemo(() => {
+    return `Level ${levelNumber} ${rawLessonTitle}`;
+  }, [rawLessonTitle, levelNumber]);
+
   const displayPages = pages.length > 0 ? pages : [
     {
       page_id: 1,
@@ -442,12 +459,20 @@ function LessonReaderContent() {
       {/* ── 1. Clean, Organized Top Header ── */}
       <div className="flex items-center justify-between gap-2 sm:gap-3 bg-white/95 backdrop-blur-md px-3 py-2 sm:px-6 sm:py-2.5 rounded-2xl border border-slate-200/80 shadow-xs shrink-0">
         {/* Left: Story Title + Difficulty Tag */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 mr-1">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1">
           <h1
-            className="text-xs sm:text-base md:text-xl font-black text-slate-900 tracking-tight truncate"
-            title={activeLesson.lesson_title}
+            className="text-xs sm:text-base md:text-xl font-black tracking-tight truncate flex items-center gap-1.5 sm:gap-2.5"
+            title={fullLessonTitle}
           >
-            {activeLesson.lesson_title}
+            {/* Distinct, Colorful Level Badge */}
+            <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-lg bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-white text-[10px] sm:text-xs font-black shadow-xs tracking-wider uppercase shrink-0 border border-amber-300/40 select-none">
+              Level {levelNumber}
+            </span>
+
+            {/* Colorful Story Title */}
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent font-black truncate drop-shadow-[0_1px_1px_rgba(37,99,235,0.08)]">
+              {rawLessonTitle}
+            </span>
           </h1>
           <span
             className={`text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full border shrink-0 uppercase tracking-wider ${
@@ -798,7 +823,7 @@ function LessonReaderContent() {
                 Exit to Storybook Map?
               </h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto mt-2 leading-relaxed">
-                You are currently reading <strong>Page {currentSlideIndex + 1} of {totalSlides}</strong> in <em>{activeLesson.lesson_title}</em>. Would you like to keep reading or exit to the map?
+                You are currently reading <strong>Page {currentSlideIndex + 1} of {totalSlides}</strong> in <em>{fullLessonTitle}</em>. Would you like to keep reading or exit to the map?
               </p>
             </div>
 

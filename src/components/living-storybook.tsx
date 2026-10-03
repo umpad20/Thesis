@@ -194,26 +194,6 @@ export function LivingStorybook({
   const SEGMENT_HEIGHT = 640;
   const totalHeight = Math.max(displayedBadges.length, 1) * SEGMENT_HEIGHT;
 
-  // State for active popup card interactions (pure click-based toggle: click to show, click again to unshow)
-  const [activeNodeId, setActiveNodeId] = useState<number | null>(null);
-
-  // Global pointer listener: dismiss any open node card when clicking outside
-  useEffect(() => {
-    const handleGlobalPointer = (e: PointerEvent) => {
-      if (!(e.target as HTMLElement | null)?.closest("[data-node-interactive]")) {
-        setActiveNodeId(null);
-      }
-    };
-    window.addEventListener("pointerdown", handleGlobalPointer);
-    return () => window.removeEventListener("pointerdown", handleGlobalPointer);
-  }, []);
-
-  const handleNodeClick = (lessonId: number, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    // Toggle card on click: click once to show, click again to unshow!
-    setActiveNodeId((prev) => (prev === lessonId ? null : lessonId));
-  };
-
   const handleTabSwitch = (tab: "core" | "teacher") => {
     if (tab === activePathwayTab) return;
     setActivePathwayTab(tab);
@@ -498,9 +478,6 @@ export function LivingStorybook({
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        onClick={() => {
-          setActiveNodeId(null);
-        }}
         className="map-viewport relative w-full flex-1 min-h-0 overflow-hidden select-none bg-white flex items-center justify-center p-2 sm:p-3 pb-20 md:pb-3"
       >
         {/* Centered Map Column Container (Allows navigation badges to sit outside in the white blank space on desktop) */}
@@ -677,7 +654,6 @@ export function LivingStorybook({
                       currentActiveLesson?.lesson_id === lesson.lesson_id;
 
                     const coord = getLessonCoords(idx, chLessons.length);
-                    const isCardOpen = activeNodeId === lesson.lesson_id;
 
                     // Pop down for higher nodes, pop up for lower nodes
                     const popDown = coord.yPct < 45;
@@ -690,7 +666,7 @@ export function LivingStorybook({
                       <div
                         key={lesson.lesson_id}
                         data-node-interactive="true"
-                        className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-20"
+                        className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-20 hover:z-50"
                         style={{
                           left: `${coord.xPct}%`,
                           top: `${coord.yPct}%`,
@@ -699,11 +675,11 @@ export function LivingStorybook({
                         {/* ── Case A: Completed Node (Golden Yellow Stepping Stone matching map road) ── */}
                         {isDone ? (
                           <div className="group relative flex flex-col items-center">
-                            <button
-                              type="button"
-                              onClick={(e) => handleNodeClick(lesson.lesson_id, e)}
+                            {/* Stepping Stone: Click automatically opens the book */}
+                            <Link
+                              href={`/dashboard/lessons?lessonId=${lesson.lesson_id}`}
                               className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-b from-amber-300 via-yellow-400 to-amber-500 border-3 sm:border-4 border-yellow-100 shadow-[0_5px_0_#b45309,0_8px_16px_rgba(180,83,9,0.35)] flex items-center justify-center font-black text-amber-950 text-lg sm:text-xl group-hover:scale-105 active:scale-95 transition-all cursor-pointer select-none"
-                              title={`Lesson ${idx + 1}: ${lesson.lesson_title} (Score: ${lessonScore}%)`}
+                              title={`Lesson ${idx + 1}: ${lesson.lesson_title} (Click to open story)`}
                             >
                               <span className="drop-shadow-[0_1px_0_rgba(255,255,255,0.7)]">{idx + 1}</span>
 
@@ -714,19 +690,17 @@ export function LivingStorybook({
 
                               {/* 3-Star Rating Badge (Score-dependent: 3 for 100%, 1.5 for 50%, etc.) */}
                               <NodeStarBadge score={lessonScore} />
-                            </button>
+                            </Link>
 
-                            {/* Interactive Action Card (Re-read & Retake) */}
+                            {/* Interactive Action Card (Re-read & Retake) shown on hover */}
                             <div
                               data-node-interactive="true"
                               onClick={(e) => e.stopPropagation()}
                               className={`absolute ${
-                                popDown ? "top-full mt-2" : "bottom-full mb-2"
-                              } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] bg-[#fffdf8] border border-amber-300/90 rounded-xl p-2 shadow-xl z-50 text-center transition-all duration-200 ${
-                                isCardOpen
-                                  ? "opacity-100 scale-100 translate-y-0 pointer-events-auto visible"
-                                  : "opacity-0 scale-95 pointer-events-none invisible"
-                              }`}
+                                popDown
+                                  ? "top-full mt-2 before:absolute before:inset-x-0 before:-top-3 before:h-3"
+                                  : "bottom-full mb-2 before:absolute before:inset-x-0 before:-bottom-3 before:h-3"
+                              } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] bg-[#fffdf8] border border-amber-300/90 rounded-xl p-2 shadow-xl z-50 text-center transition-all duration-200 opacity-0 scale-95 pointer-events-none invisible group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto group-hover:visible`}
                             >
                               {/* Pointer Beak */}
                               <div
@@ -734,7 +708,7 @@ export function LivingStorybook({
                                   popDown
                                     ? "-top-1.5 border-t border-l border-amber-300"
                                     : "-bottom-1.5 border-b border-r border-amber-300"
-                                } rotate-45`}
+                                } rotate-45 pointer-events-none`}
                               />
 
                               {/* Story Title & Score */}
@@ -776,39 +750,33 @@ export function LivingStorybook({
                               </div>
                             </div>
                           </div>
-                        ) : isCurrentActive ? (
+                        ) : isCurrentActive || isUnlocked ? (
                           /* ── Case B: Active Node (Prominently Highlighted Current Level) ── */
-                          <div className="relative flex flex-col items-center z-25">
-                            {/* Radiant Outer Radar Pulse Rings */}
-                            <div className="absolute inset-0 -m-2 sm:-m-3 rounded-full border-2 border-blue-400 animate-ping opacity-40 pointer-events-none" />
-                            <div className="absolute inset-0 -m-1 sm:-m-1.5 rounded-full ring-4 ring-amber-400/90 shadow-[0_0_30px_rgba(251,191,36,0.85)] pointer-events-none" />
-
+                          <div className="group relative flex flex-col items-center z-25">
                             {/* "Current Level" Floating Badge Tag */}
                             <div className="absolute -top-4 sm:-top-5 px-2.5 py-0.5 rounded-full bg-slate-900 text-white font-bold text-[9px] sm:text-[10px] tracking-wider uppercase shadow-md border border-slate-700 flex items-center gap-1 whitespace-nowrap z-30 animate-bounce pointer-events-none">
                               <Navigation className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
                               <span>Current Level</span>
                             </div>
 
-                            {/* Stepping Stone */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleNodeClick(lesson.lesson_id, e)}
-                              className="relative w-13 h-13 sm:w-15 sm:h-15 rounded-full bg-gradient-to-b from-blue-500 via-blue-600 to-indigo-700 border-4 border-blue-200 shadow-[0_0_35px_rgba(37,99,235,0.9),0_6px_0_#1e3a8a] flex items-center justify-center font-black text-white text-lg sm:text-xl animate-pulse cursor-pointer select-none"
+                            {/* Stepping Stone: Click automatically opens the book */}
+                            <Link
+                              href={`/dashboard/lessons?lessonId=${lesson.lesson_id}`}
+                              className="relative w-13 h-13 sm:w-15 sm:h-15 rounded-full bg-gradient-to-b from-blue-500 via-blue-600 to-indigo-700 border-4 border-blue-200 shadow-[0_0_35px_rgba(37,99,235,0.9),0_6px_0_#1e3a8a] flex items-center justify-center font-black text-white text-lg sm:text-xl animate-pulse group-hover:scale-105 active:scale-95 transition-all cursor-pointer select-none"
+                              title={`Current Level: ${lesson.lesson_title} (Click to open story)`}
                             >
                               <span>{idx + 1}</span>
-                            </button>
+                            </Link>
 
-                            {/* Floating Parchment Quest Pop-up Card (Only appears on hover / click) */}
+                            {/* Floating Parchment Quest Pop-up Card on Hover */}
                             <div
                               data-node-interactive="true"
                               onClick={(e) => e.stopPropagation()}
                               className={`absolute ${
-                                popDown ? "top-full mt-2" : "bottom-full mb-2"
-                              } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] z-40 transition-all duration-200 ${
-                                isCardOpen
-                                  ? "opacity-100 scale-100 translate-y-0 pointer-events-auto visible"
-                                  : "opacity-0 scale-95 pointer-events-none invisible"
-                              }`}
+                                popDown
+                                  ? "top-full mt-2 before:absolute before:inset-x-0 before:-top-3 before:h-3"
+                                  : "bottom-full mb-2 before:absolute before:inset-x-0 before:-bottom-3 before:h-3"
+                              } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] z-40 transition-all duration-200 opacity-0 scale-95 pointer-events-none invisible group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto group-hover:visible`}
                             >
                               {/* Pointer Beak */}
                               <div
@@ -816,7 +784,7 @@ export function LivingStorybook({
                                   popDown
                                     ? "-top-1.5 border-t border-l border-blue-700"
                                     : "-bottom-1.5 border-b border-r border-blue-700"
-                                } rotate-45 z-10`}
+                                } rotate-45 z-10 pointer-events-none`}
                               />
 
                               {/* Card body */}
@@ -850,16 +818,15 @@ export function LivingStorybook({
                             </div>
                           </div>
                         ) : (
-                          /* ── Case C: Locked Node (Stone with Padlock - Clickable to Preview) ── */
+                          /* ── Case C: Locked Node (Stone with Padlock) ── */
                           <div
-                            data-node-interactive="true"
-                            className="group relative flex flex-col items-center cursor-pointer select-none"
-                            onClick={(e) => handleNodeClick(lesson.lesson_id, e)}
+                            className="group relative flex flex-col items-center cursor-not-allowed select-none"
                           >
                             <button
                               type="button"
-                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-3 flex items-center justify-center font-bold text-white/80 text-lg sm:text-xl shadow-[0_4px_0_rgba(0,0,0,0.25)] bg-gradient-to-b from-stone-400 to-stone-500 border-stone-300 group-hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                              title={`Click to preview "${lesson.lesson_title}"`}
+                              disabled
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-3 flex items-center justify-center font-bold text-white/80 text-lg sm:text-xl shadow-[0_4px_0_rgba(0,0,0,0.25)] bg-gradient-to-b from-stone-400 to-stone-500 border-stone-300 transition-all cursor-not-allowed opacity-80"
+                              title={`Locked: ${lesson.lesson_title}`}
                             >
                               <span>{idx + 1}</span>
                             </button>
@@ -867,17 +834,15 @@ export function LivingStorybook({
                               <Lock className="w-2.5 h-2.5 text-slate-300" />
                             </div>
 
-                            {/* Interactive Locked Preview Card */}
+                            {/* Interactive Locked Preview Card on Hover */}
                             <div
                               data-node-interactive="true"
                               onClick={(e) => e.stopPropagation()}
                               className={`absolute ${
-                                popDown ? "top-full mt-2" : "bottom-full mb-2"
-                              } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] bg-slate-900/95 border border-slate-700 rounded-xl p-2 shadow-xl z-50 text-center transition-all duration-200 backdrop-blur-md ${
-                                isCardOpen
-                                  ? "opacity-100 scale-100 translate-y-0 pointer-events-auto visible"
-                                  : "opacity-0 scale-95 pointer-events-none invisible"
-                              }`}
+                                popDown
+                                  ? "top-full mt-2 before:absolute before:inset-x-0 before:-top-3 before:h-3"
+                                  : "bottom-full mb-2 before:absolute before:inset-x-0 before:-bottom-3 before:h-3"
+                              } left-1/2 -translate-x-1/2 w-44 sm:w-48 max-w-[190px] bg-slate-900/95 border border-slate-700 rounded-xl p-2 shadow-xl z-50 text-center transition-all duration-200 backdrop-blur-md opacity-0 scale-95 pointer-events-none invisible group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto group-hover:visible`}
                             >
                               {/* Pointer Beak */}
                               <div
@@ -885,7 +850,7 @@ export function LivingStorybook({
                                   popDown
                                     ? "-top-1.5 border-t border-l border-slate-700"
                                     : "-bottom-1.5 border-b border-r border-slate-700"
-                                } rotate-45`}
+                                } rotate-45 pointer-events-none`}
                               />
                               <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-slate-100 mb-0.5">
                                 <Lock className="w-3 h-3 text-amber-400 shrink-0" />
