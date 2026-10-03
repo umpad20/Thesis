@@ -73,12 +73,19 @@ export async function GET(request: Request) {
       const studentXp = xpCalc.totalXp;
       const passedCount = xpCalc.distinctQuizzesPassed;
 
+      // Level-based mastery: Group by unique quiz/level to evaluate best score per level
+      const bestScoresMap = new Map<number | string, number>();
+      for (const at of studentAttempts) {
+        const qKey = at.quiz_id || at.lesson_id;
+        if (qKey != null) {
+          const currentBest = bestScoresMap.get(qKey) || 0;
+          bestScoresMap.set(qKey, Math.max(currentBest, Number(at.percentage || 0)));
+        }
+      }
+      const uniqueScores = Array.from(bestScoresMap.values());
       const avgScore =
-        studentAttempts.length > 0
-          ? Math.round(
-              studentAttempts.reduce((acc, curr) => acc + Number(curr.percentage || 0), 0) /
-                studentAttempts.length
-            )
+        uniqueScores.length > 0
+          ? Math.round(uniqueScores.reduce((acc, curr) => acc + curr, 0) / uniqueScores.length)
           : 0;
 
       const isAllStagesCompleted = studentProgress.some(

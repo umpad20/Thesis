@@ -17,7 +17,6 @@ import { fetchTeacherSectionsFromSupabase, getCurrentUser } from "@/utils/auth-h
 
 interface ProcessedReportItem extends TeacherReportRow {
   compScore: number;
-  speedNum: number;
   performanceTier: "Mastering" | "On Track" | "Needs Support";
   actionRemark: string;
 }
@@ -65,7 +64,6 @@ export default function TeacherReportsPage() {
   // ── 1. Process Individual Student Grade 3 Reading Data ────────────────────
   const processedData: ProcessedReportItem[] = reports.map((s) => {
     const compScore = parseFloat(s.comprehensionPct.replace("%", "")) || 0;
-    const speedNum = parseInt(s.readingSpeed.replace(/\D/g, ""), 10) || 0;
 
     let performanceTier: "Mastering" | "On Track" | "Needs Support" = "On Track";
     if (compScore >= 85) {
@@ -86,7 +84,6 @@ export default function TeacherReportsPage() {
     return {
       ...s,
       compScore,
-      speedNum,
       performanceTier,
       actionRemark,
     };
@@ -98,12 +95,6 @@ export default function TeacherReportsPage() {
   const avgComp =
     totalPupils > 0
       ? Math.round(processedData.reduce((acc, curr) => acc + curr.compScore, 0) / totalPupils)
-      : 0;
-
-  const validSpeeds = processedData.filter((r) => r.speedNum > 0);
-  const avgSpeed =
-    validSpeeds.length > 0
-      ? Math.round(validSpeeds.reduce((acc, curr) => acc + curr.speedNum, 0) / validSpeeds.length)
       : 0;
 
   const masteringList = processedData.filter((r) => r.performanceTier === "Mastering");
@@ -124,8 +115,10 @@ export default function TeacherReportsPage() {
   const boyAvgComp = boys.length > 0 ? Math.round(boys.reduce((a, b) => a + b.compScore, 0) / boys.length) : 0;
   const girlAvgComp = girls.length > 0 ? Math.round(girls.reduce((a, b) => a + b.compScore, 0) / girls.length) : 0;
 
-  const boyAvgSpeed = boys.length > 0 ? Math.round(boys.reduce((a, b) => a + b.speedNum, 0) / boys.length) : 0;
-  const girlAvgSpeed = girls.length > 0 ? Math.round(girls.reduce((a, b) => a + b.speedNum, 0) / girls.length) : 0;
+  const boyPassing = boys.filter((b) => b.compScore >= 70).length;
+  const girlPassing = girls.filter((g) => g.compScore >= 70).length;
+  const boyPassRate = boys.length > 0 ? Math.round((boyPassing / boys.length) * 100) : 0;
+  const girlPassRate = girls.length > 0 ? Math.round((girlPassing / girls.length) * 100) : 0;
 
   const boyMastering = boys.filter((b) => b.performanceTier === "Mastering").length;
   const girlMastering = girls.filter((g) => g.performanceTier === "Mastering").length;
@@ -175,12 +168,8 @@ export default function TeacherReportsPage() {
     const secPupils = sectionDataSource.filter((r) => r.section === secName);
     const count = secPupils.length;
     const comps = secPupils.map((p) => parseFloat(p.comprehensionPct.replace("%", "")) || 0);
-    const speeds = secPupils
-      .map((p) => parseInt(p.readingSpeed.replace(/\D/g, ""), 10) || 0)
-      .filter((s) => s > 0);
 
     const avgComp = count > 0 ? Math.round(comps.reduce((a, b) => a + b, 0) / count) : 0;
-    const avgSpeed = speeds.length > 0 ? Math.round(speeds.reduce((a, b) => a + b, 0) / speeds.length) : 0;
 
     const passingCount = comps.filter((c) => c >= 70).length;
     const passRate = count > 0 ? Math.round((passingCount / count) * 100) : 0;
@@ -207,7 +196,6 @@ export default function TeacherReportsPage() {
       name: secName,
       enrolled: count,
       avgComp,
-      avgSpeed,
       passRate,
       masteredCount,
       masteryPct,
@@ -220,11 +208,11 @@ export default function TeacherReportsPage() {
   // ── 3. Export CSV ─────────────────────────────────────────────────────────
   const exportCSV = () => {
     if (processedData.length === 0) return;
-    const headers = "No.,Learner Name,Sex,Section,Comprehension %,Reading Speed (WPM),Quizzes Cleared,Stage Milestone,Performance Status,Remarks\n";
+    const headers = "No.,Learner Name,Sex,Section,Comprehension %,Quizzes Cleared,Stage Milestone,Performance Status,Remarks\n";
     const rows = processedData
       .map(
         (s, idx) =>
-          `"${idx + 1}","${s.name}","${s.gender}","${s.section}","${s.compScore}%","${s.speedNum > 0 ? s.speedNum : '—'}","${s.quizzesPassed}","${s.currentBadge}","${s.performanceTier}","${s.actionRemark}"`
+          `"${idx + 1}","${s.name}","${s.gender}","${s.section}","${s.compScore}%","${s.quizzesPassed}","${s.currentBadge}","${s.performanceTier}","${s.actionRemark}"`
       )
       .join("\n");
 
@@ -382,7 +370,7 @@ export default function TeacherReportsPage() {
                 <th className="py-2">Sex</th>
                 <th className="py-2 text-center">Enrolled</th>
                 <th className="py-2 text-center">Avg Comp</th>
-                <th className="py-2 text-center">Avg WPM</th>
+                <th className="py-2 text-center">Pass Rate</th>
                 <th className="py-2 text-right">Mastering</th>
               </tr>
             </thead>
@@ -394,7 +382,7 @@ export default function TeacherReportsPage() {
                 </td>
                 <td className="py-2.5 text-center font-mono">{boys.length}</td>
                 <td className="py-2.5 text-center text-emerald-700 font-mono">{boyAvgComp}%</td>
-                <td className="py-2.5 text-center text-slate-600 font-mono">{boyAvgSpeed > 0 ? `${boyAvgSpeed} WPM` : "—"}</td>
+                <td className="py-2.5 text-center text-slate-700 font-mono">{boyPassRate}%</td>
                 <td className="py-2.5 text-right font-mono text-emerald-700">{boyMastering} ({boys.length > 0 ? Math.round((boyMastering / boys.length) * 100) : 0}%)</td>
               </tr>
               <tr>
@@ -404,14 +392,14 @@ export default function TeacherReportsPage() {
                 </td>
                 <td className="py-2.5 text-center font-mono">{girls.length}</td>
                 <td className="py-2.5 text-center text-emerald-700 font-mono">{girlAvgComp}%</td>
-                <td className="py-2.5 text-center text-slate-600 font-mono">{girlAvgSpeed > 0 ? `${girlAvgSpeed} WPM` : "—"}</td>
+                <td className="py-2.5 text-center text-slate-700 font-mono">{girlPassRate}%</td>
                 <td className="py-2.5 text-right font-mono text-emerald-700">{girlMastering} ({girls.length > 0 ? Math.round((girlMastering / girls.length) * 100) : 0}%)</td>
               </tr>
               <tr className="bg-slate-50/70 font-black text-slate-900">
                 <td className="py-2.5 pl-2">Total Class</td>
                 <td className="py-2.5 text-center font-mono">{totalPupils}</td>
                 <td className="py-2.5 text-center text-emerald-800 font-mono">{avgComp}%</td>
-                <td className="py-2.5 text-center text-slate-700 font-mono">{avgSpeed > 0 ? `${avgSpeed} WPM` : "—"}</td>
+                <td className="py-2.5 text-center text-slate-900 font-mono">{passRate}%</td>
                 <td className="py-2.5 text-right pr-2 font-mono text-emerald-800">{masteringList.length} ({masteringPct}%)</td>
               </tr>
             </tbody>
@@ -515,11 +503,10 @@ export default function TeacherReportsPage() {
                 </div>
                 <div className="bg-white p-2.5 rounded-xl border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 block uppercase">
-                    Fluency
+                    Mastery Rate
                   </span>
-                  <span className="text-base font-black text-slate-800 font-mono">
-                    {sec.avgSpeed > 0 ? `${sec.avgSpeed}` : "—"}{" "}
-                    <span className="text-[10px] font-normal text-slate-400">WPM</span>
+                  <span className="text-base font-black text-amber-700 font-mono">
+                    {sec.masteryPct}%
                   </span>
                 </div>
                 <div className="bg-white p-2.5 rounded-xl border border-slate-100">
@@ -567,7 +554,6 @@ export default function TeacherReportsPage() {
                 <th className="py-2.5 px-2 text-center w-12">Sex</th>
                 <th className="py-2.5 px-3">Section</th>
                 <th className="py-2.5 px-3 text-center">Comp %</th>
-                <th className="py-2.5 px-3 text-center">Fluency</th>
                 <th className="py-2.5 px-3 text-center">Quizzes Cleared</th>
                 <th className="py-2.5 px-3 min-w-[120px]">Milestone</th>
                 <th className="py-2.5 px-3 text-center">Status</th>
@@ -584,7 +570,6 @@ export default function TeacherReportsPage() {
                   <td className="py-2 px-2 text-center font-mono text-[10px]">{s.gender === "Male" ? "M" : "F"}</td>
                   <td className="py-2 px-3 font-medium">{s.section}</td>
                   <td className="py-2 px-3 text-center font-mono font-bold">{s.compScore}%</td>
-                  <td className="py-2 px-3 text-center font-mono">{s.speedNum > 0 ? `${s.speedNum} WPM` : "—"}</td>
                   <td className="py-2 px-3 text-center font-mono">{s.quizzesPassed}</td>
                   <td className="py-2 px-3 font-medium">
                     {s.isAllStagesCompleted ? "Stage 5 Completed" : s.currentBadge}

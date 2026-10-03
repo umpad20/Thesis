@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -15,6 +15,11 @@ import {
   Eye,
   EyeOff,
   Check,
+  FileSpreadsheet,
+  Upload,
+  Download,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +27,11 @@ import {
   fetchTeacherSectionsFromSupabase,
   getCurrentUser,
 } from "@/utils/auth-helpers";
+import {
+  parseStudentRosterFile,
+  downloadSampleRosterExcel,
+  generateStudentEmail,
+} from "@/utils/excel-roster-parser";
 import type { StudentEnrollmentInput } from "@/lib/types";
 
 interface PupilEnrollmentRow {
@@ -94,16 +104,6 @@ function EnrollPupilsForm() {
 
   const handleSectionChange = (sec: string) => {
     setSelectedSection(sec);
-    const cleanSec = sec.toLowerCase().replace(/[^a-z0-9]/g, "");
-    setPupilRows((prev) =>
-      prev.map((row) => {
-        const cleanName = row.fullName.toLowerCase().replace(/[^a-z]/g, ".");
-        return {
-          ...row,
-          email: cleanName ? `${cleanName}.${cleanSec}@readsmart.edu` : row.email,
-        };
-      })
-    );
   };
 
   const handleRowFieldChange = <K extends keyof PupilEnrollmentRow>(
@@ -116,9 +116,7 @@ function EnrollPupilsForm() {
         if (row.id !== id) return row;
         const updated = { ...row, [field]: value };
         if (field === "fullName") {
-          const cleanName = String(value).toLowerCase().replace(/[^a-z]/g, ".");
-          const cleanSec = selectedSection.toLowerCase().replace(/[^a-z0-9]/g, "");
-          updated.email = cleanName ? `${cleanName}.${cleanSec}@readsmart.edu` : "";
+          updated.email = generateStudentEmail(String(value));
         }
         return updated;
       })
@@ -137,15 +135,71 @@ function EnrollPupilsForm() {
     setPupilRows((prev) => [...prev, ...newRows]);
   };
 
-  const handleClearEmptyRows = () => {
-    setPupilRows((prev) => {
-      const filtered = prev.filter((r) => r.fullName.trim() !== "");
-      return filtered.length > 0 ? filtered : [createEmptyPupilRow(1)];
-    });
+  const handleClearAll = () => {
+    setPupilRows([createEmptyPupilRow(1)]);
+    setImportNotification(null);
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importNotification, setImportNotification] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportNotification(null);
+
+    try {
+      const parsedStudents = await parseStudentRosterFile(file, selectedSection);
+
+      if (parsedStudents.length === 0) {
+        setImportNotification({
+          text: `No student names found in "${file.name}". Please ensure the file has a "Student Full Name" column.`,
+          type: "error",
+        });
+        setIsImporting(false);
+        return;
+      }
+
+      const newRows: PupilEnrollmentRow[] = parsedStudents.map((s, idx) => ({
+        id: `pupil-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+        fullName: s.fullName,
+        email: s.email,
+        password: "Student2026!",
+        gender: s.gender,
+        showPassword: false,
+      }));
+
+      setPupilRows(newRows);
+      setImportNotification({
+        text: "Successfully loaded!",
+        type: "success",
+      });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to parse file.";
+      setImportNotification({
+        text: `Error reading spreadsheet: ${errMsg}`,
+        type: "error",
+      });
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleRemovePupilRow = (id: string) => {
-    if (pupilRows.length <= 1) return;
+    if (pupilRows.length <= 1) {
+      setPupilRows([createEmptyPupilRow(1)]);
+      setImportNotification(null);
+      return;
+    }
     setPupilRows((prev) => prev.filter((r) => r.id !== id));
   };
 
@@ -342,24 +396,22 @@ function EnrollPupilsForm() {
         </div>
       ) : (
         /* Enrollment Form Screen */
-        <form onSubmit={handleEnrollBatchStudents} className="space-y-6">
+        <form onSubmit={handleEnrollBatchStudents} className="space-y-4">
           {/* Header Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-2xs flex-shrink-0">
-                  <UserPlus className="w-6 h-6" />
+          <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 sm:px-5 sm:py-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 flex-shrink-0">
+                  <UserPlus className="w-4 h-4" />
                 </div>
-                <div>
-                  <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-                    Enroll Students
-                  </h1>
-                </div>
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+                  Enroll Students
+                </h1>
               </div>
 
               {/* Target Section Selector */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   Section:
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -368,9 +420,9 @@ function EnrollPupilsForm() {
                       type="button"
                       key={sec}
                       onClick={() => handleSectionChange(sec)}
-                      className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-3 py-1 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         selectedSection === sec
-                          ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                          ? "bg-blue-600 border-blue-600 text-white shadow-2xs"
                           : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
                       }`}
                     >
@@ -385,16 +437,59 @@ function EnrollPupilsForm() {
           {/* Pupils Spreadsheet Roster Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             {/* Toolbar */}
-            <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                Class Roster Entries
-              </span>
+            <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Class Roster Entries
+                </span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                  {pupilRows.length} {pupilRows.length === 1 ? "Pupil" : "Pupils"}
+                </span>
+              </div>
 
-              <div className="flex items-center gap-2">
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Download Template (.xlsx) */}
+                <button
+                  type="button"
+                  onClick={downloadSampleRosterExcel}
+                  className="px-3 py-1.5 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  title="Download a pre-formatted 2-student Excel template"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Download Template (.xlsx)</span>
+                </button>
+
+                {/* Import Excel / CSV */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                  className="px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50/70 hover:bg-blue-100/70 text-blue-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                  title="Upload an Excel or CSV file containing student names and gender"
+                >
+                  {isImporting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5 text-blue-600" />
+                  )}
+                  <span>{isImporting ? "Reading File..." : "Import Excel / CSV"}</span>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+
                 <button
                   type="button"
                   onClick={handleAddPupilRow}
-                  className="px-3 py-1.5 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ Add Row</span>
@@ -402,22 +497,49 @@ function EnrollPupilsForm() {
                 <button
                   type="button"
                   onClick={() => handleAddMultiplePupilRows(5)}
-                  className="px-3 py-1.5 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ Add 5 Rows</span>
                 </button>
-                {pupilRows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={handleClearEmptyRows}
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
-                  >
-                    Clear Empty
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
+                  title="Clear all pupils and reset"
+                >
+                  Clear
+                </button>
               </div>
             </div>
+
+            {/* Import Notification Banner */}
+            {importNotification && (
+              <div
+                className={`mx-6 mt-4 px-4 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-sm animate-in fade-in duration-200 ${
+                  importNotification.type === "success"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                    : "bg-rose-50 border-rose-200 text-rose-900"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {importNotification.type === "success" ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  )}
+                  <span className="font-bold text-xs sm:text-sm">{importNotification.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImportNotification(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Rows Container */}
             <div className="p-6 space-y-3">
@@ -478,7 +600,7 @@ function EnrollPupilsForm() {
                       <input
                         type="email"
                         required
-                        placeholder="e.g. juanito.santos.3a@readsmart.edu"
+                        placeholder="e.g. juanito.santos@gmail.com"
                         value={row.email}
                         onChange={(e) => handleRowFieldChange(row.id, "email", e.target.value)}
                         className="w-full h-10 bg-white border border-slate-200 rounded-lg px-3.5 text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all"
@@ -505,18 +627,14 @@ function EnrollPupilsForm() {
                     </div>
 
                     <div className="w-8 text-center flex-shrink-0">
-                      {pupilRows.length > 1 ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePupilRow(row.id)}
-                          className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer mx-auto"
-                          title="Remove row"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <div className="w-8 h-8" />
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePupilRow(row.id)}
+                        className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer mx-auto"
+                        title={pupilRows.length === 1 ? "Clear pupil" : "Remove row"}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
 
@@ -526,16 +644,15 @@ function EnrollPupilsForm() {
                       <span className="text-xs font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                         Pupil #{idx + 1}
                       </span>
-                      {pupilRows.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePupilRow(row.id)}
-                          className="text-xs font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Remove</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePupilRow(row.id)}
+                        className="text-xs font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+                        title={pupilRows.length === 1 ? "Clear pupil" : "Remove row"}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{pupilRows.length === 1 ? "Clear" : "Remove"}</span>
+                      </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
@@ -567,9 +684,10 @@ function EnrollPupilsForm() {
                         <input
                           type="email"
                           required
+                          placeholder="e.g. juanito.santos@gmail.com"
                           value={row.email}
                           onChange={(e) => handleRowFieldChange(row.id, "email", e.target.value)}
-                          className="w-full h-9 bg-white border border-slate-200 rounded-lg px-3 text-xs font-mono"
+                          className="w-full h-9 bg-white border border-slate-200 rounded-lg px-3 text-xs font-mono placeholder:text-slate-400"
                         />
                       </div>
                       <div>

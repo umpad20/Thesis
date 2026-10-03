@@ -38,11 +38,11 @@ export default function ReportsPage() {
 
   const exportCSV = () => {
     if (reports.length === 0) return;
-    const headers = "Student ID,Name,Section,Gender,Current Badge,Comprehension %,Reading Speed,Quizzes Cleared,Status\n";
+    const headers = "Student ID,Name,Section,Gender,Current Badge,Comprehension %,Quizzes Cleared,Status\n";
     const rows = reports
       .map(
         (r) =>
-          `"${r.studentId}","${r.name}","${r.section}","${r.gender}","${r.currentBadge}","${r.comprehensionPct}","${r.readingSpeed}","${r.quizzesPassed}","${r.status}"`
+          `"${r.studentId}","${r.name}","${r.section}","${r.gender}","${r.currentBadge}","${r.comprehensionPct}","${r.quizzesPassed}","${r.status}"`
       )
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
@@ -131,15 +131,26 @@ export default function ReportsPage() {
 
         <div className="dashboard-card p-4">
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Reading Speed
+            Passing Rate
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-black text-slate-900">95 WPM</span>
-            <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
-              Fluency
+            <span className="text-xl font-black text-slate-900">
+              {reports.length > 0
+                ? Math.round(
+                    (reports.filter(
+                      (r) => parseFloat(r.comprehensionPct.replace("%", "")) >= 70
+                    ).length /
+                      reports.length) *
+                      100
+                  )
+                : 0}
+              %
+            </span>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+              ≥70% Score
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2">Grade 3 benchmark level</p>
+          <p className="text-[11px] text-slate-500 mt-2">DepEd Grade 3 passing standard</p>
         </div>
       </div>
 

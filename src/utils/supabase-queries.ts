@@ -360,8 +360,20 @@ export async function fetchStudentStats(
     }
 
     if (attempts.length > 0) {
-      const totalPct = attempts.reduce((acc, curr) => acc + Number(curr.percentage || 0), 0);
-      accuracyRate = Math.round(totalPct / attempts.length);
+      // Level-based mastery: Group by unique quiz/level to evaluate best score per level
+      const bestScoresMap = new Map<number | string, number>();
+      for (const a of attempts) {
+        const qKey = a.quiz_id || a.lesson_id;
+        if (qKey != null) {
+          const currentBest = bestScoresMap.get(qKey) || 0;
+          bestScoresMap.set(qKey, Math.max(currentBest, Number(a.percentage || 0)));
+        }
+      }
+      const uniqueScores = Array.from(bestScoresMap.values());
+      accuracyRate =
+        uniqueScores.length > 0
+          ? Math.round(uniqueScores.reduce((acc, curr) => acc + curr, 0) / uniqueScores.length)
+          : 0;
     }
 
     // Calculate Real Calendar Streak
@@ -1163,12 +1175,22 @@ export async function fetchClassRosterReports(
       const totalAttempts = studentAttempts.length;
       const xpCalc = calculateStudentXp(studentBadges, studentAttempts, badgeXpMap);
       const passedQuizzes = xpCalc.distinctQuizzesPassed;
-      const quizzesPassedStr = `${passedQuizzes}/${Math.max(totalAttempts, 1)}`;
+      // Level-based mastery: Group by unique quiz/level to evaluate best score per level
+      const bestScoresMap = new Map<number | string, number>();
+      for (const a of studentAttempts) {
+        const qKey = a.quiz_id || a.lesson_id;
+        if (qKey != null) {
+          const currentBest = bestScoresMap.get(qKey) || 0;
+          bestScoresMap.set(qKey, Math.max(currentBest, Number(a.percentage || 0)));
+        }
+      }
+      const uniqueScores = Array.from(bestScoresMap.values());
+      const totalUniqueQuizzes = uniqueScores.length;
+      const quizzesPassedStr = `${passedQuizzes}/${Math.max(totalUniqueQuizzes, 1)}`;
 
       let avgScore = 0;
-      if (totalAttempts > 0) {
-        const totalPct = studentAttempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0);
-        avgScore = Math.round(totalPct / totalAttempts);
+      if (totalUniqueQuizzes > 0) {
+        avgScore = Math.round(uniqueScores.reduce((acc, curr) => acc + curr, 0) / totalUniqueQuizzes);
       } else if (studentBadges.some((b) => b.status === "completed")) {
         avgScore = 100;
       }
@@ -1536,22 +1558,28 @@ export async function fetchTeacherInterventionRadar(
       const hasCompletedBadges = studentBadges.some((b) => b.status === "completed" || (b.completion_percentage || 0) >= 100);
       const hasInProgressBadges = studentBadges.some((b) => (b.completion_percentage || 0) > 0);
 
-      let totalPct = 0;
       let passedCount = 0;
       let failedAttempts = 0;
 
+      // Level-based mastery: Group by unique quiz/level to evaluate best score per level
+      const bestScoresMap = new Map<number | string, number>();
       for (const a of studentAttempts) {
         if (a.status === "passed" || a.percentage >= 70) {
           passedCount++;
         } else {
           failedAttempts++;
         }
-        totalPct += a.percentage || 0;
+        const qKey = a.quiz_id;
+        if (qKey != null) {
+          const currentBest = bestScoresMap.get(qKey) || 0;
+          bestScoresMap.set(qKey, Math.max(currentBest, Number(a.percentage || 0)));
+        }
       }
 
+      const uniqueScores = Array.from(bestScoresMap.values());
       const comprehensionPct =
-        studentAttempts.length > 0
-          ? Math.round(totalPct / studentAttempts.length)
+        uniqueScores.length > 0
+          ? Math.round(uniqueScores.reduce((acc, curr) => acc + curr, 0) / uniqueScores.length)
           : hasCompletedBadges
           ? 100
           : 0;

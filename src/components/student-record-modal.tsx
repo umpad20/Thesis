@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
-  Gauge,
   Calendar,
   Send,
   Trophy,
@@ -80,22 +79,38 @@ export function StudentRecordModal({
   const isWatchlist = pupil.riskLevel === "watchlist";
   const isMastering = pupil.riskLevel === "mastering";
 
-  // Compute real attempt totals and pass rate from attempts if available
-  const realPassed = attempts.length > 0
-    ? attempts.filter((a) => a.status === "passed" || a.percentage >= 70).length
-    : pupil.quizzesPassed;
+  // Level-based mastery metrics:
+  // Group attempts by distinct quiz/level to evaluate best score per level
+  const bestScoresMap = new Map<number | string, number>();
+  const passedQuizzesSet = new Set<number | string>();
 
-  const realFailed = attempts.length > 0
-    ? attempts.filter((a) => a.status === "failed" || a.percentage < 70).length
-    : pupil.failedAttemptsCount;
+  for (const a of attempts) {
+    const qKey = a.quiz_id || a.quiz_title;
+    if (qKey != null) {
+      const currentBest = bestScoresMap.get(qKey) || 0;
+      bestScoresMap.set(qKey, Math.max(currentBest, Number(a.percentage || 0)));
+      if (a.status === "passed" || a.percentage >= 70) {
+        passedQuizzesSet.add(qKey);
+      }
+    }
+  }
 
-  const totalAttempts = attempts.length > 0 ? attempts.length : (pupil.quizzesPassed + pupil.failedAttemptsCount);
-  const passRate = totalAttempts > 0 ? Math.round((realPassed / totalAttempts) * 100) : 0;
+  const uniqueScores = Array.from(bestScoresMap.values());
+  const distinctPassed = attempts.length > 0 ? passedQuizzesSet.size : pupil.quizzesPassed;
+  const totalUniqueAttempted = uniqueScores.length;
 
-  const readingSpeed = report?.readingSpeed || "85 WPM";
+  // Level-based comprehension: average across distinct levels
+  const dynamicComprehension =
+    uniqueScores.length > 0
+      ? Math.round(uniqueScores.reduce((acc, curr) => acc + curr, 0) / uniqueScores.length)
+      : pupil.comprehensionPct;
+
+  const totalRawAttempts = attempts.length > 0 ? attempts.length : (pupil.quizzesPassed + pupil.failedAttemptsCount);
+  const practiceRetriesCount = Math.max(0, totalRawAttempts - totalUniqueAttempted);
+
   const currentBadge = report?.currentBadge || "Stage 1 - Star of Wonder";
   const isStarReader = Boolean(report?.isAllStagesCompleted);
-  const totalXp = report?.totalXp ?? (realPassed * 100);
+  const totalXp = report?.totalXp ?? (distinctPassed * 100);
 
   // Format last active date safely, preventing "2001" year parsing bug
   let formattedLastActive = "Recently";
@@ -223,7 +238,7 @@ export function StudentRecordModal({
         </div>
 
         {/* ── Key Metrics Grid ────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {/* Comprehension Card */}
           <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
@@ -231,38 +246,27 @@ export function StudentRecordModal({
               <span>Comprehension</span>
             </span>
             <div className="text-xl font-black text-slate-900">
-              {pupil.comprehensionPct}%
+              {dynamicComprehension}%
             </div>
             <div className="text-[10px] font-semibold text-slate-500">
-              {pupil.comprehensionPct >= 70 ? (
-                <span className="text-emerald-600 font-bold">Passing (≥70% DepEd)</span>
+              {dynamicComprehension >= 80 ? (
+                <span className="text-emerald-600 font-bold">Independent (≥80%)</span>
+              ) : dynamicComprehension >= 59 ? (
+                <span className="text-amber-600 font-bold">Instructional (59–79%)</span>
               ) : (
-                <span className="text-rose-600 font-bold">Below Benchmark</span>
+                <span className="text-rose-600 font-bold">Frustration (&lt;59%)</span>
               )}
             </div>
             <Progress
-              value={pupil.comprehensionPct}
+              value={dynamicComprehension}
               className={`h-1.5 mt-1 ${
-                pupil.comprehensionPct >= 80
+                dynamicComprehension >= 80
                   ? "[&>div]:bg-emerald-500"
-                  : pupil.comprehensionPct >= 70
+                  : dynamicComprehension >= 59
                   ? "[&>div]:bg-amber-500"
                   : "[&>div]:bg-rose-500"
               }`}
             />
-          </div>
-
-          {/* Reading Fluency / Speed */}
-          <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <Gauge className="w-3 h-3 text-indigo-500" />
-              <span>Reading Speed</span>
-            </span>
-            <div className="text-xl font-black text-slate-900">{readingSpeed}</div>
-            <div className="text-[10px] font-semibold text-slate-500">
-              Target: 60-90 WPM
-            </div>
-            <div className="text-[9px] text-slate-400">DepEd Oral Fluency</div>
           </div>
 
           {/* Quizzes Cleared & Retries */}
@@ -271,13 +275,18 @@ export function StudentRecordModal({
               <CheckCircle2 className="w-3 h-3 text-emerald-500" />
               <span>Quizzes Passed</span>
             </span>
-            <div className="text-xl font-black text-slate-900">
-              {realPassed}
+            <div className="text-xl font-black text-slate-900 flex items-baseline gap-1">
+              <span>{distinctPassed}</span>
+              {totalUniqueAttempted > 0 && (
+                <span className="text-xs text-slate-400 font-bold">/ {totalUniqueAttempted} levels</span>
+              )}
             </div>
             <div className="text-[10px] font-semibold text-slate-500">
-              {realFailed} retries ({passRate}% pass rate)
+              {practiceRetriesCount > 0 ? `${practiceRetriesCount} practice retry attempt${practiceRetriesCount > 1 ? "s" : ""}` : "Cleared on first attempt"}
             </div>
-            <div className="text-[9px] text-slate-400">Quiz clearance ratio</div>
+            <div className="text-[9px] text-slate-400">
+              {totalRawAttempts} total quiz attempt{totalRawAttempts === 1 ? "" : "s"} logged
+            </div>
           </div>
 
           {/* Activity / Days Inactive */}
@@ -287,7 +296,7 @@ export function StudentRecordModal({
               <span>Recent Activity</span>
             </span>
             <div className="text-xl font-black text-slate-900">
-              {daysInactive === 0 ? "Active Today" : `${daysInactive}d Inactive`}
+              {daysInactive === 0 ? "Active Today" : `${daysInactive} day${daysInactive === 1 ? "" : "s"} Inactive`}
             </div>
             <div className="text-[10px] font-semibold text-slate-500 truncate">
               {formattedLastActive}
