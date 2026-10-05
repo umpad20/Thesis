@@ -133,23 +133,126 @@ function getClimate(order: number): ClimateTheme {
   );
 }
 
-// Road percentage coordinates within each 572x1024 climate stage
-function getLessonCoords(idx: number, totalInChapter: number) {
-  if (totalInChapter <= 3) {
-    if (idx === 0) return { xPct: 36, yPct: 78 };
-    if (idx === 1) return { xPct: 68, yPct: 60 };
-    return { xPct: 34, yPct: 40 };
+// Road percentage coordinates within each climate stage (supports both desktop landscape and mobile portrait)
+function getLessonCoords(idx: number, totalInChapter: number, order: number = 1) {
+  if (order === 5) {
+    if (totalInChapter <= 3) {
+      if (idx === 0) return { d: { xPct: 36, yPct: 77 }, m: { xPct: 35, yPct: 84 } };
+      if (idx === 1) return { d: { xPct: 60.5, yPct: 56.5 }, m: { xPct: 52, yPct: 60 } };
+      return { d: { xPct: 78, yPct: 38 }, m: { xPct: 68, yPct: 44 } };
+    }
+    if (idx === 0) return { d: { xPct: 30, yPct: 80 }, m: { xPct: 35, yPct: 84 } };
+    if (idx === 1) return { d: { xPct: 42, yPct: 73 }, m: { xPct: 50, yPct: 68 } };
+    if (idx === 2) return { d: { xPct: 60.5, yPct: 56.5 }, m: { xPct: 62, yPct: 52 } };
+    return { d: { xPct: 78, yPct: 38 }, m: { xPct: 72, yPct: 36 } };
   }
-  if (idx === 0) return { xPct: 36, yPct: 80 };
-  if (idx === 1) return { xPct: 68, yPct: 64 };
-  if (idx === 2) return { xPct: 34, yPct: 44 };
-  return { xPct: 64, yPct: 26 };
+
+  if (order === 4) {
+    if (totalInChapter <= 3) {
+      if (idx === 0) return { d: { xPct: 35, yPct: 82 }, m: { xPct: 48, yPct: 80 } };
+      if (idx === 1) return { d: { xPct: 57, yPct: 60.5 }, m: { xPct: 53, yPct: 61.5 } };
+      return { d: { xPct: 81, yPct: 43 }, m: { xPct: 66, yPct: 42 } };
+    }
+    if (idx === 0) return { d: { xPct: 28, yPct: 83 }, m: { xPct: 52, yPct: 85 } };
+    if (idx === 1) return { d: { xPct: 42, yPct: 75 }, m: { xPct: 38, yPct: 72 } };
+    if (idx === 2) return { d: { xPct: 57, yPct: 60.5 }, m: { xPct: 53, yPct: 61.5 } };
+    return { d: { xPct: 81, yPct: 40 }, m: { xPct: 72, yPct: 38 } };
+  }
+
+  if (order === 3) {
+    if (totalInChapter <= 3) {
+      if (idx === 0) return { d: { xPct: 34, yPct: 75 }, m: { xPct: 56, yPct: 77 } };
+      if (idx === 1) return { d: { xPct: 69, yPct: 53 }, m: { xPct: 56, yPct: 49 } };
+      return { d: { xPct: 81, yPct: 36 }, m: { xPct: 77, yPct: 35 } };
+    }
+    if (idx === 0) return { d: { xPct: 25, yPct: 82 }, m: { xPct: 62, yPct: 82 } };
+    if (idx === 1) return { d: { xPct: 45, yPct: 70 }, m: { xPct: 36, yPct: 68 } };
+    if (idx === 2) return { d: { xPct: 70, yPct: 52 }, m: { xPct: 56, yPct: 49 } };
+    return { d: { xPct: 82, yPct: 35 }, m: { xPct: 77, yPct: 35 } };
+  }
+
+  if (order === 2) {
+    if (totalInChapter <= 3) {
+      if (idx === 0) return { d: { xPct: 56, yPct: 75 }, m: { xPct: 35, yPct: 81 } };
+      if (idx === 1) return { d: { xPct: 40, yPct: 42 }, m: { xPct: 36, yPct: 43 } };
+      return { d: { xPct: 53, yPct: 24 }, m: { xPct: 63, yPct: 26 } };
+    }
+    if (idx === 0) return { d: { xPct: 47, yPct: 83 }, m: { xPct: 30, yPct: 84 } };
+    if (idx === 1) return { d: { xPct: 60, yPct: 67 }, m: { xPct: 62, yPct: 66 } };
+    if (idx === 2) return { d: { xPct: 41, yPct: 41 }, m: { xPct: 36, yPct: 43 } };
+    return { d: { xPct: 53, yPct: 23 }, m: { xPct: 63, yPct: 26 } };
+  }
+
+  if (order === 1) {
+    if (totalInChapter <= 3) {
+      if (idx === 0) return { d: { xPct: 35, yPct: 72 }, m: { xPct: 28, yPct: 81 } };
+      if (idx === 1) return { d: { xPct: 68, yPct: 46 }, m: { xPct: 81, yPct: 58 } };
+      return { d: { xPct: 45, yPct: 26 }, m: { xPct: 30, yPct: 38 } };
+    }
+    if (idx === 0) return { d: { xPct: 40, yPct: 75 }, m: { xPct: 28, yPct: 82 } };
+    if (idx === 1) return { d: { xPct: 46, yPct: 58 }, m: { xPct: 65, yPct: 68 } };
+    if (idx === 2) return { d: { xPct: 71, yPct: 44 }, m: { xPct: 72, yPct: 48 } };
+    return { d: { xPct: 45, yPct: 26 }, m: { xPct: 30, yPct: 38 } };
+  }
+
+  if (totalInChapter <= 3) {
+    if (idx === 0) return { d: { xPct: 42, yPct: 78 }, m: { xPct: 36, yPct: 78 } };
+    if (idx === 1) return { d: { xPct: 60, yPct: 60 }, m: { xPct: 68, yPct: 60 } };
+    return { d: { xPct: 42, yPct: 40 }, m: { xPct: 34, yPct: 40 } };
+  }
+  if (idx === 0) return { d: { xPct: 42, yPct: 80 }, m: { xPct: 36, yPct: 80 } };
+  if (idx === 1) return { d: { xPct: 60, yPct: 64 }, m: { xPct: 68, yPct: 64 } };
+  if (idx === 2) return { d: { xPct: 42, yPct: 44 }, m: { xPct: 34, yPct: 44 } };
+  return { d: { xPct: 58, yPct: 26 }, m: { xPct: 64, yPct: 26 } };
 }
 
 // Milestone Pedestal coordinate at top of chapter
 function getMilestoneCoord(order: number) {
-  if (order === 5) return { xPct: 57, yPct: 15 };
-  return { xPct: 52, yPct: 15 };
+  if (order === 5) return { d: { xPct: 83.3, yPct: 15 }, m: { xPct: 76, yPct: 25 } };
+  if (order === 4) return { d: { xPct: 87.5, yPct: 23 }, m: { xPct: 76, yPct: 28 } };
+  if (order === 3) return { d: { xPct: 88, yPct: 20 }, m: { xPct: 82, yPct: 22 } };
+  if (order === 2) return { d: { xPct: 46, yPct: 12 }, m: { xPct: 43, yPct: 11 } };
+  if (order === 1) return { d: { xPct: 62, yPct: 14 }, m: { xPct: 37, yPct: 12 } };
+  return { d: { xPct: 52, yPct: 16 }, m: { xPct: 52, yPct: 15 } };
+}
+
+// Separate mobile portrait and desktop landscape assets
+function getClimateAssetUrls(order: number) {
+  const climateImgOrder = order <= 5 ? order : ((order - 1) % 5) + 1;
+  if (climateImgOrder === 5) {
+    return {
+      mobile: "/images/climates/climate_stage_5_mobile.png",
+      desktop: "/images/climates/climate_stage_5_desktop.jpg",
+    };
+  }
+  if (climateImgOrder === 4) {
+    return {
+      mobile: "/images/climates/climate_stage_4_mobile.png",
+      desktop: "/images/climates/climate_stage_4_desktop.jpg",
+    };
+  }
+  if (climateImgOrder === 3) {
+    return {
+      mobile: "/images/climates/climate_stage_3_mobile.png",
+      desktop: "/images/climates/climate_stage_3_desktop.jpg",
+    };
+  }
+  if (climateImgOrder === 2) {
+    return {
+      mobile: "/images/climates/climate_stage_2_mobile.png",
+      desktop: "/images/climates/climate_stage_2_desktop.jpg",
+    };
+  }
+  if (climateImgOrder === 1) {
+    return {
+      mobile: "/images/climates/climate_stage_1_mobile.png",
+      desktop: "/images/climates/climate_stage_1_desktop.jpg",
+    };
+  }
+  return {
+    mobile: `/images/climates/climate_stage_${climateImgOrder}.jpg`,
+    desktop: `/images/climates/climate_stage_${climateImgOrder}.jpg`,
+  };
 }
 
 export function LivingStorybook({
@@ -472,137 +575,98 @@ export function LivingStorybook({
         </div>
       </div>
 
-      {/* ── 2. Centered Mobile-First Map Viewport (.map-viewport) ─────────── */}
+      {/* ── 2. Responsive Map Viewport (.map-viewport) ─────────── */}
       <div
         ref={scrollContainerRef}
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="map-viewport relative w-full flex-1 min-h-0 overflow-hidden select-none bg-white flex items-center justify-center p-2 sm:p-3 pb-20 md:pb-3"
+        className="map-viewport relative w-full flex-1 min-h-0 overflow-hidden select-none bg-white flex items-center justify-center gap-3 sm:gap-4 lg:gap-5 p-2 sm:p-3 lg:p-4 pb-20 md:pb-4"
       >
-        {/* Centered Map Column Container (Allows navigation badges to sit outside in the white blank space on desktop) */}
-        <div
-          style={{ aspectRatio: "572 / 1024" }}
-          className="relative h-full max-h-full max-w-full aspect-[572/1024] mx-auto flex items-center justify-center"
-        >
-          {/* ── Outside Floating Guide: Separate Modular Boxes (Desktop side UI) ── */}
-          <div className="hidden lg:flex flex-col gap-2 absolute top-6 right-[calc(100%+14px)] z-30 pointer-events-auto w-44 sm:w-48 select-none">
-            {/* Box 1: Chapter Information Card */}
-            <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3 shadow-md hover:shadow-lg transition-all flex flex-col gap-1 w-full select-none">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
-                  Chapter {activeChapterOrder}
-                </span>
-              </div>
-              <h3 className="text-xs font-bold text-slate-900 leading-snug tracking-tight truncate" title={activeBadge?.badge_name}>
-                {activeBadge?.badge_name}
-              </h3>
-              <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
-                <span className="truncate max-w-[90px]">{activeClimate.name}</span>
-                <span className="text-slate-300">·</span>
-                <span className="font-semibold text-emerald-600 whitespace-nowrap">
-                  {activeChapterCompletedCount}/{activeChapterLessons.length} done
-                </span>
-              </div>
-            </div>
-
-            {/* Box 2: Total Progress Card */}
-            <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-2.5 shadow-md hover:shadow-lg transition-all flex items-center justify-between text-xs w-full select-none">
-              <div className="flex items-center gap-1.5 text-slate-600 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="text-[11px]">Total Progress</span>
-              </div>
-              <span className="text-[11px] font-bold text-slate-900">
-                {Object.values(lessonProgress).filter((p) => p.status === "completed").length} / {allLessons.length}
+        {/* ── Desktop Left-Hand Info Cards: Positioned OUTSIDE the map on the left, aligned to top ── */}
+        <div className="hidden lg:flex flex-col gap-2.5 z-30 pointer-events-auto w-48 shrink-0 select-none self-start pt-3">
+          {/* Box 1: Chapter Information Card */}
+          <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-3 shadow-md hover:shadow-lg transition-all flex flex-col gap-1 w-full select-none">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-600">
+                Chapter {activeChapterOrder}
               </span>
             </div>
-
-            {/* Box 3: Core & Teacher Quests Toggle (if teacher quests exist) */}
-            {teacherBadges.length > 0 && (
-              <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-1.5 shadow-md hover:shadow-lg transition-all w-full select-none">
-                <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/80 text-xs font-medium w-full">
-                  <button
-                    type="button"
-                    onClick={() => handleTabSwitch("core")}
-                    className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer text-[11px] ${
-                      activePathwayTab === "core"
-                        ? "bg-white text-slate-900 shadow-xs font-bold"
-                        : "text-slate-500 hover:text-slate-900 font-medium"
-                    }`}
-                  >
-                    Core
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTabSwitch("teacher")}
-                    className={`flex-1 py-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 cursor-pointer text-[11px] ${
-                      activePathwayTab === "teacher"
-                        ? "bg-white text-slate-900 shadow-xs font-bold"
-                        : "text-slate-500 hover:text-slate-900 font-medium"
-                    }`}
-                  >
-                    <GraduationCap className="w-3 h-3" />
-                    <span>Quests ({teacherBadges.length})</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Box 4: Current Level Button */}
-            <button
-              type="button"
-              onClick={scrollToCurrentLevel}
-              className="w-full bg-white/95 hover:bg-blue-600 text-slate-800 hover:text-white backdrop-blur-md border border-slate-200/90 hover:border-blue-600 rounded-2xl p-2.5 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer font-bold text-xs group active:scale-95 select-none"
-              title="Jump to current level"
-            >
-              <div className="w-5 h-5 rounded-lg bg-blue-600 text-white group-hover:bg-white group-hover:text-blue-600 flex items-center justify-center shadow-2xs transition-colors">
-                <Navigation className="w-3 h-3 fill-current" />
-              </div>
-              <span>Current Level</span>
-            </button>
+            <h3 className="text-xs font-bold text-slate-900 leading-snug tracking-tight truncate" title={activeBadge?.badge_name}>
+              {activeBadge?.badge_name}
+            </h3>
+            <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+              <span className="truncate max-w-[90px]">{activeClimate.name}</span>
+              <span className="text-slate-300">·</span>
+              <span className="font-semibold text-emerald-600 whitespace-nowrap">
+                {activeChapterCompletedCount}/{activeChapterLessons.length} done
+              </span>
+            </div>
           </div>
 
-          {/* ── Outside Floating Guide: Next Chapter (Desktop only in white space) ── */}
-          {hasNextChapter && nextBadge && (
-            <div className="hidden lg:block absolute top-6 left-[calc(100%+14px)] z-30 pointer-events-auto">
-              <button
-                type="button"
-                onClick={() => triggerCloudTransition(activeChapterOrder + 1, "bottom")}
-                title={`Travel to Chapter ${nextBadge.badge_order}: ${nextBadge.badge_name}`}
-                className="group flex flex-col items-center gap-1 cursor-pointer select-none transition-transform active:scale-90"
-              >
-                <div className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-xl flex items-center justify-center border-2 border-white transition-all group-hover:scale-110 animate-bounce">
-                  <ArrowUp className="w-5 h-5 stroke-[2.8]" />
-                </div>
-                <span className="text-[11px] font-black text-slate-700 tracking-tight whitespace-nowrap drop-shadow-xs">
-                  Ch. {nextBadge.badge_order}
-                </span>
-              </button>
+          {/* Box 2: Total Progress Card */}
+          <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-2.5 shadow-md hover:shadow-lg transition-all flex items-center justify-between text-xs w-full select-none">
+            <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span className="text-[11px]">Total Progress</span>
+            </div>
+            <span className="text-[11px] font-bold text-slate-900">
+              {Object.values(lessonProgress).filter((p) => p.status === "completed").length} / {allLessons.length}
+            </span>
+          </div>
+
+          {/* Box 3: Core & Teacher Quests Toggle (if teacher quests exist) */}
+          {teacherBadges.length > 0 && (
+            <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-1.5 shadow-md hover:shadow-lg transition-all w-full select-none">
+              <div className="flex items-center p-0.5 bg-slate-100 rounded-xl border border-slate-200/80 text-xs font-medium w-full">
+                <button
+                  type="button"
+                  onClick={() => handleTabSwitch("core")}
+                  className={`flex-1 py-1 rounded-lg text-center transition-all cursor-pointer text-[11px] ${
+                    activePathwayTab === "core"
+                      ? "bg-white text-slate-900 shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-900 font-medium"
+                  }`}
+                >
+                  Core
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabSwitch("teacher")}
+                  className={`flex-1 py-1 rounded-lg text-center transition-all flex items-center justify-center gap-1 cursor-pointer text-[11px] ${
+                    activePathwayTab === "teacher"
+                      ? "bg-white text-slate-900 shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-900 font-medium"
+                  }`}
+                >
+                  <GraduationCap className="w-3 h-3" />
+                  <span>Quests ({teacherBadges.length})</span>
+                </button>
+              </div>
             </div>
           )}
 
-          {/* ── Outside Floating Guide: Previous Chapter (Desktop only in white space) ── */}
-          {hasPrevChapter && prevBadge && (
-            <div className="hidden lg:block absolute bottom-8 left-[calc(100%+14px)] z-30 pointer-events-auto">
-              <button
-                type="button"
-                onClick={() => triggerCloudTransition(activeChapterOrder - 1, "top")}
-                title={`Return to Chapter ${prevBadge.badge_order}: ${prevBadge.badge_name}`}
-                className="group flex flex-col items-center gap-1 cursor-pointer select-none transition-transform active:scale-90"
-              >
-                <span className="text-[11px] font-black text-slate-700 tracking-tight whitespace-nowrap drop-shadow-xs">
-                  Ch. {prevBadge.badge_order}
-                </span>
-                <div className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-xl flex items-center justify-center border-2 border-white transition-all group-hover:scale-110 animate-bounce">
-                  <ArrowDown className="w-5 h-5 stroke-[2.8]" />
-                </div>
-              </button>
+          {/* Box 4: Current Level Button */}
+          <button
+            type="button"
+            onClick={scrollToCurrentLevel}
+            className="w-full bg-white/95 hover:bg-blue-600 text-slate-800 hover:text-white backdrop-blur-md border border-slate-200/90 hover:border-blue-600 rounded-2xl p-2.5 shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer font-bold text-xs group active:scale-95 select-none"
+            title="Jump to current level"
+          >
+            <div className="w-5 h-5 rounded-lg bg-blue-600 text-white group-hover:bg-white group-hover:text-blue-600 flex items-center justify-center shadow-2xs transition-colors">
+              <Navigation className="w-3 h-3 fill-current" />
             </div>
-          )}
+            <span>Current Level</span>
+          </button>
+        </div>
 
+        {/* Responsive Map Container: Expands to full remaining desktop width and height */}
+        <div
+          className="relative h-full max-h-full flex-1 min-w-0 w-full max-w-sm sm:max-w-md md:max-w-none aspect-[9/16] md:aspect-auto flex items-center justify-center transition-all duration-300"
+        >
           {/* Single-Chapter Map Canvas (Bordered and overflow-hidden to keep map artwork & clouds strictly inside) */}
-          <div className="relative w-full h-full border border-slate-300/80 bg-white overflow-hidden shadow-md rounded-2xl">
+          <div className="relative w-full h-full border border-slate-300/80 bg-white overflow-hidden shadow-lg rounded-2xl">
             {/* Map-Scoped Cloud Wipe Transition Overlay: strictly confined to the map canvas */}
             <StorybookCloudWipe phase={cloudPhase} />
 
@@ -621,9 +685,7 @@ export function LivingStorybook({
             );
             const isMastered = badgeProg?.status === "completed";
             const climate = getClimate(order);
-            const climateImgOrder = order <= 5 ? order : ((order - 1) % 5) + 1;
-            const climateImgUrl = `/images/climates/climate_stage_${climateImgOrder}.jpg`;
-
+            const climateUrls = getClimateAssetUrls(order);
             const milestoneCoord = getMilestoneCoord(order);
 
             return (
@@ -634,11 +696,16 @@ export function LivingStorybook({
                 }}
                 className="relative w-full h-full select-none overflow-hidden"
               >
-                {/* Photorealistic Climate Stage Background Artwork: Preserving natural 572x1024 mobile aspect ratio */}
+                {/* Photorealistic Climate Stage Background Artwork: Mobile portrait & Desktop landscape */}
                 <img
-                  src={climateImgUrl}
+                  src={climateUrls.mobile}
                   alt={`Climate Biome ${order}: ${climate.name}`}
-                  className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                  className="md:hidden absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                />
+                <img
+                  src={climateUrls.desktop}
+                  alt={`Climate Biome ${order}: ${climate.name}`}
+                  className="hidden md:block absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
                 />
 
                 {/* Subtle atmospheric vignette at chapter top & bottom boundaries for seamless blending */}
@@ -653,10 +720,10 @@ export function LivingStorybook({
                     const isCurrentActive =
                       currentActiveLesson?.lesson_id === lesson.lesson_id;
 
-                    const coord = getLessonCoords(idx, chLessons.length);
+                    const coord = getLessonCoords(idx, chLessons.length, order);
 
                     // Pop down for higher nodes, pop up for lower nodes
-                    const popDown = coord.yPct < 45;
+                    const popDown = coord.d.yPct < 45;
                     const lessonScore =
                       typeof prog?.highest_score === "number" && prog.highest_score > 0
                         ? prog.highest_score
@@ -666,11 +733,15 @@ export function LivingStorybook({
                       <div
                         key={lesson.lesson_id}
                         data-node-interactive="true"
-                        className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-20 hover:z-50"
-                        style={{
-                          left: `${coord.xPct}%`,
-                          top: `${coord.yPct}%`,
-                        }}
+                        className="storybook-node absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-20 hover:z-50"
+                        style={
+                          {
+                            "--x-m": `${coord.m.xPct}%`,
+                            "--y-m": `${coord.m.yPct}%`,
+                            "--x-d": `${coord.d.xPct}%`,
+                            "--y-d": `${coord.d.yPct}%`,
+                          } as React.CSSProperties
+                        }
                       >
                         {/* ── Case A: Completed Node (Golden Yellow Stepping Stone matching map road) ── */}
                         {isDone ? (
@@ -875,11 +946,15 @@ export function LivingStorybook({
                   {/* ── Chapter Milestone Badge Pedestal (At top of each chapter zone) ── */}
                   <div
                     data-node-interactive="true"
-                    className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 text-center z-20"
-                    style={{
-                      left: `${milestoneCoord.xPct}%`,
-                      top: `${milestoneCoord.yPct}%`,
-                    }}
+                    className="storybook-milestone absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 text-center z-20"
+                    style={
+                      {
+                        "--mx-m": `${milestoneCoord.m.xPct}%`,
+                        "--my-m": `${milestoneCoord.m.yPct}%`,
+                        "--mx-d": `${milestoneCoord.d.xPct}%`,
+                        "--my-d": `${milestoneCoord.d.yPct}%`,
+                      } as React.CSSProperties
+                    }
                   >
                     <div className="flex flex-col items-center gap-1">
                       {/* Badge Platform */}
@@ -960,6 +1035,47 @@ export function LivingStorybook({
               );
             })()}
           </div>
+        </div>
+
+        {/* ── Desktop Right-Hand Navigation Column: Outside the map leaving dedicated space ── */}
+        <div className="hidden lg:flex flex-col justify-between items-center py-4 h-full shrink-0 z-30 pointer-events-auto w-14 select-none">
+          {/* Travel to Next Chapter (Top) */}
+          {hasNextChapter && nextBadge ? (
+            <button
+              type="button"
+              onClick={() => triggerCloudTransition(activeChapterOrder + 1, "bottom")}
+              title={`Travel to Chapter ${nextBadge.badge_order}: ${nextBadge.badge_name}`}
+              className="group flex flex-col items-center gap-1 cursor-pointer select-none transition-transform active:scale-90"
+            >
+              <div className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-xl flex items-center justify-center border-2 border-white transition-all group-hover:scale-110 animate-bounce">
+                <ArrowUp className="w-5 h-5 stroke-[2.8]" />
+              </div>
+              <span className="text-[11px] font-black text-slate-700 tracking-tight whitespace-nowrap drop-shadow-xs bg-white/90 px-1.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                Ch. {nextBadge.badge_order}
+              </span>
+            </button>
+          ) : (
+            <div />
+          )}
+
+          {/* Return to Previous Chapter (Bottom) */}
+          {hasPrevChapter && prevBadge ? (
+            <button
+              type="button"
+              onClick={() => triggerCloudTransition(activeChapterOrder - 1, "top")}
+              title={`Return to Chapter ${prevBadge.badge_order}: ${prevBadge.badge_name}`}
+              className="group flex flex-col items-center gap-1 cursor-pointer select-none transition-transform active:scale-90"
+            >
+              <span className="text-[11px] font-black text-slate-700 tracking-tight whitespace-nowrap drop-shadow-xs bg-white/90 px-1.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                Ch. {prevBadge.badge_order}
+              </span>
+              <div className="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-xl flex items-center justify-center border-2 border-white transition-all group-hover:scale-110 animate-bounce">
+                <ArrowDown className="w-5 h-5 stroke-[2.8]" />
+              </div>
+            </button>
+          ) : (
+            <div />
+          )}
         </div>
       </div>
 

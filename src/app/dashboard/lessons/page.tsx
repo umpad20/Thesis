@@ -526,73 +526,111 @@ function LessonReaderContent() {
         <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-amber-300/60 rounded-bl-sm pointer-events-none" />
         <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-300/60 rounded-br-sm pointer-events-none" />
 
-        {/* 2-Page Paper Spread Container (Unified flow on mobile, 2-page spread on desktop) */}
-        <div className="flex flex-col lg:grid lg:grid-cols-2 rounded-2xl bg-[#fffefb] border border-amber-200/90 shadow-inner relative flex-1 min-h-0 book-perspective">
-          {/* Central Book Spine Crease Shadow (Desktop only) */}
-          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-gradient-to-r from-amber-900/10 via-amber-950/20 to-amber-900/10 pointer-events-none z-20 hidden lg:block shadow-inner" />
+        {/* 2-Page Paper Spread Container (Unified flow on mobile, 2-page spread on desktop/tablets) */}
+        <div className="flex flex-col md:grid md:grid-cols-2 rounded-2xl bg-[#fffefb] border border-amber-200/90 shadow-inner relative flex-1 min-h-0 book-perspective">
+          {/* Central Book Spine Crease Shadow (Desktop/Tablet 2-page spread) */}
+          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-10 bg-gradient-to-r from-amber-900/10 via-amber-950/20 to-amber-900/10 pointer-events-none z-20 hidden md:block shadow-inner" />
 
-          {/* ── 3D Physical Turning Leaf (Forward / Next Page - Desktop) ── */}
+          {/* ── UNIFIED 3D FULL-SPREAD TURNING LEAF (Forward / Next Page - Flips the ENTIRE Spread) ── */}
           {pageFlipDirection === "forward" && targetSlide && (
             <div
-              className="hidden lg:block absolute top-0 left-1/2 w-1/2 h-full pointer-events-none z-30"
+              className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible"
               style={{
-                perspective: "2400px",
+                perspective: "2000px",
                 transformStyle: "preserve-3d",
-                transformOrigin: "left center",
               }}
             >
               <div
-                className="w-full h-full relative book-flipping-leaf-forward"
+                className="w-full h-full relative full-spread-flipping-leaf-forward"
                 style={{
                   transformStyle: "preserve-3d",
-                  transformOrigin: "left center",
+                  transformOrigin: "center center",
                 }}
               >
-                {/* FRONT FACE: Current Reading Page turning away */}
+                {/* FRONT FACE: ENTIRE Current Page (Illustration on Left + Reading Text on Right) */}
                 <div
-                  className="absolute inset-0 w-full h-full bg-[#fffefb] rounded-r-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between border-y border-r border-amber-200/90 shadow-lg"
+                  className="absolute inset-0 w-full h-full bg-[#fffefb] rounded-2xl overflow-hidden flex flex-col md:grid md:grid-cols-2 border border-amber-200/90 shadow-2xl"
                   style={{
                     backfaceVisibility: "hidden",
                     WebkitBackfaceVisibility: "hidden",
                     transform: "rotateY(0deg)",
                   }}
                 >
-                  <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
-                    <div className="space-y-2.5 sm:space-y-3.5 lg:space-y-4">
-                      {sentencesToDisplay.map((sentence, sIdx) => (
-                        <p
-                          key={sIdx}
-                          className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
-                        >
-                          <VocabularyHighlightedText
-                            text={sentence}
-                            vocabularyList={vocabulary}
-                          />
-                        </p>
-                      ))}
+                  {/* Left / Top: Current Image Plate */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
+                    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
+                      <img
+                        src={currentSlide.sentenceImages?.[activeSentenceIndex] || currentSlide.sceneImageUrl}
+                        alt={currentSlide.sceneTitle}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
-                  <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
-                    <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+
+                  {/* Right / Bottom: Current Reading Sentences */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl md:rounded-bl-none md:rounded-r-2xl relative flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
+                      <div className="space-y-2 sm:space-y-3">
+                        {sentencesToDisplay.map((sentence, sIdx) => (
+                          <p
+                            key={sIdx}
+                            className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
+                          >
+                            <VocabularyHighlightedText
+                              text={sentence}
+                              vocabularyList={vocabulary}
+                            />
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
+                      <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+                    </div>
                   </div>
                   <div className="absolute inset-0 leaf-front-shadow pointer-events-none" />
                 </div>
 
-                {/* BACK FACE: Next Scene Illustration landing on left */}
+                {/* BACK FACE: ENTIRE Target Page (Target Illustration on Left + Target Reading Text on Right) */}
                 <div
-                  className="absolute inset-0 w-full h-full bg-[#fffdfa] rounded-l-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center border-y border-l border-amber-200/90 shadow-lg"
+                  className="absolute inset-0 w-full h-full bg-[#fffdfa] rounded-2xl overflow-hidden flex flex-col md:grid md:grid-cols-2 border border-amber-200/90 shadow-2xl"
                   style={{
                     backfaceVisibility: "hidden",
                     WebkitBackfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
                   }}
                 >
-                  <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
-                    <img
-                      src={targetSlide.sceneImageUrl}
-                      alt={targetSlide.sceneTitle}
-                      className="w-full h-full object-cover"
-                    />
+                  {/* Left / Top: Target Image Plate */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
+                    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
+                      <img
+                        src={targetSlide.sceneImageUrl}
+                        alt={targetSlide.sceneTitle}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right / Bottom: Target Reading Sentences */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl md:rounded-bl-none md:rounded-r-2xl relative flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
+                      <div className="space-y-2 sm:space-y-3">
+                        {targetSentences.map((sentence, sIdx) => (
+                          <p
+                            key={sIdx}
+                            className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
+                          >
+                            <VocabularyHighlightedText
+                              text={sentence}
+                              vocabularyList={vocabulary}
+                            />
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
+                      <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+                    </div>
                   </div>
                   <div className="absolute inset-0 leaf-back-shadow pointer-events-none" />
                 </div>
@@ -600,68 +638,106 @@ function LessonReaderContent() {
             </div>
           )}
 
-          {/* ── 3D Physical Turning Leaf (Backward / Previous Page - Desktop) ── */}
+          {/* ── UNIFIED 3D FULL-SPREAD TURNING LEAF (Backward / Prev Page - Flips the ENTIRE Spread) ── */}
           {pageFlipDirection === "backward" && targetSlide && (
             <div
-              className="hidden lg:block absolute top-0 left-0 w-1/2 h-full pointer-events-none z-30"
+              className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible"
               style={{
-                perspective: "2400px",
+                perspective: "2000px",
                 transformStyle: "preserve-3d",
-                transformOrigin: "right center",
               }}
             >
               <div
-                className="w-full h-full relative book-flipping-leaf-backward"
+                className="w-full h-full relative full-spread-flipping-leaf-backward"
                 style={{
                   transformStyle: "preserve-3d",
-                  transformOrigin: "right center",
+                  transformOrigin: "center center",
                 }}
               >
-                {/* FRONT FACE: Current Illustration turning away */}
+                {/* FRONT FACE: ENTIRE Current Page (Illustration on Left + Reading Text on Right) */}
                 <div
-                  className="absolute inset-0 w-full h-full bg-[#fffdfa] rounded-l-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center border-y border-l border-amber-200/90 shadow-lg"
+                  className="absolute inset-0 w-full h-full bg-[#fffdfa] rounded-2xl overflow-hidden flex flex-col md:grid md:grid-cols-2 border border-amber-200/90 shadow-2xl"
                   style={{
                     backfaceVisibility: "hidden",
                     WebkitBackfaceVisibility: "hidden",
                     transform: "rotateY(0deg)",
                   }}
                 >
-                  <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
-                    <img
-                      src={currentSlide.sceneImageUrl}
-                      alt={currentSlide.sceneTitle}
-                      className="w-full h-full object-cover"
-                    />
+                  {/* Left / Top: Current Image Plate */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
+                    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
+                      <img
+                        src={currentSlide.sentenceImages?.[activeSentenceIndex] || currentSlide.sceneImageUrl}
+                        alt={currentSlide.sceneTitle}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right / Bottom: Current Reading Sentences */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl md:rounded-bl-none md:rounded-r-2xl relative flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
+                      <div className="space-y-2 sm:space-y-3">
+                        {sentencesToDisplay.map((sentence, sIdx) => (
+                          <p
+                            key={sIdx}
+                            className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
+                          >
+                            <VocabularyHighlightedText
+                              text={sentence}
+                              vocabularyList={vocabulary}
+                            />
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
+                      <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+                    </div>
                   </div>
                   <div className="absolute inset-0 leaf-front-shadow pointer-events-none" />
                 </div>
 
-                {/* BACK FACE: Previous Reading Page landing on right */}
+                {/* BACK FACE: ENTIRE Target Page (Target Illustration on Left + Target Reading Text on Right) */}
                 <div
-                  className="absolute inset-0 w-full h-full bg-[#fffefb] rounded-r-2xl overflow-hidden p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between border-y border-r border-amber-200/90 shadow-lg"
+                  className="absolute inset-0 w-full h-full bg-[#fffefb] rounded-2xl overflow-hidden flex flex-col md:grid md:grid-cols-2 border border-amber-200/90 shadow-2xl"
                   style={{
                     backfaceVisibility: "hidden",
                     WebkitBackfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
                   }}
                 >
-                  <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
-                    <div className="space-y-2.5 sm:space-y-3.5 lg:space-y-4">
-                      {targetSentences.map((sentence, sIdx) => (
-                        <p
-                          key={sIdx}
-                          className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
-                        >
-                          <VocabularyHighlightedText
-                            text={sentence}
-                            vocabularyList={vocabulary}
-                          />
-                        </p>
-                      ))}
+                  {/* Left / Top: Target Image Plate */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
+                    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
+                      <img
+                        src={targetSlide.sceneImageUrl}
+                        alt={targetSlide.sceneTitle}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
-                  <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
-                    <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+
+                  {/* Right / Bottom: Target Reading Sentences */}
+                  <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl md:rounded-bl-none md:rounded-r-2xl relative flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-hidden">
+                      <div className="space-y-2 sm:space-y-3">
+                        {targetSentences.map((sentence, sIdx) => (
+                          <p
+                            key={sIdx}
+                            className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left"
+                          >
+                            <VocabularyHighlightedText
+                              text={sentence}
+                              vocabularyList={vocabulary}
+                            />
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="pt-2 sm:pt-3 pb-1 border-t border-amber-200/60 flex items-center justify-between gap-2 shrink-0 px-1 sm:px-2 opacity-60">
+                      <span className="text-[11px] text-amber-800 font-bold">Turning page...</span>
+                    </div>
                   </div>
                   <div className="absolute inset-0 leaf-back-shadow pointer-events-none" />
                 </div>
@@ -673,13 +749,7 @@ function LessonReaderContent() {
               LEFT PAGE / TOP (Mobile): Scene Illustration Plate
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center lg:border-b-0 lg:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl lg:rounded-tr-none lg:rounded-l-2xl relative transition-all flex-1 min-h-0 book-page-leaf ${
-              pageFlipDirection === "forward"
-                ? "mobile-leaf-flip-forward"
-                : pageFlipDirection === "backward"
-                ? "mobile-leaf-flip-backward"
-                : ""
-            }`}
+            className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative transition-all flex-1 min-h-0 book-page-leaf"
           >
             {/* Story Illustration Photo (Size matches the Sentence Box below) */}
             <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center group">
@@ -703,13 +773,7 @@ function LessonReaderContent() {
               RIGHT PAGE / BOTTOM (Mobile): 3-Sentence Reading Flow & Bottom Stepper
               ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl lg:rounded-bl-none lg:rounded-r-2xl relative transition-all flex-1 min-h-0 book-page-leaf ${
-              pageFlipDirection === "forward"
-                ? "mobile-leaf-flip-forward"
-                : pageFlipDirection === "backward"
-                ? "mobile-leaf-flip-backward"
-                : ""
-            }`}
+            className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col justify-between bg-[#fffefb] rounded-b-2xl md:rounded-bl-none md:rounded-r-2xl relative transition-all flex-1 min-h-0 book-page-leaf"
           >
             {/* 3-Sentence Reading Box (Organized sentence-by-sentence with clean spacing) */}
             <div className="flex-1 min-h-0 mb-2 sm:mb-3 p-3.5 sm:p-5 lg:p-7 rounded-2xl bg-amber-50/50 border-2 border-amber-200/80 shadow-sm flex flex-col justify-center overflow-y-auto">
@@ -722,8 +786,8 @@ function LessonReaderContent() {
                       onClick={() => setActiveSentenceIndex(sIdx)}
                       className={`cursor-pointer transition-all p-2 rounded-xl border select-none ${
                         isSelected
-                          ? "bg-amber-100/70 border-amber-300 shadow-2xs"
-                          : "border-transparent hover:bg-amber-100/30"
+                          ? "bg-emerald-50/90 border-emerald-400/90 shadow-2xs ring-2 ring-emerald-200/70"
+                          : "border-transparent hover:bg-emerald-50/40"
                       }`}
                       title="Click to view picture for this sentence"
                     >

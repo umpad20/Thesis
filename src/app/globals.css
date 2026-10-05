@@ -352,65 +352,77 @@
   }
 }
 
-/* ── Mobile Unified Flip (Screens < 1024px) ── */
-@keyframes mobilePageFlipForward {
+/* ══════════════════════════════════════════════════════════════════════════
+   Full-Spread 3D Storybook Page Flip (Flips the ENTIRE Book Spread)
+   ══════════════════════════════════════════════════════════════════════════ */
+@keyframes fullSpreadTurn180Forward {
   0% {
-    transform: rotateY(0deg) scale(1);
+    transform: rotateY(0deg) scale(1) translateZ(0px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     filter: brightness(1);
-    opacity: 1;
   }
-  48% {
-    transform: rotateY(-28deg) scale(0.96) translateX(-10px);
+  25% {
+    transform: rotateY(-45deg) scale(0.96) translateZ(40px);
+    box-shadow: -20px 14px 40px rgba(0, 0, 0, 0.28);
+    filter: brightness(0.95);
+  }
+  50% {
+    transform: rotateY(-90deg) scale(0.92) translateZ(70px);
+    box-shadow: -35px 20px 60px rgba(0, 0, 0, 0.38);
     filter: brightness(0.90);
-    opacity: 0.25;
   }
-  52% {
-    transform: rotateY(24deg) scale(0.96) translateX(10px);
-    filter: brightness(0.92);
-    opacity: 0.25;
+  75% {
+    transform: rotateY(-135deg) scale(0.96) translateZ(40px);
+    box-shadow: 20px 14px 40px rgba(0, 0, 0, 0.28);
+    filter: brightness(0.95);
   }
   100% {
-    transform: rotateY(0deg) scale(1) translateX(0);
+    transform: rotateY(-180deg) scale(1) translateZ(0px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     filter: brightness(1);
-    opacity: 1;
   }
 }
 
-@keyframes mobilePageFlipBackward {
+@keyframes fullSpreadTurn180Backward {
   0% {
-    transform: rotateY(0deg) scale(1);
+    transform: rotateY(0deg) scale(1) translateZ(0px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     filter: brightness(1);
-    opacity: 1;
   }
-  48% {
-    transform: rotateY(28deg) scale(0.96) translateX(10px);
+  25% {
+    transform: rotateY(45deg) scale(0.96) translateZ(40px);
+    box-shadow: 20px 14px 40px rgba(0, 0, 0, 0.28);
+    filter: brightness(0.95);
+  }
+  50% {
+    transform: rotateY(90deg) scale(0.92) translateZ(70px);
+    box-shadow: 35px 20px 60px rgba(0, 0, 0, 0.38);
     filter: brightness(0.90);
-    opacity: 0.25;
   }
-  52% {
-    transform: rotateY(-24deg) scale(0.96) translateX(-10px);
-    filter: brightness(0.92);
-    opacity: 0.25;
+  75% {
+    transform: rotateY(135deg) scale(0.96) translateZ(40px);
+    box-shadow: -20px 14px 40px rgba(0, 0, 0, 0.28);
+    filter: brightness(0.95);
   }
   100% {
-    transform: rotateY(0deg) scale(1) translateX(0);
+    transform: rotateY(180deg) scale(1) translateZ(0px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     filter: brightness(1);
-    opacity: 1;
   }
 }
 
-/* Mobile-only synchronized page flip (screens < 1024px) */
-@media (max-width: 1023px) {
-  .mobile-leaf-flip-forward {
-    transform-origin: center center;
-    animation: mobilePageFlipForward 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    will-change: transform, opacity, filter;
-  }
-  .mobile-leaf-flip-backward {
-    transform-origin: center center;
-    animation: mobilePageFlipBackward 0.42s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-    will-change: transform, opacity, filter;
-  }
+.full-spread-flipping-leaf-forward {
+  animation: fullSpreadTurn180Forward 0.62s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform, box-shadow, filter;
+}
+
+.full-spread-flipping-leaf-backward {
+  animation: fullSpreadTurn180Backward 0.62s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform, box-shadow, filter;
 }
 
 /* Desktop-only coordinated open-book page flip (screens >= 1024px) */
@@ -511,4 +523,27 @@
 
 .anim-cloud-drift {
   animation: cloudDriftSlow 12s ease-in-out infinite;
+}
+
+/* Responsive Adventure Trail Storybook Map Stepping Stones */
+.storybook-node {
+  left: var(--x-m);
+  top: var(--y-m);
+}
+@media (min-width: 768px) {
+  .storybook-node {
+    left: var(--x-d);
+    top: var(--y-d);
+  }
+}
+
+.storybook-milestone {
+  left: var(--mx-m);
+  top: var(--my-m);
+}
+@media (min-width: 768px) {
+  .storybook-milestone {
+    left: var(--mx-d);
+    top: var(--my-d);
+  }
 }
