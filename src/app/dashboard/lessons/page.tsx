@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   Volume2,
   VolumeX,
@@ -48,10 +49,12 @@ function StorybookSceneImage({
   src,
   alt,
   title,
+  isReading = false,
 }: {
   src: string;
   alt: string;
   title: string;
+  isReading?: boolean;
 }) {
   const [hasError, setHasError] = useState(false);
 
@@ -76,12 +79,42 @@ function StorybookSceneImage({
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      onError={() => setHasError(true)}
-      className="w-full h-full object-cover group-hover:scale-102 transition-all duration-300 animate-in fade-in-50"
-    />
+    <div className="relative w-full h-full overflow-hidden flex items-center justify-center">
+      <motion.img
+        key={src}
+        src={src}
+        alt={alt}
+        onError={() => setHasError(true)}
+        initial={{ opacity: 0.85, scale: 1 }}
+        animate={
+          isReading
+            ? {
+                opacity: 1,
+                scale: [1, 1.07, 1.03, 1.08],
+                x: [0, -6, 5, 0],
+                y: [0, -4, 3, 0],
+              }
+            : { opacity: 1, scale: 1, x: 0, y: 0 }
+        }
+        transition={
+          isReading
+            ? {
+                duration: 7,
+                repeat: Infinity,
+                repeatType: "reverse",
+                ease: "easeInOut",
+              }
+            : { duration: 0.4, ease: "easeOut" }
+        }
+        className="w-full h-full object-cover select-none pointer-events-none"
+      />
+      {isReading && (
+        <div className="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/20 text-white text-[10px] sm:text-xs font-bold shadow-lg animate-in fade-in duration-300 select-none">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Reading Aloud</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -320,30 +353,96 @@ function LessonReaderContent() {
   const targetSlide = targetSlideIndex !== null ? allSlides[targetSlideIndex] : null;
   const targetSentences = useMemo(() => getSentencesForSlide(targetSlide), [targetSlide]);
 
-  // Speak active paragraph/page aloud (toggles pause/cancel if already playing)
-  const speakCurrentParagraph = () => {
-    if (isPlayingAudio) {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      setIsPlayingAudio(false);
+  const isPlayingRef = useRef<boolean>(false);
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentSentencesRef = useRef<string[]>([]);
+  currentSentencesRef.current = sentencesToDisplay;
+
+  const stopAudio = () => {
+    isPlayingRef.current = false;
+    setIsPlayingAudio(false);
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  const playSentenceAtIndex = (index: number) => {
+    const sentences = currentSentencesRef.current;
+    if (!sentences || sentences.length === 0 || index >= sentences.length) {
+      stopAudio();
       return;
     }
+
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+
+    isPlayingRef.current = true;
     setIsPlayingAudio(true);
+    setActiveSentenceIndex(index);
+
+    const sentenceToRead = sentences[index];
     speakSentenceWithVoice(
-      currentSlide.paragraphText,
-      () => setIsPlayingAudio(false),
-      () => setIsPlayingAudio(false)
+      sentenceToRead,
+      () => {
+        if (!isPlayingRef.current) return;
+        if (index + 1 < currentSentencesRef.current.length) {
+          speechTimeoutRef.current = setTimeout(() => {
+            if (isPlayingRef.current) {
+              playSentenceAtIndex(index + 1);
+            }
+          }, 280);
+        } else {
+          stopAudio();
+        }
+      },
+      () => {
+        stopAudio();
+      }
     );
   };
+
+  // Speak active paragraph/page aloud sentence-by-sentence (toggles pause/cancel if already playing)
+  const speakCurrentParagraph = () => {
+    if (isPlayingAudio) {
+      stopAudio();
+      return;
+    }
+    const startIndex =
+      activeSentenceIndex >= sentencesToDisplay.length - 1
+        ? 0
+        : activeSentenceIndex >= 0
+        ? activeSentenceIndex
+        : 0;
+    playSentenceAtIndex(startIndex);
+  };
+
+  const handleSentenceClick = (sIdx: number) => {
+    setActiveSentenceIndex(sIdx);
+    if (isPlayingRef.current) {
+      stopAudio();
+      speechTimeoutRef.current = setTimeout(() => {
+        playSentenceAtIndex(sIdx);
+      }, 50);
+    }
+  };
+
+  // Stop speech when navigating away or unmounting
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, []);
 
   const handleSlideChange = (newIndex: number, direction: "forward" | "backward") => {
     if (newIndex < 0 || newIndex >= totalSlides) return;
     if (pageFlipDirection !== null) return;
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsPlayingAudio(false);
+    stopAudio();
     setPageFlipDirection(direction);
     setTargetSlideIndex(newIndex);
     soundEffects.play("pageFlip");
@@ -519,13 +618,7 @@ function LessonReaderContent() {
       </div>
 
       {/* ── 2. Authentic 2-Page Open Storybook Spread (Immersive Viewport-Fitted Experience) ── */}
-      <div className="flex-1 min-h-0 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-2 sm:p-3.5 lg:p-4 rounded-3xl shadow-2xl border-4 border-amber-300/40 relative overflow-hidden flex flex-col">
-        {/* Book Corner Accents */}
-        <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-amber-300/60 rounded-tl-sm pointer-events-none" />
-        <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-amber-300/60 rounded-tr-sm pointer-events-none" />
-        <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-amber-300/60 rounded-bl-sm pointer-events-none" />
-        <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-300/60 rounded-br-sm pointer-events-none" />
-
+      <div className="flex-1 min-h-0 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-2 sm:p-3.5 lg:p-4 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col">
         {/* 2-Page Paper Spread Container (Unified flow on mobile, 2-page spread on desktop/tablets) */}
         <div className="flex flex-col md:grid md:grid-cols-2 rounded-2xl bg-[#fffefb] border border-amber-200/90 shadow-inner relative flex-1 min-h-0 book-perspective">
           {/* Central Book Spine Crease Shadow (Desktop/Tablet 2-page spread) */}
@@ -752,7 +845,9 @@ function LessonReaderContent() {
             className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative transition-all flex-1 min-h-0 book-page-leaf"
           >
             {/* Story Illustration Photo (Size matches the Sentence Box below) */}
-            <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center group">
+            <div className={`relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 shadow-sm flex items-center justify-center group transition-all duration-300 ${
+              isPlayingAudio ? "border-emerald-400/90 ring-2 ring-emerald-300/40" : "border-amber-200/80"
+            }`}>
               {(() => {
                 const activeImageUrl =
                   displayLeftSlide.sentenceImages?.[activeSentenceIndex] ||
@@ -763,6 +858,7 @@ function LessonReaderContent() {
                     src={activeImageUrl}
                     alt={displayLeftSlide.sceneTitle}
                     title={displayLeftSlide.sceneTitle}
+                    isReading={isPlayingAudio}
                   />
                 );
               })()}
@@ -783,15 +879,22 @@ function LessonReaderContent() {
                   return (
                     <div
                       key={sIdx}
-                      onClick={() => setActiveSentenceIndex(sIdx)}
-                      className={`cursor-pointer transition-all p-2 rounded-xl border select-none ${
+                      onClick={() => handleSentenceClick(sIdx)}
+                      className={`relative cursor-pointer transition-all p-2.5 sm:p-3 rounded-xl border select-none ${
                         isSelected
-                          ? "bg-emerald-50/90 border-emerald-400/90 shadow-2xs ring-2 ring-emerald-200/70"
-                          : "border-transparent hover:bg-emerald-50/40"
-                      }`}
+                          ? "bg-transparent border-2 border-emerald-500/80 shadow-2xs ring-2 ring-emerald-400/25"
+                          : "border-transparent hover:border-emerald-300/40 hover:bg-transparent"
+                      } ${isSelected && isPlayingAudio ? "ring-2 ring-emerald-400/50" : ""}`}
                       title="Click to view picture for this sentence"
                     >
-                      <p className="text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left">
+                      {isSelected && isPlayingAudio && (
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 text-emerald-600 animate-pulse pointer-events-none">
+                          <Volume2 className="w-4 h-4 stroke-[2.5]" />
+                        </div>
+                      )}
+                      <p className={`text-sm sm:text-base md:text-lg lg:text-xl font-serif text-slate-900 leading-relaxed sm:leading-[1.7] font-medium text-left ${
+                        isSelected && isPlayingAudio ? "pr-7" : ""
+                      }`}>
                         <VocabularyHighlightedText
                           text={sentence}
                           vocabularyList={vocabulary}

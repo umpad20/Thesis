@@ -129,7 +129,7 @@ export function BadgeGraphic({
       </div>
 
       {/* Status Overlays */}
-      {isLocked && (
+      {showStatusBadge && isLocked && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-6 h-6 rounded-full bg-slate-900/85 backdrop-blur-xs flex items-center justify-center text-white shadow-md border border-slate-700/60">
             <Lock className="w-3.5 h-3.5" />
