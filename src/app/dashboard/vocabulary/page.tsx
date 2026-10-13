@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Volume2,
@@ -11,6 +12,9 @@ import {
   Lock,
   BookOpen,
   Info,
+  CheckCircle2,
+  Coins,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BadgeGraphic } from "@/components/badge-graphic";
@@ -20,6 +24,8 @@ import {
   fetchStudentLessonProgress,
   fetchStudentBadgeProgress,
   fetchBadgesFromSupabase,
+  fetchStudentVocabClaims,
+  claimVocabularyWord,
 } from "@/utils/supabase-queries";
 import { getCurrentUser } from "@/utils/auth-helpers";
 import { soundEffects } from "@/utils/sound-effects";
@@ -36,6 +42,11 @@ export default function VocabularyPage() {
     Record<number, { status: "completed" | "in_progress" | "locked"; highest_score: number }>
   >({});
   const [badgeProgress, setBadgeProgress] = useState<StudentBadgeProgress[]>([]);
+  const [claimedWordIds, setClaimedWordIds] = useState<Set<number>>(new Set());
+  const [claimingWordId, setClaimingWordId] = useState<number | null>(null);
+  const [floatingRewards, setFloatingRewards] = useState<
+    { id: string; wordId: number; text: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [expandedWord, setExpandedWord] = useState<{
     word: VocabularyWord;
@@ -60,18 +71,42 @@ export default function VocabularyPage() {
       setBadges(allBadges);
 
       if (user?.id) {
-        const [progLessons, progBadges] = await Promise.all([
+        const [progLessons, progBadges, claims] = await Promise.all([
           fetchStudentLessonProgress(user.id),
           fetchStudentBadgeProgress(user.id),
+          fetchStudentVocabClaims(user.id),
         ]);
         setLessonProgress(progLessons);
         setBadgeProgress(progBadges);
+        setClaimedWordIds(claims);
       }
 
       setLoading(false);
     }
     loadData();
   }, []);
+
+  const handleClaimXp = async (wordId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const user = getCurrentUser();
+    if (!user?.id || claimedWordIds.has(wordId) || claimingWordId === wordId) return;
+
+    setClaimingWordId(wordId);
+    soundEffects.play("coin");
+
+    // Optimistic state update
+    setClaimedWordIds((prev) => new Set([...prev, wordId]));
+
+    // Trigger floating +5 XP micro-animation
+    const rewardId = `${wordId}_${Date.now()}`;
+    setFloatingRewards((prev) => [...prev, { id: rewardId, wordId, text: "+5 XP" }]);
+    setTimeout(() => {
+      setFloatingRewards((prev) => prev.filter((r) => r.id !== rewardId));
+    }, 1400);
+
+    await claimVocabularyWord(user.id, wordId, 5);
+    setClaimingWordId(null);
+  };
 
   // Helper to determine if a lesson is unlocked for the student
   const isLessonUnlocked = (lessonId: number): boolean => {
@@ -206,10 +241,17 @@ export default function VocabularyPage() {
       {/* ── 2. Discovery Header & Quick Badge Filter Dropdown + Search ─────────────── */}
       <div className="dashboard-card p-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Unlocked Progress Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-black self-start sm:self-center shrink-0">
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            <span>({unlockedCount} / {totalCount}) Unlocked</span>
+          {/* Unlocked Progress & XP Claimed Pills */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-black self-start sm:self-center shrink-0">
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+              <span>({unlockedCount} / {totalCount}) Unlocked</span>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-xs font-black self-start sm:self-center shrink-0">
+              <Coins className="w-3.5 h-3.5 text-amber-600" />
+              <span>{claimedWordIds.size * 5} XP Claimed</span>
+            </div>
           </div>
 
           {/* Right Controls: Badge Filter Dropdown + Search Bar */}
@@ -383,8 +425,26 @@ export default function VocabularyPage() {
                   return (
                     <div
                       key={item.word_id}
-                      className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4 border-2 border-amber-100/80 bg-[#fffdfa] relative group shadow-xs"
+                      className="dashboard-card p-5 dashboard-card-hover flex flex-col justify-between space-y-4 border-2 border-amber-100/80 bg-[#fffdfa] relative group shadow-xs overflow-hidden"
                     >
+                      {/* Floating Reward Particle Animation */}
+                      <AnimatePresence>
+                        {floatingRewards
+                          .filter((r) => r.wordId === item.word_id)
+                          .map((r) => (
+                            <motion.div
+                              key={r.id}
+                              initial={{ opacity: 1, y: 0, scale: 0.8 }}
+                              animate={{ opacity: 0, y: -45, scale: 1.25 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 1.2, ease: "easeOut" }}
+                              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs shadow-xl border-2 border-white flex items-center gap-1 whitespace-nowrap"
+                            >
+                              <span>{r.text}</span>
+                            </motion.div>
+                          ))}
+                      </AnimatePresence>
+
                       <div>
                         {/* Top Tags: Part of Speech + Phonetic + Realistic Voice Speaker */}
                         <div className="flex items-center justify-between mb-2">
@@ -440,6 +500,33 @@ export default function VocabularyPage() {
                             ))}
                           </div>
                         )}
+
+                        {/* Discovery Claim +5 XP Reward Action */}
+                        <div className="pt-2.5 pb-1 flex items-center justify-between border-t border-slate-100 mt-2">
+                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                            <span>Reward:</span>
+                          </span>
+
+                          {claimedWordIds.has(item.word_id) ? (
+                            <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black shadow-2xs select-none">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Claimed (+5 XP)</span>
+                            </div>
+                          ) : (
+                            <motion.button
+                              type="button"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.92 }}
+                              onClick={(e) => handleClaimXp(item.word_id, e)}
+                              disabled={claimingWordId === item.word_id}
+                              className="relative inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-[11px] font-black shadow-sm shadow-amber-500/25 border border-amber-300/40 cursor-pointer overflow-hidden group/claim select-none transition-all"
+                              title="Claim +5 XP reward for discovering this vocabulary word"
+                            >
+                              <Coins className="w-3.5 h-3.5 text-amber-100 group-hover/claim:rotate-12 transition-transform" />
+                              <span>Claim +5 XP</span>
+                            </motion.button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Example Sentence Footer */}

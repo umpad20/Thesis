@@ -136,9 +136,11 @@ export function DashboardHeader() {
 
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("focus", handleStorageChange);
+    window.addEventListener("statsUpdated", handleStorageChange);
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleStorageChange);
+      window.removeEventListener("statsUpdated", handleStorageChange);
     };
   }, []);
 

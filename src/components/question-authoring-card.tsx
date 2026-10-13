@@ -9,7 +9,7 @@ import {
   Trash2,
   Plus,
   HelpCircle,
-  Sparkles,
+  Coins,
   Upload,
   X,
   ChevronDown,
@@ -264,7 +264,7 @@ export function QuestionAuthoringCard({
         {/* XP Points + Delete */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Coins className="w-3.5 h-3.5 text-amber-500" />
             <input
               type="number"
               min={5}

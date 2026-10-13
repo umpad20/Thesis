@@ -25,7 +25,6 @@ import {
   Puzzle,
   Maximize2,
   Link2,
-  Sparkles,
   Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

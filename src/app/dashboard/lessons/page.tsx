@@ -51,7 +51,7 @@ function StorybookSceneImage({
   title,
   isReading = false,
 }: {
-  src: string;
+  src?: string | null;
   alt: string;
   title: string;
   isReading?: boolean;
@@ -62,7 +62,7 @@ function StorybookSceneImage({
     setHasError(false);
   }, [src]);
 
-  if (hasError) {
+  if (!src || !src.trim() || hasError) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-amber-50 to-orange-50/60 p-6 text-center select-none">
         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-100/90 border border-amber-300/70 flex items-center justify-center text-2xl sm:text-3xl mb-3 shadow-inner">
@@ -196,8 +196,8 @@ function LessonReaderContent() {
     publishedLessons[0] || {
       lesson_id: 1,
       badge_id: 1,
-      lesson_title: "The New Classmate",
-      lesson_description: "A heartwarming story about welcoming a new friend.",
+      lesson_title: "Pat and the Cat",
+      lesson_description: "A fun story about Pat, his fat cat, and practicing short /a/ CVC sounds.",
       lesson_order: 1,
       difficulty_level: "easy" as const,
       passing_score: 70,
@@ -231,14 +231,15 @@ function LessonReaderContent() {
       page_number: 1,
       page_title: "Story Passage",
       content: "Opening reading passage from classroom library...",
-      image_url: "/images/stories/lesson1_new_classmate.jpg",
+      image_url: "",
       audio_url: "",
     },
   ];
 
-  // Group story sentences into 3-sentence chunks per page for Grade 3 reading flow
+  // Build storybook slides directly from each DepEd lesson page
   const allSlides: StorySlide[] = useMemo(() => {
-    const allCues: SentenceVisualCue[] = [];
+    const slides: StorySlide[] = [];
+    let slideCount = 0;
 
     for (const page of displayPages) {
       const cues = getSentenceVisualCues(
@@ -248,57 +249,31 @@ function LessonReaderContent() {
         page.image_url || undefined
       );
 
-      if (cues && cues.length > 0) {
-        allCues.push(...cues);
-      } else if (page.content) {
-        // Defensive fallback: split raw text into clean sentences if cues unavailable
-        const rawSentences = page.content
-          .split(/(?<=[.?!])\s+/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 3);
-
-        rawSentences.forEach((sentence, sIdx) => {
-          allCues.push({
-            sentence_id: `${selectedLessonId}-${page.page_number}-${sIdx + 1}`,
-            lesson_id: selectedLessonId,
-            page_number: page.page_number,
-            sentence_text: sentence,
-            speaker: "Story Narrator",
-            speaker_avatar: "📖",
-            scene_title: `Story Part ${sIdx + 1}`,
-            scene_image_url: page.image_url || "/images/stories/lesson1_new_classmate.jpg",
-            action_tag: "📖 Reading",
-            cue_color: "blue",
-          });
-        });
-      }
-    }
-
-    const CHUNK_SIZE = 3;
-    const slides: StorySlide[] = [];
-    let slideCount = 0;
-
-    for (let i = 0; i < allCues.length; i += CHUNK_SIZE) {
-      const chunk = allCues.slice(i, i + CHUNK_SIZE);
-      const sentences = chunk.map((c) => c.sentence_text);
-      const sentenceImages = chunk.map(
-        (c) => c.scene_image_url || displayPages[0]?.image_url || "/images/stories/lesson1_new_classmate.jpg"
+      const sentences = cues.map((c) => c.sentence_text);
+      const sentenceImages = cues.map(
+        (c) => c.scene_image_url || page.image_url || ""
       );
       const paragraphText = sentences.join(" ");
-      const leadCue = chunk[0];
+      const leadCue = cues[0] || {
+        speaker: "Story Narrator",
+        speaker_avatar: "📖",
+        action_tag: "📖 Story Reading",
+        scene_title: page.page_title || `Page ${page.page_number}`,
+        scene_image_url: page.image_url || "",
+      };
 
       slides.push({
-        slideId: `page-${slideCount + 1}`,
+        slideId: `page-${page.page_number || slideCount + 1}`,
         slideIndex: slideCount,
         pageNumber: slideCount + 1,
-        sentences,
+        sentences: sentences.length > 0 ? sentences : [page.content],
         sentenceImages,
-        paragraphText,
+        paragraphText: paragraphText || page.content,
         speaker: leadCue.speaker || "Story Narrator",
         speakerAvatar: leadCue.speaker_avatar || "📖",
         actionTag: leadCue.action_tag || "📖 Story Reading",
-        sceneTitle: leadCue.scene_title || `Story Page ${slideCount + 1}`,
-        sceneImageUrl: leadCue.scene_image_url || displayPages[0]?.image_url || "/images/stories/lesson1_new_classmate.jpg",
+        sceneTitle: page.page_title || leadCue.scene_title || `Page ${page.page_number}`,
+        sceneImageUrl: page.image_url || leadCue.scene_image_url || "",
       });
       slideCount++;
     }
@@ -316,7 +291,7 @@ function LessonReaderContent() {
         speakerAvatar: "📖",
         actionTag: "📖 Reading",
         sceneTitle: "Story Reading",
-        sceneImageUrl: displayPages[0]?.image_url || "/images/stories/lesson1_new_classmate.jpg",
+        sceneImageUrl: displayPages[0]?.image_url || "",
       });
     }
 
@@ -652,10 +627,10 @@ function LessonReaderContent() {
                   {/* Left / Top: Current Image Plate */}
                   <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
                     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
-                      <img
+                      <StorybookSceneImage
                         src={currentSlide.sentenceImages?.[activeSentenceIndex] || currentSlide.sceneImageUrl}
                         alt={currentSlide.sceneTitle}
-                        className="w-full h-full object-cover"
+                        title={currentSlide.sceneTitle}
                       />
                     </div>
                   </div>
@@ -696,10 +671,10 @@ function LessonReaderContent() {
                   {/* Left / Top: Target Image Plate */}
                   <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
                     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
-                      <img
+                      <StorybookSceneImage
                         src={targetSlide.sceneImageUrl}
                         alt={targetSlide.sceneTitle}
-                        className="w-full h-full object-cover"
+                        title={targetSlide.sceneTitle}
                       />
                     </div>
                   </div>
@@ -759,10 +734,10 @@ function LessonReaderContent() {
                   {/* Left / Top: Current Image Plate */}
                   <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
                     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
-                      <img
+                      <StorybookSceneImage
                         src={currentSlide.sentenceImages?.[activeSentenceIndex] || currentSlide.sceneImageUrl}
                         alt={currentSlide.sceneTitle}
-                        className="w-full h-full object-cover"
+                        title={currentSlide.sceneTitle}
                       />
                     </div>
                   </div>
@@ -803,10 +778,10 @@ function LessonReaderContent() {
                   {/* Left / Top: Target Image Plate */}
                   <div className="p-2.5 sm:p-3.5 lg:p-6 flex flex-col items-center justify-center md:border-b-0 md:border-r border-amber-200/70 bg-[#fffdfa] rounded-t-2xl md:rounded-tr-none md:rounded-l-2xl relative flex-1 min-h-0">
                     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100 border-2 border-amber-200/80 shadow-sm flex items-center justify-center">
-                      <img
+                      <StorybookSceneImage
                         src={targetSlide.sceneImageUrl}
                         alt={targetSlide.sceneTitle}
-                        className="w-full h-full object-cover"
+                        title={targetSlide.sceneTitle}
                       />
                     </div>
                   </div>

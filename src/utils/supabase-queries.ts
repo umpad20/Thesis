@@ -332,12 +332,13 @@ export async function fetchStudentStats(
   try {
     const supabase = createClient();
 
-    // 1. Fetch completed badges, lessons, and attempts
-    const [badgeRes, badgesMetaRes, lessonRes, attemptRes] = await Promise.all([
+    // 1. Fetch completed badges, lessons, attempts, and vocabulary claims
+    const [badgeRes, badgesMetaRes, lessonRes, attemptRes, vocabClaimsRes] = await Promise.all([
       supabase.from("student_badge_progress").select("badge_id, status").eq("student_id", studentId),
       supabase.from("badges").select("badge_id, xp_reward"),
       supabase.from("student_lesson_progress").select("*").eq("student_id", studentId),
       supabase.from("quiz_attempts").select("*").eq("student_id", studentId),
+      supabase.from("student_vocabulary_claims").select("word_id, xp_earned").eq("student_id", studentId),
     ]);
 
     const badgeProg = badgeRes.data || [];
@@ -346,10 +347,28 @@ export async function fetchStudentStats(
     const lessonProg = lessonRes.data || [];
     const attempts = attemptRes.data || [];
 
-    // Calculate Strict XP
+    // Calculate Strict XP from badges & quizzes
     const xpCalc = calculateStudentXp(badgeProg, attempts, badgeMap);
     totalXp = xpCalc.totalXp;
     quizzesPassed = xpCalc.distinctQuizzesPassed;
+
+    // 1b. Add Vocabulary Vault Claim Rewards (+5 XP per claimed word)
+    const claimedWordIds = new Set<number>();
+    (vocabClaimsRes.data || []).forEach((c) => {
+      claimedWordIds.add(c.word_id);
+    });
+
+    if (typeof window !== "undefined") {
+      try {
+        const localClaims = JSON.parse(localStorage.getItem(`readsmart_vocab_claims_${studentId}`) || "[]");
+        if (Array.isArray(localClaims)) {
+          localClaims.forEach((wId: number) => claimedWordIds.add(wId));
+        }
+      } catch {}
+    }
+
+    const vocabXp = claimedWordIds.size * 5;
+    totalXp += vocabXp;
 
     if (lessonProg.length > 0) {
       lessonsCompleted = lessonProg.filter(
@@ -2166,5 +2185,96 @@ export async function fetchClassroomActivityFeed(
     console.error("fetchClassroomActivityFeed error:", err);
     return [];
   }
+}
+
+/**
+ * Fetch all claimed vocabulary word IDs for a student
+ */
+export async function fetchStudentVocabClaims(studentId: string): Promise<Set<number>> {
+  const claimedSet = new Set<number>();
+  if (!studentId) return claimedSet;
+
+  // 1. Read local storage first for instant cached responsive UI
+  if (typeof window !== "undefined") {
+    try {
+      const localClaims = JSON.parse(
+        localStorage.getItem(`readsmart_vocab_claims_${studentId}`) || "[]"
+      );
+      if (Array.isArray(localClaims)) {
+        localClaims.forEach((wId: number) => claimedSet.add(Number(wId)));
+      }
+    } catch {}
+  }
+
+  // 2. Query Supabase student_vocabulary_claims table
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("student_vocabulary_claims")
+      .select("word_id")
+      .eq("student_id", studentId);
+
+    if (data && !error) {
+      data.forEach((row) => claimedSet.add(Number(row.word_id)));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(
+            `readsmart_vocab_claims_${studentId}`,
+            JSON.stringify(Array.from(claimedSet))
+          );
+        } catch {}
+      }
+    }
+  } catch (err) {
+    console.warn("fetchStudentVocabClaims error:", err);
+  }
+
+  return claimedSet;
+}
+
+/**
+ * Claim +5 XP for an unlocked vocabulary word
+ */
+export async function claimVocabularyWord(
+  studentId: string,
+  wordId: number,
+  xpEarned = 5
+): Promise<{ success: boolean; error?: string }> {
+  if (!studentId || !wordId) return { success: false, error: "Missing studentId or wordId" };
+
+  // 1. Instantly update localStorage
+  if (typeof window !== "undefined") {
+    try {
+      const key = `readsmart_vocab_claims_${studentId}`;
+      const localClaims: number[] = JSON.parse(localStorage.getItem(key) || "[]");
+      if (!localClaims.includes(wordId)) {
+        localClaims.push(wordId);
+        localStorage.setItem(key, JSON.stringify(localClaims));
+      }
+    } catch {}
+  }
+
+  // 2. Persist to Supabase
+  try {
+    const supabase = createClient();
+    await supabase.from("student_vocabulary_claims").upsert(
+      {
+        student_id: studentId,
+        word_id: wordId,
+        xp_earned: xpEarned,
+      },
+      { onConflict: "student_id,word_id" }
+    );
+  } catch (err) {
+    console.warn("claimVocabularyWord error:", err);
+  }
+
+  // 3. Dispatch events to live-update header XP and other listening components
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("statsUpdated"));
+    window.dispatchEvent(new CustomEvent("vocabClaimed", { detail: { wordId, xpEarned } }));
+  }
+
+  return { success: true };
 }
 

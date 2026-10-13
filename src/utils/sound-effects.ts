@@ -454,11 +454,51 @@ class SoundSynthesizer {
   }
 
   /**
+   * Sparkling coin reward chime for claiming vocabulary XP (+5 XP)
+   */
+  playCoinReward() {
+    const ctx = this.getContext();
+    if (ctx) {
+      try {
+        const now = ctx.currentTime;
+        // Bright, crisp two-note coin chime (B5 -> E6)
+        const notes = [
+          { freq: 987.77, time: 0.0, dur: 0.12 },
+          { freq: 1318.51, time: 0.08, dur: 0.38 },
+        ];
+
+        notes.forEach(({ freq, time, dur }) => {
+          const startTime = now + time;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0, startTime);
+          gain.gain.linearRampToValueAtTime(0.24, startTime + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + dur + 0.01);
+        });
+      } catch (err) {
+        console.warn("Coin audio error:", err);
+      }
+    }
+  }
+
+  /**
    * Generic trigger helper for UI sounds
    */
-  play(type: "pageFlip" | "pop" | "click" | "correct" | "wrong" | "victory" | string) {
+  play(type: "pageFlip" | "pop" | "click" | "correct" | "wrong" | "victory" | "coin" | "claim" | string) {
     if (type === "pageFlip") {
       this.playPageTurn();
+    } else if (type === "coin" || type === "claim") {
+      this.playCoinReward();
     } else if (type === "correct") {
       this.playCorrect(false);
     } else if (type === "wrong") {

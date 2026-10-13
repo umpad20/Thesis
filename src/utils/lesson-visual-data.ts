@@ -3400,35 +3400,34 @@ export function getSentenceVisualCues(
   pageContent?: string,
   pageImageUrl?: string
 ): SentenceVisualCue[] {
-  const key = `${lessonId}-${pageNumber}`;
-  if (LESSON_SENTENCE_VISUALS[key] && LESSON_SENTENCE_VISUALS[key].length > 0) {
-    return LESSON_SENTENCE_VISUALS[key];
+  // If live pageContent is provided from the curriculum, generate visual cues directly from the real story!
+  if (pageContent && pageContent.trim().length > 0) {
+    const rawSentences = pageContent
+      .split(/(?<=[.?!])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 2);
+
+    if (rawSentences.length > 0) {
+      const defaultIcons = ["📖", "👧", "👦", "🐱", "🌳", "✨", "🤝", "🌟", "💡", "🎒", "📚"];
+      const defaultColors = ["blue", "emerald", "amber", "purple", "indigo", "rose"];
+
+      return rawSentences.map((sentence, idx) => {
+        const isDialogue = sentence.startsWith('"') || sentence.includes('said') || sentence.includes('asked');
+        return {
+          sentence_id: `${lessonId}-${pageNumber}-${idx + 1}`,
+          lesson_id: lessonId,
+          page_number: pageNumber,
+          sentence_text: sentence,
+          speaker: isDialogue ? "Story Character" : "Story Narrator",
+          speaker_avatar: defaultIcons[idx % defaultIcons.length],
+          scene_title: `Page ${pageNumber} · Step ${idx + 1}`,
+          scene_image_url: pageImageUrl || "",
+          action_tag: isDialogue ? "💬 Character Dialogue" : "📖 Story Action",
+          cue_color: defaultColors[idx % defaultColors.length],
+        };
+      });
+    }
   }
 
-  // Graceful fallback generator for custom teacher stories or dynamic pages
-  if (!pageContent) return [];
-
-  const rawSentences = pageContent
-    .split(/(?<=[.?!])\s+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 5);
-
-  const defaultIcons = ["📖", "👧", "👦", "👩‍🏫", "🌳", "✨", "🤝", "🌟", "💡", "🎒", "📚"];
-  const defaultColors = ["blue", "emerald", "amber", "purple", "indigo", "rose"];
-
-  return rawSentences.map((sentence, idx) => {
-    const isDialogue = sentence.startsWith('"') || sentence.includes('said') || sentence.includes('asked');
-    return {
-      sentence_id: `${lessonId}-${pageNumber}-${idx + 1}`,
-      lesson_id: lessonId,
-      page_number: pageNumber,
-      sentence_text: sentence,
-      speaker: isDialogue ? "Story Character" : "Story Narrator",
-      speaker_avatar: defaultIcons[idx % defaultIcons.length],
-      scene_title: `Sentence ${idx + 1}`,
-      scene_image_url: pageImageUrl || `/images/stories/l${Math.min(lessonId, 15)}_s${(idx % 4) + 1}.jpg`,
-      action_tag: isDialogue ? "💬 Character Dialogue" : "📖 Story Action",
-      cue_color: defaultColors[idx % defaultColors.length],
-    };
-  });
+  return [];
 }
