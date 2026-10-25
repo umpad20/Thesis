@@ -3481,6 +3481,85 @@ export const SPECIFIC_SENTENCE_IMAGES: Record<string, string> = {
   "8-3-1": "/images/stories/l8_s4.jpg",
   "8-3-2": "/images/stories/l8_s5.jpg",
   "8-3-3": "/images/stories/l8_s6.jpg",
+
+  // Level 9: The Lost Kitten - Page 1
+  "9-1-1": "/images/stories/l9_s1.jpg",
+  "9-1-2": "/images/stories/l9_s2.jpg",
+  "9-1-3": "/images/stories/l9_s3.jpg",
+  // Level 9: The Lost Kitten - Page 2
+  "9-2-1": "/images/stories/l9_s4.jpg",
+  "9-2-2": "/images/stories/l9_s5.jpg",
+  "9-2-3": "/images/stories/l9_s6.jpg",
+  // Level 9: The Lost Kitten - Page 3
+  "9-3-1": "/images/stories/l9_s7.jpg",
+  "9-3-2": "/images/stories/l9_s8.jpg",
+
+  // Level 10: A Busy Morning for Mia - Page 1
+  "10-1-1": "/images/stories/l10_s1.jpg",
+  "10-1-2": "/images/stories/l10_s2.jpg",
+  // Level 10: A Busy Morning for Mia - Page 2
+  "10-2-1": "/images/stories/l10_s3.jpg",
+  "10-2-2": "/images/stories/l10_s4.jpg",
+  // Level 10: A Busy Morning for Mia - Page 3
+  "10-3-1": "/images/stories/l10_s5.jpg",
+  "10-3-2": "/images/stories/l10_s6.jpg",
+
+  // Level 11: Planting Seeds of Care - Page 1
+  "11-1-1": "/images/stories/l11_s1.jpg",
+  "11-1-2": "/images/stories/l11_s2.jpg",
+  // Level 11: Planting Seeds of Care - Page 2
+  "11-2-1": "/images/stories/l11_s3.jpg",
+  "11-2-2": "/images/stories/l11_s4.jpg",
+  "11-2-3": "/images/stories/l11_s5.jpg",
+  // Level 11: Planting Seeds of Care - Page 3
+  "11-3-1": "/images/stories/l11_s6.jpg",
+  "11-3-2": "/images/stories/l11_s7.jpg",
+
+  // Level 12: The Broken Branch - Page 1
+  "12-1-1": "/images/stories/l12_s1.jpg",
+  "12-1-2": "/images/stories/l12_s2.jpg",
+  "12-1-3": "/images/stories/l12_s3.jpg",
+  // Level 12: The Broken Branch - Page 2
+  "12-2-1": "/images/stories/l12_s4.jpg",
+  "12-2-2": "/images/stories/l12_s5.jpg",
+  // Level 12: The Broken Branch - Page 3
+  "12-3-1": "/images/stories/l12_s6.jpg",
+  "12-3-2": "/images/stories/l12_s7.jpg",
+  "12-3-3": "/images/stories/l12_s8.jpg",
+
+  // Level 13: The Mystery Footprints - Page 1
+  "13-1-1": "/images/stories/l13_s1.jpg",
+  "13-1-2": "/images/stories/l13_s2.jpg",
+  "13-1-3": "/images/stories/l13_s3.jpg",
+  // Level 13: The Mystery Footprints - Page 2
+  "13-2-1": "/images/stories/l13_s4.jpg",
+  "13-2-2": "/images/stories/l13_s5.jpg",
+  // Level 13: The Mystery Footprints - Page 3
+  "13-3-1": "/images/stories/l13_s6.jpg",
+  "13-3-2": "/images/stories/l13_s7.jpg",
+  "13-3-3": "/images/stories/l13_s8.jpg",
+
+  // Level 14: The Secret in the Attic - Page 1
+  "14-1-1": "/images/stories/l14_s1.jpg",
+  "14-1-2": "/images/stories/l14_s2.jpg",
+  "14-1-3": "/images/stories/l14_s3.jpg",
+  // Level 14: The Secret in the Attic - Page 2
+  "14-2-1": "/images/stories/l14_s4.jpg",
+  "14-2-2": "/images/stories/l14_s5.jpg",
+  "14-2-3": "/images/stories/l14_s6.jpg",
+  // Level 14: The Secret in the Attic - Page 3
+  "14-3-1": "/images/stories/l14_s7.jpg",
+  "14-3-2": "/images/stories/l14_s8.jpg",
+
+  // Level 15: The Reading Champions of Grade 3 - Page 1
+  "15-1-1": "/images/stories/l15_s1.jpg",
+  "15-1-2": "/images/stories/l15_s2.jpg",
+  // Level 15: The Reading Champions of Grade 3 - Page 2
+  "15-2-1": "/images/stories/l15_s3.jpg",
+  "15-2-2": "/images/stories/l15_s4.jpg",
+  // Level 15: The Reading Champions of Grade 3 - Page 3
+  "15-3-1": "/images/stories/l15_s5.jpg",
+  "15-3-2": "/images/stories/l15_s6.jpg",
 };
 
 /**
