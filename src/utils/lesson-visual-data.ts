@@ -3391,6 +3391,98 @@ export const LESSON_SENTENCE_VISUALS: Record<string, SentenceVisualCue[]> = {
 
 };
 
+export const SPECIFIC_SENTENCE_IMAGES: Record<string, string> = {
+  // Level 1: Pat and the Cat - Page 1
+  "1-1-1": "/images/stories/l1_s1.jpg",
+  "1-1-2": "/images/stories/l1_s2.jpg",
+  "1-1-3": "/images/stories/l1_s3.jpg",
+  // Level 1: Pat and the Cat - Page 2
+  "1-2-1": "/images/stories/l1_s4.jpg",
+  "1-2-2": "/images/stories/l1_s5.jpg",
+  "1-2-3": "/images/stories/l1_s6.jpg",
+  // Level 1: Pat and the Cat - Page 3
+  "1-3-1": "/images/stories/l1_s7.jpg",
+  "1-3-2": "/images/stories/l1_s8.jpg",
+
+  // Level 2: The Beautiful Garden - Page 1
+  "2-1-1": "/images/stories/l2_s1.jpg",
+  "2-1-2": "/images/stories/l2_s2.jpg",
+  "2-1-3": "/images/stories/l2_s3.jpg",
+  // Level 2: The Beautiful Garden - Page 2
+  "2-2-1": "/images/stories/l2_s4.jpg",
+  "2-2-2": "/images/stories/l2_s5.jpg",
+  "2-2-3": "/images/stories/l2_s6.jpg",
+  // Level 2: The Beautiful Garden - Page 3
+  "2-3-1": "/images/stories/l2_s7.jpg",
+  "2-3-2": "/images/stories/l2_s8.jpg",
+
+  // Level 3: Pat and Mia in the Park - Page 1
+  "3-1-1": "/images/stories/l3_s1.jpg",
+  "3-1-2": "/images/stories/l3_s2.jpg",
+  "3-1-3": "/images/stories/l3_s3.jpg",
+  // Level 3: Pat and Mia in the Park - Page 2
+  "3-2-1": "/images/stories/l3_s4.jpg",
+  "3-2-2": "/images/stories/l3_s5.jpg",
+  // Level 3: Pat and Mia in the Park - Page 3
+  "3-3-1": "/images/stories/l3_s6.jpg",
+  "3-3-2": "/images/stories/l3_s7.jpg",
+
+  // Level 4: Ben's Morning Routine - Page 1
+  "4-1-1": "/images/stories/l4_s1.jpg",
+  "4-1-2": "/images/stories/l4_s2.jpg",
+  // Level 4: Ben's Morning Routine - Page 2
+  "4-2-1": "/images/stories/l4_s3.jpg",
+  "4-2-2": "/images/stories/l4_s4.jpg",
+  // Level 4: Ben's Morning Routine - Page 3
+  "4-3-1": "/images/stories/l4_s5.jpg",
+  "4-3-2": "/images/stories/l4_s6.jpg",
+
+  // Level 5: A Busy Day at the Park - Page 1
+  "5-1-1": "/images/stories/l5_s1.jpg",
+  "5-1-2": "/images/stories/l5_s2.jpg",
+  // Level 5: A Busy Day at the Park - Page 2
+  "5-2-1": "/images/stories/l5_s3.jpg",
+  "5-2-2": "/images/stories/l5_s4.jpg",
+  "5-2-3": "/images/stories/l5_s5.jpg",
+  // Level 5: A Busy Day at the Park - Page 3
+  "5-3-1": "/images/stories/l5_s6.jpg",
+  "5-3-2": "/images/stories/l5_s7.jpg",
+  "5-3-3": "/images/stories/l5_s8.jpg",
+
+  // Level 6: Packing for the School Trip - Page 1
+  "6-1-1": "/images/stories/l6_s1.jpg",
+  "6-1-2": "/images/stories/l6_s2.jpg",
+  "6-1-3": "/images/stories/l6_s3.jpg",
+  // Level 6: Packing for the School Trip - Page 2
+  "6-2-1": "/images/stories/l6_s4.jpg",
+  "6-2-2": "/images/stories/l6_s5.jpg",
+  // Level 6: Packing for the School Trip - Page 3
+  "6-3-1": "/images/stories/l6_s6.jpg",
+  "6-3-2": "/images/stories/l6_s7.jpg",
+
+  // Level 7: Exploring Our Beautiful Islands - Page 1
+  "7-1-1": "/images/stories/l7_s1.jpg",
+  "7-1-2": "/images/stories/l7_s2.jpg",
+  "7-1-3": "/images/stories/l7_s3.jpg",
+  // Level 7: Exploring Our Beautiful Islands - Page 2
+  "7-2-1": "/images/stories/l7_s4.jpg",
+  "7-2-2": "/images/stories/l7_s5.jpg",
+  "7-2-3": "/images/stories/l7_s6.jpg",
+  // Level 7: Exploring Our Beautiful Islands - Page 3
+  "7-3-1": "/images/stories/l7_s7.jpg",
+  "7-3-2": "/images/stories/l7_s8.jpg",
+
+  // Level 8: At the School Garden - Page 1
+  "8-1-1": "/images/stories/l8_s1.jpg",
+  "8-1-2": "/images/stories/l8_s2.jpg",
+  // Level 8: At the School Garden - Page 2
+  "8-2-1": "/images/stories/l8_s3.jpg",
+  // Level 8: At the School Garden - Page 3
+  "8-3-1": "/images/stories/l8_s4.jpg",
+  "8-3-2": "/images/stories/l8_s5.jpg",
+  "8-3-3": "/images/stories/l8_s6.jpg",
+};
+
 /**
  * Retrieve sentence visual cues for any lesson page, with graceful automatic generation for any custom teacher story.
  */
@@ -3412,16 +3504,18 @@ export function getSentenceVisualCues(
       const defaultColors = ["blue", "emerald", "amber", "purple", "indigo", "rose"];
 
       return rawSentences.map((sentence, idx) => {
+        const sentenceKey = `${lessonId}-${pageNumber}-${idx + 1}`;
+        const sentenceImage = SPECIFIC_SENTENCE_IMAGES[sentenceKey] || pageImageUrl || "";
         const isDialogue = sentence.startsWith('"') || sentence.includes('said') || sentence.includes('asked');
         return {
-          sentence_id: `${lessonId}-${pageNumber}-${idx + 1}`,
+          sentence_id: sentenceKey,
           lesson_id: lessonId,
           page_number: pageNumber,
           sentence_text: sentence,
           speaker: isDialogue ? "Story Character" : "Story Narrator",
           speaker_avatar: defaultIcons[idx % defaultIcons.length],
           scene_title: `Page ${pageNumber} · Step ${idx + 1}`,
-          scene_image_url: pageImageUrl || "",
+          scene_image_url: sentenceImage,
           action_tag: isDialogue ? "💬 Character Dialogue" : "📖 Story Action",
           cue_color: defaultColors[idx % defaultColors.length],
         };
@@ -3431,3 +3525,4 @@ export function getSentenceVisualCues(
 
   return [];
 }
+
