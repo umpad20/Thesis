@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ReadSmart - Traditional Reading Material (Stage 1)</title>
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 15mm 15mm 15mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    }
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      margin: 0;
+      padding: 20px;
+      font-size: 13pt;
+      line-height: 1.5;
+    }
+    .page-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 30px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .deped-header {
+      text-align: center;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .deped-header h4 {
+      margin: 0;
+      font-size: 10pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #475569;
+    }
+    .deped-header h2 {
+      margin: 4px 0;
+      font-size: 15pt;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .deped-header h3 {
+      margin: 2px 0 0;
+      font-size: 12pt;
+      font-weight: 700;
+      color: #1e3a8a;
+    }
+    .student-info-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 12px;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      font-size: 11pt;
+    }
+    .info-item {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .info-label {
+      font-weight: 700;
+      color: #334155;
+    }
+    .info-line {
+      flex: 1;
+      border-bottom: 1px dashed #64748b;
+      min-height: 18px;
+    }
+    .section-banner {
+      background: #1e3a8a;
+      color: #ffffff;
+      padding: 8px 14px;
+      font-weight: 800;
+      font-size: 12pt;
+      border-radius: 4px;
+      margin: 24px 0 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .instructions-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      font-size: 10.5pt;
+      font-style: italic;
+      color: #78350f;
+    }
+    .story-card {
+      border: 2px solid #94a3b8;
+      border-radius: 8px;
+      padding: 16px 20px;
+      background: #fafaf9;
+      margin-bottom: 20px;
+    }
+    .story-title {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #1e3a8a;
+      margin-top: 0;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 6px;
+      font-family: Georgia, serif;
+    }
+    .story-paragraph {
+      font-family: Georgia, serif;
+      font-size: 13pt;
+      line-height: 1.8;
+      color: #1e293b;
+      margin-bottom: 12px;
+      text-indent: 24px;
+    }
+    .story-paragraph:last-child {
+      margin-bottom: 0;
+    }
+    .question-block {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .question-block:last-child {
+      border-bottom: none;
+    }
+    .question-text {
+      font-weight: 700;
+      font-size: 11.5pt;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .choices-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      padding-left: 12px;
+      font-size: 11pt;
+    }
+    .choice-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .choice-circle {
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid #64748b;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .answer-key-box {
+      margin-top: 30px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      font-size: 10pt;
+      page-break-before: always;
+    }
+    .print-button-bar {
+      position: sticky;
+      top: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      z-index: 999;
+    }
+    .print-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      font-size: 12pt;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .print-btn:hover {
+      background: #1d4ed8;
+    }
+
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .page-container {
+        border: none;
+        padding: 0;
+        box-shadow: none;
+        max-width: 100%;
+      }
+      .print-button-bar {
+        display: none;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Print Button Bar (Hidden when printing) -->
+  <div class="print-button-bar">
+    <button class="print-btn" onclick="window.print()">
+      🖨️ PRINT QUESTIONNAIRE (Ctrl + P)
+    </button>
+  </div>
+
+  <div class="page-container">
+
+    <!-- DepEd Formal Header -->
+    <div class="deped-header">
+      <h4>Department of Education · Division of Learning Resources</h4>
+      <h2>GRADE 3 READING COMPREHENSION EVALUATION</h2>
+      <h3>STAGE 1: SUNNY MEADOWS (CONTROL / TRADITIONAL GROUP)</h3>
+    </div>
+
+    <!-- Student Information Box -->
+    <div class="student-info-grid">
+      <div class="info-item">
+        <span class="info-label">Name of Pupil:</span>
+        <div class="info-line"></div>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Date:</span>
+        <div class="info-line"></div>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Grade & Section:</span>
+        <span style="font-weight: 600; color: #1e3a8a;">Grade 3 - </span>
+        <div class="info-line"></div>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Raw Score:</span>
+        <div class="info-line"></div>
+        <span style="font-weight: bold; color: #475569;">/ 10</span>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- PART 1: PRE-TEST (Administered BEFORE reading) -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="section-banner">
+      <span>PART I: PRE-TEST (Word Recognition & Reading Baseline)</span>
+      <span>5 Items</span>
+    </div>
+
+    <div class="instructions-box">
+      <strong>Panudlo / General Direction:</strong> Basaha pag-ayo ang matag pangutana. Lingini (Circle) ang letra sa pinakasaktong tubag (A, B, C, o D).
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">1. Which of the following is a CVC word that has a short /a/ vowel sound?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> Cat</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> Tree</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> Boat</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> Fish</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">2. Which word rhymes with the short /a/ word <em>"rat"</em>?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> Mat</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> Dog</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> Sun</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> Pig</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">3. Complete the sentence: "The big yellow sun shines high up in the _____."</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> sky</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> floor</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> grass</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> water</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">4. Which word begins with a two-consonant blend?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> Bloom</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> Cat</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> Pan</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> Red</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">5. What do we call a large public green area with grass and flowers where children can play?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> Park</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> Bed</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> Desk</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> Box</div>
+      </div>
+    </div>
+
+    <!-- Page Break for Clean Separation between Pre-Test and Story -->
+    <div class="page-break" style="margin-top: 30px;"></div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- PART 2: TRADITIONAL READING MATERIAL (Stories 1, 2, and 3) -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="section-banner" style="background: #047857;">
+      <span>PART II: TRADITIONAL READING PASSAGE (Stage 1 Stories)</span>
+      <span>Read Aloud / Silent</span>
+    </div>
+
+    <div class="instructions-box" style="background: #ecfdf5; border-color: #10b981; color: #065f46;">
+      <strong>Direksyon sa Pagbasa:</strong> Basaha ang tulo (3) ka mugbong istorya sa ubos uban sa saktong paglitok sa mga pulong.
+    </div>
+
+    <!-- Story 1 -->
+    <div class="story-card">
+      <h3 class="story-title">Story 1: Pat and the Cat</h3>
+      <p class="story-paragraph">
+        Pat has a fat cat. The cat sat on a soft mat.
+      </p>
+      <p class="story-paragraph">
+        A big rat ran by the mat. The cat saw the rat run. Words like rat, cat, and mat rhyme with the same sound!
+      </p>
+      <p class="story-paragraph">
+        The cat ran fast to catch the rat. Pat fed his cat in a red pan.
+      </p>
+    </div>
+
+    <!-- Story 2 -->
+    <div class="story-card">
+      <h3 class="story-title">Story 2: The Beautiful Garden</h3>
+      <p class="story-paragraph">
+        One sunny morning, Mia and her friend Leo decided to visit the garden near the park. Before they left, Mia's mom asked them to find beautiful flowers.
+      </p>
+      <p class="story-paragraph">
+        When they arrived, fresh flowers were blooming everywhere! Leo asked if they could find a rose first, and Mia smiled happily.
+      </p>
+      <p class="story-paragraph">
+        They walked around the big fountain looking for roses. Finally, they found a rose bush, took pictures, and laughed together.
+      </p>
+    </div>
+
+    <!-- Story 3 -->
+    <div class="story-card">
+      <h3 class="story-title">Story 3: Pat and Mia in the Park</h3>
+      <p class="story-paragraph">
+        Pat took his cat to the green park. Mia and Leo were there smelling the pink roses.
+      </p>
+      <p class="story-paragraph">
+        The fat cat ran under a tall wooden bench. Mia gave the cat a soft pat on the back.
+      </p>
+      <p class="story-paragraph">
+        They were glad to play in the warm sun. Pat and Mia walked home with big smiles.
+      </p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- PART 3: POST-TEST (Reading Comprehension Evaluation) -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="section-banner" style="background: #b45309;">
+      <span>PART III: POST-TEST (Reading Comprehension Check)</span>
+      <span>5 Items</span>
+    </div>
+
+    <div class="instructions-box">
+      <strong>Panudlo / General Direction:</strong> Tubaga ang mga pangutana base sa mga istorya nga imong gibasa. Lingini (Circle) ang letra sa saktong tubag.
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">1. In <em>"Pat and the Cat"</em>, where was Pat's fat cat sitting at the beginning of the story?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> On a soft mat</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> In a tall green tree</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> On a stone table</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> Inside a dark box</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">2. What animal ran by the mat that made the cat run fast?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> A big rat</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> A brown puppy</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> A green frog</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> A little bird</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">3. In <em>"The Beautiful Garden"</em>, what did Mia and Leo walk around while looking for roses?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> The big fountain</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> The wooden bridge</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> The old school gate</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> The street fence</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">4. In <em>"Pat and Mia in the Park"</em>, where did the fat cat run when they reached the park?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> Under a tall wooden bench</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> Behind the school canteen</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> Up the tall slide</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> Into a muddy pond</div>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">5. What did Pat feed his cat in?</div>
+      <div class="choices-grid">
+        <div class="choice-item"><span class="choice-circle"></span> <strong>A.</strong> A red pan</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>B.</strong> A blue glass</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>C.</strong> A white bowl</div>
+        <div class="choice-item"><span class="choice-circle"></span> <strong>D.</strong> A paper cup</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- RESEARCHER'S SCORING & ANSWER KEY GUIDE -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="answer-key-box">
+      <h4 style="margin: 0 0 8px; color: #1e293b; font-weight: 800; text-transform: uppercase;">
+        🔑 Researcher Answer Key (Para sa Pag-check / Grading)
+      </h4>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-weight: 600;">
+        <div>
+          <span style="color: #1e3a8a;">PART I: PRE-TEST</span><br>
+          1. <strong>A</strong> (Cat)<br>
+          2. <strong>A</strong> (Mat)<br>
+          3. <strong>A</strong> (sky)<br>
+          4. <strong>A</strong> (Bloom)<br>
+          5. <strong>A</strong> (Park)
+        </div>
+        <div>
+          <span style="color: #b45309;">PART III: POST-TEST</span><br>
+          1. <strong>A</strong> (On a soft mat)<br>
+          2. <strong>A</strong> (A big rat)<br>
+          3. <strong>A</strong> (The big fountain)<br>
+          4. <strong>A</strong> (Under a tall wooden bench)<br>
+          5. <strong>A</strong> (A red pan)
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
