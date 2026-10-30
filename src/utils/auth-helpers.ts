@@ -237,12 +237,24 @@ export async function authenticateSignIn(
   email: string,
   password?: string
 ): Promise<{ success: boolean; user?: UserProfile; message?: string }> {
-  const cleanEmail = email.trim().toLowerCase();
+  let cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail) {
     return { success: false, message: "Please enter your registered email address." };
   }
   if (!password) {
     return { success: false, message: "Please enter your password." };
+  }
+
+  // Alias support for tester teacher (allows logging in with emilinda.anton001@gmail.com or emelinda.aton001@deped.gov.ph)
+  if (
+    cleanEmail === "emilinda.anton001@gmail.com" ||
+    cleanEmail === "emelinda.anton001@gmail.com" ||
+    cleanEmail === "emilinda.aton001@gmail.com" ||
+    cleanEmail === "emelinda.aton001@gmail.com" ||
+    cleanEmail === "emilinda.anton001@deped.gov.ph" ||
+    cleanEmail === "emilinda.aton001@deped.gov.ph"
+  ) {
+    cleanEmail = "emelinda.aton001@deped.gov.ph";
   }
 
   const supabase = createClient();
