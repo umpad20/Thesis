@@ -1719,13 +1719,27 @@ export async function fetchStudentDetailedQuizAttempts(
       }
     }
 
-    const { data: attempts, error } = await supabase
+    const { data: rawAttempts, error } = await supabase
       .from("quiz_attempts")
       .select("attempt_id, quiz_id, score, percentage, status, completed_at")
       .eq("student_id", resolvedId)
       .order("completed_at", { ascending: false });
 
-    if (error || !attempts || attempts.length === 0) return [];
+    if (error || !rawAttempts || rawAttempts.length === 0) return [];
+
+    // Filter out rapid accidental duplicate submissions (e.g. repeated button clicks within 20 seconds for the same quiz)
+    const attempts: typeof rawAttempts = [];
+    for (const att of rawAttempts) {
+      const isDuplicate = attempts.some((existing) => {
+        if (existing.quiz_id !== att.quiz_id) return false;
+        const timeA = new Date(existing.completed_at || 0).getTime();
+        const timeB = new Date(att.completed_at || 0).getTime();
+        return Math.abs(timeA - timeB) < 20 * 1000;
+      });
+      if (!isDuplicate) {
+        attempts.push(att);
+      }
+    }
 
     const quizIds = Array.from(new Set(attempts.map((a) => a.quiz_id).filter(Boolean)));
     const quizMap = new Map<number, string>();

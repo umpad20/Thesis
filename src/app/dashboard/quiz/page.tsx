@@ -26,6 +26,7 @@ import {
   Maximize2,
   Link2,
   Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -84,6 +85,7 @@ function QuizContent() {
   const [recordedAnswers, setRecordedAnswers] = useState<
     Array<{ questionId: number; choiceId?: number | null; isCorrect: boolean }>
   >([]);
+  const [isSubmittingAttempt, setIsSubmittingAttempt] = useState(false);
 
   useEffect(() => {
     async function loadQuiz() {
@@ -105,6 +107,7 @@ function QuizContent() {
       setStageLockedReason(null);
       setFirstUnfinishedLessonId(null);
       setIsAlreadyPassed(false);
+      setIsSubmittingAttempt(false);
 
       const user = getCurrentUser();
 
@@ -380,6 +383,7 @@ function QuizContent() {
   };
 
   const handleNext = async () => {
+    if (isSubmittingAttempt) return;
     setFeedbackType(null);
     if (currentIndex < totalQuestions - 1) {
       setCurrentIndex((prev) => prev + 1);
@@ -390,37 +394,45 @@ function QuizContent() {
       setIsSubmitted(false);
       setShowHint(false);
     } else {
-      // Quiz completed - submit directly to Supabase
-      const finalPercentage = Math.round((score / maxScore) * 100);
-      const passingScore = quizData?.passing_score || (isStageFinal ? 75 : 70);
-      const isPassed = finalPercentage >= passingScore;
-      const user = getCurrentUser();
+      setIsSubmittingAttempt(true);
+      try {
+        // Quiz completed - submit directly to Supabase
+        const finalPercentage = Math.round((score / maxScore) * 100);
+        const passingScore = quizData?.passing_score || (isStageFinal ? 75 : 70);
+        const isPassed = finalPercentage >= passingScore;
+        const user = getCurrentUser();
 
-      if (user?.id && quizData?.quiz_id) {
-        await submitQuizAttempt({
-          studentId: user.id,
-          quizId: quizData.quiz_id,
-          lessonId: isStageFinal ? null : lessonId,
-          badgeId: isStageFinal ? badgeId : quizData.badge_id ?? undefined,
-          isStageFinal,
-          score,
-          totalPoints: maxScore,
-          percentage: finalPercentage,
-          passed: isPassed,
-          answers: recordedAnswers,
-        });
-      }
-
-      if (isPassed) {
-        if (isStageFinal && (badgeId === 5 || currentBadge?.badge_order === 5)) {
-          soundEffects.playGrandGraduationFanfare();
-          setShowCertificate(true);
-        } else {
-          soundEffects.playVictory();
+        if (user?.id && quizData?.quiz_id) {
+          await submitQuizAttempt({
+            studentId: user.id,
+            quizId: quizData.quiz_id,
+            lessonId: isStageFinal ? null : lessonId,
+            badgeId: isStageFinal ? badgeId : quizData.badge_id ?? undefined,
+            isStageFinal,
+            score,
+            totalPoints: maxScore,
+            percentage: finalPercentage,
+            passed: isPassed,
+            answers: recordedAnswers,
+          });
         }
-      }
 
-      setQuizFinished(true);
+        if (isPassed) {
+          if (isStageFinal && (badgeId === 5 || currentBadge?.badge_order === 5)) {
+            soundEffects.playGrandGraduationFanfare();
+            setShowCertificate(true);
+          } else {
+            soundEffects.playVictory();
+          }
+        }
+
+        setQuizFinished(true);
+      } catch (err) {
+        console.error("Error submitting quiz attempt:", err);
+        setQuizFinished(true);
+      } finally {
+        setIsSubmittingAttempt(false);
+      }
     }
   };
 
@@ -436,6 +448,7 @@ function QuizContent() {
     setRecordedAnswers([]);
     setQuizFinished(false);
     setFeedbackType(null);
+    setIsSubmittingAttempt(false);
   };
 
   if (loading) {
@@ -1573,10 +1586,20 @@ function QuizContent() {
           ) : (
             <Button
               onClick={handleNext}
-              className="h-11 px-6 sm:px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer"
+              disabled={isSubmittingAttempt}
+              className="h-11 px-6 sm:px-7 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>{currentIndex === totalQuestions - 1 ? "Complete Assessment" : "Next Question"}</span>
-              <ArrowRight className="w-4 h-4 ml-0.5" />
+              {isSubmittingAttempt ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <>
+                  <span>{currentIndex === totalQuestions - 1 ? "Complete Assessment" : "Next Question"}</span>
+                  <ArrowRight className="w-4 h-4 ml-0.5" />
+                </>
+              )}
             </Button>
           )}
         </div>
